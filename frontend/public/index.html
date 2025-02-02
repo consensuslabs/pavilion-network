@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Pavilion Network MVP - Test Interface</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        /* Tab container */
+        .tab {
+            overflow: hidden;
+            border-bottom: 1px solid #ccc;
+            margin-bottom: 20px;
+        }
+
+        /* Tab buttons */
+        .tab button {
+            background-color: inherit;
+            border: none;
+            outline: none;
+            cursor: pointer;
+            padding: 14px 16px;
+            transition: 0.3s;
+            font-size: 17px;
+        }
+
+        .tab button:hover {
+            background-color: #ddd;
+        }
+
+        .tab button.active {
+            background-color: #ccc;
+        }
+
+        /* Tab content */
+        .tabcontent {
+            display: none;
+            padding: 10px 0;
+        }
+
+        .api-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .api-row label {
+            min-width: 180px;
+            font-weight: bold;
+        }
+
+        .button {
+            padding: 8px 16px;
+            margin: 0 5px;
+            background-color: #007bff;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+        }
+
+        .button:hover {
+            background-color: #0056b3;
+        }
+
+        input[type="text"],
+        input[type="file"] {
+            padding: 6px;
+            margin-right: 10px;
+        }
+
+        pre {
+            background-color: #f2f2f2;
+            padding: 10px;
+            border: 1px solid #ccc;
+            white-space: pre-wrap;
+            margin-top: 20px;
+        }
+
+        .link-list a {
+            display: block;
+            margin: 5px 0;
+            color: #007bff;
+            text-decoration: none;
+        }
+
+        .link-list a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Pavilion Network MVP - Test Interface</h1>
+
+    <div class="tab">
+        <button class="tablinks" onclick="openTab(event, 'User')" id="defaultOpen">User APIs</button>
+        <button class="tablinks" onclick="openTab(event, 'Video')">Video APIs</button>
+        <button class="tablinks" onclick="openTab(event, 'Social')">Social APIs</button>
+        <button class="tablinks" onclick="openTab(event, 'Blockchain')">Blockchain APIs</button>
+        <button class="tablinks" onclick="openTab(event, 'Cache')">Cache Test</button>
+    </div>
+
+    <!-- User APIs Tab -->
+    <div id="User" class="tabcontent">
+        <div class="api-row">
+            <button class="button" onclick="checkHealth()">Check Health</button>
+            <span>/health</span>
+        </div>
+        <div class="api-row">
+            <button class="button" onclick="login()">Login (OAuth)</button>
+            <span>/auth/login</span>
+        </div>
+    </div>
+
+    <!-- Video APIs Tab -->
+    <div id="Video" class="tabcontent">
+        <!-- Video Upload -->
+        <div class="api-row">
+            <form id="uploadForm">
+                <label for="videoFile">Upload Video:</label>
+                <input type="file" id="videoFile" name="video">
+                <button class="button" type="submit">Upload Video</button>
+            </form>
+            <span>/video/upload</span>
+        </div>
+        <!-- Video Transcoding -->
+        <div class="api-row">
+            <label for="sourceCID">Source CID (optional):</label>
+            <input type="text" id="sourceCID" placeholder="Enter source CID or leave blank for default">
+            <button class="button" onclick="transcodeVideo()">Transcode Video</button>
+            <span>/video/transcode</span>
+        </div>
+        <!-- List Videos -->
+        <div class="api-row">
+            <button class="button" onclick="listVideos()">List Videos</button>
+            <span>/video/list</span>
+        </div>
+        <!-- Display Transcoded Videos -->
+        <div class="api-row">
+            <label>Transcoded Videos:</label>
+            <div id="transcodedList" class="link-list" style="flex: 1;"></div>
+        </div>
+    </div>
+
+    <!-- Social APIs Tab -->
+    <div id="Social" class="tabcontent">
+        <div class="api-row">
+            <button class="button" onclick="socialAction()">Social Action</button>
+            <span>/social/action</span>
+        </div>
+    </div>
+
+    <!-- Blockchain APIs Tab -->
+    <div id="Blockchain" class="tabcontent">
+        <div class="api-row">
+            <button class="button" onclick="blockchainAnchor()">Blockchain Anchor</button>
+            <span>/blockchain/anchor</span>
+        </div>
+    </div>
+
+    <!-- Cache Test Tab -->
+    <div id="Cache" class="tabcontent">
+        <div class="api-row">
+            <button class="button" onclick="testCache()">Test Cache</button>
+            <span>/cache/test</span>
+        </div>
+    </div>
+
+    <pre id="output"></pre>
+
+    <script>
+        // Function to open a specific tab.
+        function openTab(evt, tabName) {
+            var i, tabcontent, tablinks;
+            tabcontent = document.getElementsByClassName("tabcontent");
+            for (i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].style.display = "none";
+            }
+            tablinks = document.getElementsByClassName("tablinks");
+            for (i = 0; i < tablinks.length; i++) {
+                tablinks[i].className = tablinks[i].className.replace(" active", "");
+            }
+            document.getElementById(tabName).style.display = "block";
+            evt.currentTarget.className += " active";
+        }
+        // Set default tab.
+        document.getElementById("defaultOpen").click();
+
+        const output = document.getElementById("output");
+
+        function displayResult(result) {
+            output.textContent = JSON.stringify(result, null, 2);
+        }
+
+        function handleError(err) {
+            output.textContent = "Error: " + err;
+        }
+
+        // User APIs
+        function checkHealth() {
+            fetch("/health")
+                .then(res => res.json())
+                .then(data => displayResult(data))
+                .catch(err => handleError(err));
+        }
+
+        function login() {
+            fetch("/auth/login", { method: "POST" })
+                .then(res => res.json())
+                .then(data => displayResult(data))
+                .catch(err => handleError(err));
+        }
+
+        // Video APIs
+
+        // Handle video upload.
+        document.getElementById("uploadForm").addEventListener("submit", function (e) {
+            e.preventDefault();
+            const fileInput = document.getElementById("videoFile");
+            const file = fileInput.files[0];
+            if (!file) {
+                alert("Please select a video file.");
+                return;
+            }
+            const formData = new FormData();
+            formData.append("video", file);
+            fetch("/video/upload", {
+                method: "POST",
+                body: formData
+            })
+                .then(res => res.json())
+                .then(data => displayResult(data))
+                .catch(err => handleError(err));
+        });
+
+        // Transcode video. If a CID is provided, send it; otherwise, use default input file.
+        function transcodeVideo() {
+            const sourceCID = document.getElementById("sourceCID").value.trim();
+            let payload = {};
+            if (sourceCID !== "") {
+                // If a CID is provided, construct the local file path as "./uploads/<CID>.mp4"
+                payload.input_file = "./uploads/" + sourceCID + ".mp4";
+            } else {
+                // Otherwise, use a default input file (e.g., sample.mp4).
+                payload.input_file = "./uploads/sample.mp4";
+            }
+            fetch("/video/transcode", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            })
+                .then(res => res.json())
+                .then(data => {
+                    displayResult(data);
+                    if (data.videos) {
+                        displayTranscodedVideos(data.videos);
+                    }
+                })
+                .catch(err => handleError(err));
+        }
+
+        // List videos.
+        function listVideos() {
+            fetch("/video/list")
+                .then(res => res.json())
+                .then(data => displayResult(data))
+                .catch(err => handleError(err));
+        }
+
+        // Display transcoded video links.
+        function displayTranscodedVideos(videos) {
+            const listDiv = document.getElementById("transcodedList");
+            listDiv.innerHTML = "";
+            videos.forEach(video => {
+                const link = document.createElement("a");
+                // Use your own IPFS gateway or the local uploads URL.
+                // For local file viewing: "/uploads/<filename>"
+                // If you want to use IPFS, adjust the URL accordingly (e.g., "http://localhost:8081/ipfs/" + video.ipfs_cid)
+                link.href = "/uploads/" + video.FilePath.split("/").pop();
+                link.textContent = video.Title;
+                link.target = "_blank";
+                listDiv.appendChild(link);
+            });
+        }
+
+        // Social API.
+        function socialAction() {
+            fetch("/social/action", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "like", videoId: 123 })
+            })
+                .then(res => res.json())
+                .then(data => displayResult(data))
+                .catch(err => handleError(err));
+        }
+
+        // Blockchain API.
+        function blockchainAnchor() {
+            fetch("/blockchain/anchor", { method: "POST" })
+                .then(res => res.json())
+                .then(data => displayResult(data))
+                .catch(err => handleError(err));
+        }
+
+        // Cache Test.
+        function testCache() {
+            fetch("/cache/test")
+                .then(res => res.json())
+                .then(data => displayResult(data))
+                .catch(err => handleError(err));
+        }
+    </script>
+</body>
+
+</html>
