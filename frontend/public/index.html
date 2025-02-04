@@ -5,28 +5,33 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Pavilion Network MVP - Test Interface</title>
+    <link href="https://vjs.zencdn.net/7.20.3/video-js.css" rel="stylesheet" />
     <style>
         body {
             font-family: Arial, sans-serif;
             margin: 20px;
         }
 
-        /* Tab container */
+        hr {
+            margin: 20px 0;
+            border: 0;
+            border-top: 1px solid #ccc;
+        }
+
         .tab {
             overflow: hidden;
             border-bottom: 1px solid #ccc;
             margin-bottom: 20px;
         }
 
-        /* Tab buttons */
         .tab button {
             background-color: inherit;
             border: none;
             outline: none;
             cursor: pointer;
             padding: 14px 16px;
-            transition: 0.3s;
-            font-size: 17px;
+            margin-right: 5px;
+            font-size: 16px;
         }
 
         .tab button:hover {
@@ -37,7 +42,6 @@
             background-color: #ccc;
         }
 
-        /* Tab content */
         .tabcontent {
             display: none;
             padding: 10px 0;
@@ -75,17 +79,22 @@
             margin-right: 10px;
         }
 
-        pre {
-            background-color: #f2f2f2;
-            padding: 10px;
-            border: 1px solid #ccc;
-            white-space: pre-wrap;
-            margin-top: 20px;
+        textarea {
+            width: 100%;
+            height: 150px;
+            margin-top: 10px;
+        }
+
+        .link-list {
+            margin-top: 10px;
+        }
+
+        .link-list div {
+            margin-bottom: 5px;
         }
 
         .link-list a {
-            display: block;
-            margin: 5px 0;
+            margin-right: 10px;
             color: #007bff;
             text-decoration: none;
         }
@@ -98,7 +107,6 @@
 
 <body>
     <h1>Pavilion Network MVP - Test Interface</h1>
-
     <div class="tab">
         <button class="tablinks" onclick="openTab(event, 'User')" id="defaultOpen">User APIs</button>
         <button class="tablinks" onclick="openTab(event, 'Video')">Video APIs</button>
@@ -113,39 +121,80 @@
             <button class="button" onclick="checkHealth()">Check Health</button>
             <span>/health</span>
         </div>
+        <textarea id="healthResult" placeholder="Health API response"></textarea>
+        <hr>
         <div class="api-row">
             <button class="button" onclick="login()">Login (OAuth)</button>
             <span>/auth/login</span>
         </div>
+        <textarea id="loginResult" placeholder="Login API response"></textarea>
     </div>
 
     <!-- Video APIs Tab -->
     <div id="Video" class="tabcontent">
-        <!-- Video Upload -->
-        <div class="api-row">
+        <!-- Upload Video Section -->
+        <div class="section">
+            <h3>Upload Video</h3>
             <form id="uploadForm">
-                <label for="videoFile">Upload Video:</label>
-                <input type="file" id="videoFile" name="video">
+                <div class="api-row">
+                    <label for="videoFile">Video File:</label>
+                    <input type="file" id="videoFile" name="video">
+                </div>
+                <div class="api-row">
+                    <label for="title">Title:</label>
+                    <input type="text" id="title" placeholder="Enter video title">
+                </div>
+                <div class="api-row">
+                    <label for="description">Description:</label>
+                    <input type="text" id="description" placeholder="Enter video description">
+                </div>
                 <button class="button" type="submit">Upload Video</button>
             </form>
             <span>/video/upload</span>
+            <textarea id="uploadResult" placeholder="Upload API response"></textarea>
         </div>
-        <!-- Video Transcoding -->
-        <div class="api-row">
-            <label for="sourceCID">Source CID (optional):</label>
-            <input type="text" id="sourceCID" placeholder="Enter source CID or leave blank for default">
+        <hr>
+        <!-- Transcode Video Section -->
+        <div class="section">
+            <h3>Transcode Video</h3>
+            <div class="api-row">
+                <label>Transcode Option:</label>
+                <input type="radio" id="transcodeCID" name="transcodeOption" value="cid" checked>
+                <label for="transcodeCID">From CID</label>
+                <input type="radio" id="transcodeUpload" name="transcodeOption" value="upload">
+                <label for="transcodeUpload">Upload &amp; Transcode</label>
+            </div>
+            <!-- Option for Transcode from CID -->
+            <div id="cidTranscode" class="api-row">
+                <label for="transcodeCIDInput">Source CID:</label>
+                <input type="text" id="transcodeCIDInput" placeholder="Enter CID">
+            </div>
+            <!-- Option for Upload and Transcode -->
+            <div id="uploadTranscode" class="api-row" style="display: none;">
+                <label for="transcodeFile">Video File:</label>
+                <input type="file" id="transcodeFile" name="transcodeFile">
+                <label for="transcodeTitle">Title:</label>
+                <input type="text" id="transcodeTitle" placeholder="Enter title">
+                <label for="transcodeDescription">Description:</label>
+                <input type="text" id="transcodeDescription" placeholder="Enter description">
+            </div>
             <button class="button" onclick="transcodeVideo()">Transcode Video</button>
             <span>/video/transcode</span>
+            <textarea id="transcodeResult" placeholder="Transcode API response"></textarea>
         </div>
-        <!-- List Videos -->
-        <div class="api-row">
-            <button class="button" onclick="listVideos()">List Videos</button>
-            <span>/video/list</span>
-        </div>
-        <!-- Display Transcoded Videos -->
-        <div class="api-row">
-            <label>Transcoded Videos:</label>
-            <div id="transcodedList" class="link-list" style="flex: 1;"></div>
+        <hr>
+        <!-- List Videos Section -->
+        <div class="section">
+            <h3>List Videos</h3>
+            <div class="api-row">
+                <button class="button" onclick="listVideos()">List Videos</button>
+                <span>/video/list</span>
+            </div>
+            <textarea id="listResult" placeholder="List API response"></textarea>
+            <div class="api-row">
+                <label>Videos:</label>
+                <div id="transcodedList" class="link-list" style="flex: 1;"></div>
+            </div>
         </div>
     </div>
 
@@ -155,6 +204,7 @@
             <button class="button" onclick="socialAction()">Social Action</button>
             <span>/social/action</span>
         </div>
+        <textarea id="socialResult" placeholder="Social API response"></textarea>
     </div>
 
     <!-- Blockchain APIs Tab -->
@@ -163,6 +213,7 @@
             <button class="button" onclick="blockchainAnchor()">Blockchain Anchor</button>
             <span>/blockchain/anchor</span>
         </div>
+        <textarea id="blockchainResult" placeholder="Blockchain API response"></textarea>
     </div>
 
     <!-- Cache Test Tab -->
@@ -171,12 +222,26 @@
             <button class="button" onclick="testCache()">Test Cache</button>
             <span>/cache/test</span>
         </div>
+        <textarea id="cacheResult" placeholder="Cache API response"></textarea>
     </div>
 
     <pre id="output"></pre>
 
     <script>
-        // Function to open a specific tab.
+        // Toggle transcode option display.
+        document.getElementsByName("transcodeOption").forEach(radio => {
+            radio.addEventListener("change", function () {
+                if (this.value === "cid") {
+                    document.getElementById("cidTranscode").style.display = "flex";
+                    document.getElementById("uploadTranscode").style.display = "none";
+                } else if (this.value === "upload") {
+                    document.getElementById("cidTranscode").style.display = "none";
+                    document.getElementById("uploadTranscode").style.display = "flex";
+                }
+            });
+        });
+
+        // Tab functionality.
         function openTab(evt, tabName) {
             var i, tabcontent, tablinks;
             tabcontent = document.getElementsByClassName("tabcontent");
@@ -190,37 +255,33 @@
             document.getElementById(tabName).style.display = "block";
             evt.currentTarget.className += " active";
         }
-        // Set default tab.
         document.getElementById("defaultOpen").click();
 
-        const output = document.getElementById("output");
-
-        function displayResult(result) {
-            output.textContent = JSON.stringify(result, null, 2);
+        // Utility functions to update result textareas.
+        function displayResult(id, result) {
+            document.getElementById(id).value = JSON.stringify(result, null, 2);
         }
-
-        function handleError(err) {
-            output.textContent = "Error: " + err;
+        function handleError(id, err) {
+            document.getElementById(id).value = "Error: " + err;
         }
 
         // User APIs
         function checkHealth() {
             fetch("/health")
                 .then(res => res.json())
-                .then(data => displayResult(data))
-                .catch(err => handleError(err));
+                .then(data => displayResult("healthResult", data))
+                .catch(err => handleError("healthResult", err));
         }
-
         function login() {
             fetch("/auth/login", { method: "POST" })
                 .then(res => res.json())
-                .then(data => displayResult(data))
-                .catch(err => handleError(err));
+                .then(data => displayResult("loginResult", data))
+                .catch(err => handleError("loginResult", err));
         }
 
         // Video APIs
 
-        // Handle video upload.
+        // Upload video with title and description.
         document.getElementById("uploadForm").addEventListener("submit", function (e) {
             e.preventDefault();
             const fileInput = document.getElementById("videoFile");
@@ -229,28 +290,67 @@
                 alert("Please select a video file.");
                 return;
             }
+            const title = document.getElementById("title").value.trim();
+            const description = document.getElementById("description").value.trim();
             const formData = new FormData();
             formData.append("video", file);
+            formData.append("title", title);
+            formData.append("description", description);
             fetch("/video/upload", {
                 method: "POST",
                 body: formData
             })
                 .then(res => res.json())
-                .then(data => displayResult(data))
-                .catch(err => handleError(err));
+                .then(data => {
+                    displayResult("uploadResult", data);
+                })
+                .catch(err => handleError("uploadResult", err));
         });
 
-        // Transcode video. If a CID is provided, send it; otherwise, use default input file.
+        // Transcode video.
         function transcodeVideo() {
-            const sourceCID = document.getElementById("sourceCID").value.trim();
+            const transcodeOption = document.querySelector('input[name="transcodeOption"]:checked').value;
             let payload = {};
-            if (sourceCID !== "") {
-                // If a CID is provided, construct the local file path as "./uploads/<CID>.mp4"
-                payload.input_file = "./uploads/" + sourceCID + ".mp4";
-            } else {
-                // Otherwise, use a default input file (e.g., sample.mp4).
-                payload.input_file = "./uploads/sample.mp4";
+            if (transcodeOption === "cid") {
+                const sourceCID = document.getElementById("transcodeCIDInput").value.trim();
+                if (!sourceCID) {
+                    alert("Please enter a CID for transcoding.");
+                    return;
+                }
+                payload.cid = sourceCID;
+            } else if (transcodeOption === "upload") {
+                const fileInput = document.getElementById("transcodeFile");
+                const file = fileInput.files[0];
+                if (!file) {
+                    alert("Please select a video file for transcoding.");
+                    return;
+                }
+                const formData = new FormData();
+                formData.append("video", file);
+                const title = document.getElementById("transcodeTitle").value.trim();
+                const description = document.getElementById("transcodeDescription").value.trim();
+                formData.append("title", title);
+                formData.append("description", description);
+                fetch("/video/upload", {
+                    method: "POST",
+                    body: formData
+                })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.video && data.video.ipfsCid) {
+                            payload.cid = data.video.ipfsCid;
+                            transcodeWithPayload(payload);
+                        } else {
+                            alert("File upload failed, cannot transcode.");
+                        }
+                    })
+                    .catch(err => handleError("transcodeResult", err));
+                return;
             }
+            transcodeWithPayload(payload);
+        }
+
+        function transcodeWithPayload(payload) {
             fetch("/video/transcode", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -258,36 +358,98 @@
             })
                 .then(res => res.json())
                 .then(data => {
-                    displayResult(data);
-                    if (data.videos) {
-                        displayTranscodedVideos(data.videos);
-                    }
+                    displayResult("transcodeResult", data);
                 })
-                .catch(err => handleError(err));
+                .catch(err => handleError("transcodeResult", err));
         }
 
         // List videos.
         function listVideos() {
             fetch("/video/list")
                 .then(res => res.json())
-                .then(data => displayResult(data))
-                .catch(err => handleError(err));
+                .then(data => {
+                    displayResult("listResult", data);
+                    if (data.success && data.data && data.data.videos) {
+                        displayTranscodedVideos(data.data.videos);
+                    }
+                })
+                .catch(err => handleError("listResult", err));
         }
 
-        // Display transcoded video links.
+        // Display video links.
+        // For each video, display its title and for each associated transcode,
+        // show a link in the format "title – transcode type – resolution".
         function displayTranscodedVideos(videos) {
             const listDiv = document.getElementById("transcodedList");
             listDiv.innerHTML = "";
             videos.forEach(video => {
-                const link = document.createElement("a");
-                // Use your own IPFS gateway or the local uploads URL.
-                // For local file viewing: "/uploads/<filename>"
-                // If you want to use IPFS, adjust the URL accordingly (e.g., "http://localhost:8081/ipfs/" + video.ipfs_cid)
-                link.href = "/uploads/" + video.FilePath.split("/").pop();
-                link.textContent = video.Title;
-                link.target = "_blank";
-                listDiv.appendChild(link);
+                let videoContainer = document.createElement("div");
+                videoContainer.style.marginBottom = "10px";
+
+                // Display video title.
+                let videoTitle = document.createElement("div");
+                videoTitle.style.fontWeight = "bold";
+                videoTitle.textContent = video.title;
+                videoContainer.appendChild(videoTitle);
+
+                // Original video links.
+                let localFile = "";
+                if (video.filePath) {
+                    let parts = video.filePath.split("/");
+                    localFile = parts[parts.length - 1];
+                }
+                const localLink = document.createElement("a");
+                localLink.href = "viewer.html?file=" + encodeURIComponent(localFile) + "&type=" + encodeURIComponent(video.title.endsWith(".m3u8") ? "hls" : "mp4");
+                localLink.textContent = "Original (Local)";
+                localLink.target = "_blank";
+
+                const ipfsLink = document.createElement("a");
+                ipfsLink.href = "viewer.html?cid=" + encodeURIComponent(video.ipfsCid) + "&type=" + encodeURIComponent(video.title.endsWith(".m3u8") ? "hls" : "mp4");
+                ipfsLink.textContent = "Original (IPFS)";
+                ipfsLink.target = "_blank";
+
+                let originalLinks = document.createElement("div");
+                originalLinks.appendChild(localLink);
+                originalLinks.appendChild(ipfsLink);
+                videoContainer.appendChild(originalLinks);
+
+                // Display transcode details if available.
+                if (video.transcodes && video.transcodes.length > 0) {
+                    video.transcodes.forEach(tr => {
+                        let trDiv = document.createElement("div");
+                        trDiv.textContent = video.title + " - " + tr.type + " - " + tr.resolution + "p";
+
+                        let trLocalURL = "viewer.html?file=" + encodeURIComponent(filepathBaseName(tr.filePath)) + "&type=" + encodeURIComponent(tr.type === "hls" ? "hls" : "mp4");
+                        let trIPFSURL = "viewer.html?cid=" + encodeURIComponent(tr.fileCid) + "&type=" + encodeURIComponent(tr.type === "hls" ? "hls" : "mp4");
+
+                        let trLocalLink = document.createElement("a");
+                        trLocalLink.href = trLocalURL;
+                        trLocalLink.textContent = "Local";
+                        trLocalLink.target = "_blank";
+
+                        let trIPFSLink = document.createElement("a");
+                        trIPFSLink.href = trIPFSURL;
+                        trIPFSLink.textContent = "IPFS";
+                        trIPFSLink.target = "_blank";
+
+                        trDiv.appendChild(document.createTextNode(" ("));
+                        trDiv.appendChild(trLocalLink);
+                        trDiv.appendChild(document.createTextNode(" | "));
+                        trDiv.appendChild(trIPFSLink);
+                        trDiv.appendChild(document.createTextNode(")"));
+
+                        videoContainer.appendChild(trDiv);
+                    });
+                }
+
+                listDiv.appendChild(videoContainer);
             });
+        }
+
+        // Helper to extract the base filename from a file path.
+        function filepathBaseName(path) {
+            let parts = path.split("/");
+            return parts[parts.length - 1];
         }
 
         // Social API.
@@ -298,24 +460,24 @@
                 body: JSON.stringify({ action: "like", videoId: 123 })
             })
                 .then(res => res.json())
-                .then(data => displayResult(data))
-                .catch(err => handleError(err));
+                .then(data => displayResult("socialResult", data))
+                .catch(err => handleError("socialResult", err));
         }
 
         // Blockchain API.
         function blockchainAnchor() {
             fetch("/blockchain/anchor", { method: "POST" })
                 .then(res => res.json())
-                .then(data => displayResult(data))
-                .catch(err => handleError(err));
+                .then(data => displayResult("blockchainResult", data))
+                .catch(err => handleError("blockchainResult", err));
         }
 
         // Cache Test.
         function testCache() {
             fetch("/cache/test")
                 .then(res => res.json())
-                .then(data => displayResult(data))
-                .catch(err => handleError(err));
+                .then(data => displayResult("cacheResult", data))
+                .catch(err => handleError("cacheResult", err));
         }
     </script>
 </body>

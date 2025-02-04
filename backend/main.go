@@ -12,6 +12,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-redis/redis/v8"
+	"github.com/google/uuid"
 	shell "github.com/ipfs/go-ipfs-api"
 	libp2p "github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/host"
@@ -31,25 +32,63 @@ type User struct {
 	ID        uint      `gorm:"primaryKey" json:"id"`
 	Name      string    `json:"name"`
 	Email     string    `gorm:"unique" json:"email"`
-	CreatedAt time.Time `json:"created_at"`
+	CreatedAt time.Time `json:"createdAt"`
 }
 
 // Video model definition.
-// IPFSCID stores the IPFS CID for the video.
+// fileId stores the unique identifier generated during upload.
+// Transcodes represents the one-to-many relation to the Transcode table.
 type Video struct {
-	ID          uint      `gorm:"primaryKey" json:"id"`
-	Title       string    `json:"title"`
-	Description string    `json:"description"`
-	FilePath    string    `json:"file_path"`
-	IPFSCID     string    `json:"ipfs_cid"`
-	CreatedAt   time.Time `json:"created_at"`
+	ID          uint        `gorm:"primaryKey" json:"id"`
+	FileId      string      `json:"fileId"`
+	Title       string      `json:"title"`
+	Description string      `json:"description"`
+	FilePath    string      `json:"filePath"`
+	IPFSCID     string      `gorm:"column:ipfs_cid" json:"ipfsCid"`
+	CreatedAt   time.Time   `json:"createdAt"`
+	Transcodes  []Transcode `json:"transcodes"`
 }
 
-// TranscodeTarget defines parameters for each output.
+// Transcode model definition.
+type Transcode struct {
+	ID         uint      `gorm:"primaryKey" json:"id"`
+	VideoID    uint      `json:"videoId"`
+	FilePath   string    `json:"filePath"`
+	FileCID    string    `gorm:"column:file_cid" json:"fileCid"`
+	Type       string    `json:"type"`       // "hls" or "h264"
+	Resolution string    `json:"resolution"` // e.g., "720"
+	CreatedAt  time.Time `json:"createdAt"`
+}
+
+// TranscodeTarget defines parameters for each transcoded output.
 type TranscodeTarget struct {
-	Label      string // e.g., "720p_mp4"
-	Resolution string // e.g., "720"
-	OutputExt  string // e.g., "m3u8"
+	Label      string // e.g., "720pMp4", "480pMp4", "360pMp4", "240pMp4"
+	Resolution string // target height (e.g., "720", "480", "360", "240")
+	OutputExt  string // "m3u8" for HLS outputs, "mp4" for progressive MP4
+}
+
+// Standardized response helpers.
+func successResponse(c *gin.Context, data interface{}, message string) {
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    data,
+		"message": message,
+	})
+}
+
+func errorResponse(c *gin.Context, status int, code, message string, err error) {
+	errMsg := ""
+	if err != nil {
+		errMsg = err.Error()
+	}
+	c.JSON(status, gin.H{
+		"success": false,
+		"error": gin.H{
+			"code":    code,
+			"message": message,
+			"details": errMsg,
+		},
+	})
 }
 
 // ConnectDatabase initializes the PostgreSQL connection using GORM.
@@ -60,9 +99,7 @@ func ConnectDatabase() {
 	if err != nil {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
-	// Auto-migrate models.
-	err = DB.AutoMigrate(&User{}, &Video{})
-	if err != nil {
+	if err = DB.AutoMigrate(&User{}, &Video{}, &Transcode{}); err != nil {
 		log.Fatalf("Auto migration failed: %v", err)
 	}
 	log.Println("Database connected and migrated successfully.")
@@ -82,11 +119,57 @@ func ConnectRedis() {
 	log.Printf("Redis connected: %s", pong)
 }
 
-// transcodeToHLS uses FFmpeg to transcode a video to HLS output.
-// It scales the video to the target resolution, uses H.264 for video encoding, and copies the audio.
+// transcodeToHLS uses FFmpeg to transcode a video to an HLS output.
 func transcodeToHLS(inputFile, outputManifest, scaleHeight string) error {
 	cmd := exec.Command("ffmpeg", "-i", inputFile, "-vf", "scale=-2:"+scaleHeight, "-c:v", "libx264", "-c:a", "copy", "-preset", "fast", "-hls_time", "10", "-hls_playlist_type", "vod", outputManifest)
 	return cmd.Run()
+}
+
+// transcodeToMP4 transcodes the original video to a smaller MP4 output.
+func transcodeToMP4(inputFile, outputFile, scaleHeight string) error {
+	cmd := exec.Command("ffmpeg", "-i", inputFile, "-vf", "scale=-2:"+scaleHeight, "-c:v", "libx264", "-c:a", "aac", "-preset", "fast", outputFile)
+	return cmd.Run()
+}
+
+// uploadSegmentsAndAdjustManifest uploads all .ts segment files referenced in the manifest to IPFS,
+// and adjusts the manifest so that each segment reference is replaced by an absolute URL.
+func uploadSegmentsAndAdjustManifest(manifestPath, baseIPFSGatewayURL string) error {
+	dir := filepath.Dir(manifestPath)
+	baseName := strings.TrimSuffix(filepath.Base(manifestPath), filepath.Ext(manifestPath))
+	pattern := filepath.Join(dir, baseName+"_*"+".ts")
+	segmentFiles, err := filepath.Glob(pattern)
+	if err != nil {
+		return err
+	}
+
+	segmentCIDs := make(map[string]string)
+	for _, segFile := range segmentFiles {
+		cid, err := uploadVideoToIPFS(segFile)
+		if err != nil {
+			return err
+		}
+		filename := filepath.Base(segFile)
+		segmentCIDs[filename] = cid
+		log.Printf("Uploaded segment %s, CID: %s", filename, cid)
+	}
+
+	content, err := os.ReadFile(manifestPath)
+	if err != nil {
+		return err
+	}
+	lines := strings.Split(string(content), "\n")
+	for i, line := range lines {
+		line = strings.TrimSpace(line)
+		if line != "" && !strings.HasPrefix(line, "#") && strings.HasSuffix(line, ".ts") {
+			if segCID, ok := segmentCIDs[line]; ok {
+				lines[i] = baseIPFSGatewayURL + "/" + segCID
+			} else {
+				log.Printf("Warning: No IPFS CID found for segment: %s", line)
+			}
+		}
+	}
+	newManifest := strings.Join(lines, "\n")
+	return os.WriteFile(manifestPath, []byte(newManifest), 0644)
 }
 
 // startP2PHost starts a libp2p host.
@@ -122,11 +205,8 @@ func uploadVideoToIPFS(filePath string) (string, error) {
 }
 
 func main() {
-	// Connect to PostgreSQL and Redis.
 	ConnectDatabase()
 	ConnectRedis()
-
-	// Start the P2P host.
 	p2pHost, err := startP2PHost()
 	if err != nil {
 		log.Fatalf("Failed to start P2P host: %v", err)
@@ -140,7 +220,7 @@ func main() {
 
 	// Health-check endpoint.
 	router.GET("/health", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+		successResponse(c, nil, "Health check successful.")
 	})
 
 	// OAuth login stub endpoint.
@@ -150,163 +230,221 @@ func main() {
 			Email: "test@example.com",
 		}
 		if err := DB.Create(&user).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			errorResponse(c, http.StatusInternalServerError, "ERR_DB", "Failed to save user", err)
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{
-			"message": "OAuth login stub - token: dummy-token",
-			"user":    user,
-		})
+		successResponse(c, gin.H{"user": user}, "OAuth login stub - token: dummy-token")
 	})
 
 	// Video upload endpoint.
 	router.POST("/video/upload", func(c *gin.Context) {
 		file, err := c.FormFile("video")
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "No video file received"})
+			errorResponse(c, http.StatusBadRequest, "ERR_NO_FILE", "No video file received", err)
 			return
 		}
 		uploadDir := "./uploads"
-		if _, err := os.Stat(uploadDir); os.IsNotExist(err) {
-			if err := os.Mkdir(uploadDir, 0755); err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create uploads directory"})
-				return
-			}
-		}
-		destination := uploadDir + "/" + file.Filename
-		if err := c.SaveUploadedFile(file, destination); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		if err := os.MkdirAll(uploadDir, 0755); err != nil {
+			errorResponse(c, http.StatusInternalServerError, "ERR_MKDIR", "Failed to create uploads directory", err)
 			return
+		}
+		// Generate a unique file ID.
+		fileId := uuid.New().String()
+		ext := filepath.Ext(file.Filename)
+		uniqueName := fileId + ext
+		destination := filepath.Join(uploadDir, uniqueName)
+		if err := c.SaveUploadedFile(file, destination); err != nil {
+			errorResponse(c, http.StatusInternalServerError, "ERR_SAVE_FILE", "Failed to save uploaded file", err)
+			return
+		}
+		// Read additional form fields.
+		title := c.PostForm("title")
+		description := c.PostForm("description")
+		// Use provided title if given; otherwise, use the fileId.
+		if title == "" {
+			title = fileId
+		}
+		video := Video{
+			FileId:      fileId,
+			Title:       title,
+			Description: description,
+			FilePath:    destination,
+			IPFSCID:     "", // will be set after IPFS upload.
+			CreatedAt:   time.Now(),
 		}
 		cid, err := uploadVideoToIPFS(destination)
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to upload to IPFS: " + err.Error()})
+			errorResponse(c, http.StatusInternalServerError, "ERR_IPFS_UPLOAD", "Failed to upload file to IPFS", err)
 			return
 		}
-		video := Video{
-			Title:       file.Filename,
-			Description: "Uploaded video",
-			FilePath:    destination,
-			IPFSCID:     cid,
-			CreatedAt:   time.Now(),
-		}
+		video.IPFSCID = cid
 		if err := DB.Create(&video).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save video record: " + err.Error()})
+			errorResponse(c, http.StatusInternalServerError, "ERR_DB", "Failed to save video record", err)
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{
-			"message":   "Video uploaded and stored in IPFS successfully",
-			"file_path": destination,
-			"ipfs_cid":  cid,
-			"video":     video,
-		})
+		successResponse(c, gin.H{"video": video, "filePath": destination, "ipfsCid": cid}, "Video uploaded and stored in IPFS successfully")
 	})
 
-	// Transcoding endpoint: Transcode video file to HLS outputs in multiple resolutions.
+	// Transcoding endpoint:
+	// Accepts either an "inputFile" or a "cid" in the JSON payload.
+	// Transcoded files will be named based on the video's fileId.
 	router.POST("/video/transcode", func(c *gin.Context) {
-		// Expected JSON payload: {"input_file": "<local file path>"}
 		var payload struct {
-			InputFile string `json:"input_file"`
+			InputFile string `json:"inputFile"`
+			CID       string `json:"cid"`
 		}
 		if err := c.ShouldBindJSON(&payload); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON payload: " + err.Error()})
+			errorResponse(c, http.StatusBadRequest, "ERR_INVALID_PAYLOAD", "Invalid JSON payload", err)
 			return
 		}
+		// Lookup video record if CID is provided.
+		var sourceVideo Video
+		if payload.CID != "" {
+			if err := DB.Where("ipfs_cid = ?", payload.CID).First(&sourceVideo).Error; err != nil {
+				errorResponse(c, http.StatusBadRequest, "ERR_NOT_FOUND", "No video record found for provided CID", err)
+				return
+			}
+			payload.InputFile = sourceVideo.FilePath
+		}
 		if payload.InputFile == "" {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "input_file is required"})
+			errorResponse(c, http.StatusBadRequest, "ERR_NO_INPUT", "inputFile is required", nil)
 			return
 		}
 		if _, err := os.Stat(payload.InputFile); os.IsNotExist(err) {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Input file does not exist"})
+			errorResponse(c, http.StatusBadRequest, "ERR_FILE_NOT_FOUND", "Input file does not exist", err)
+			return
+		}
+		// Use the video's fileId as the base name.
+		baseName := ""
+		if sourceVideo.FileId != "" {
+			baseName = sourceVideo.FileId
+		} else {
+			baseName = strings.TrimSuffix(filepath.Base(payload.InputFile), filepath.Ext(payload.InputFile))
+		}
+
+		// Define HLS transcoding targets.
+		hlsTargets := []TranscodeTarget{
+			{"720pMp4", "720", "m3u8"},
+			{"480pMp4", "480", "m3u8"},
+			{"360pMp4", "360", "m3u8"},
+		}
+		// Define an additional target for a smaller MP4.
+		mp4Target := TranscodeTarget{"240pMp4", "240", "mp4"}
+
+		var transcodes []Transcode
+		baseIPFSGatewayURL := "http://localhost:8081/ipfs"
+
+		// Process HLS targets.
+		for _, target := range hlsTargets {
+			outputManifest := filepath.Join("./uploads", baseName+"_"+target.Label+"."+target.OutputExt)
+			if err := transcodeToHLS(payload.InputFile, outputManifest, target.Resolution); err != nil {
+				errorResponse(c, http.StatusInternalServerError, "ERR_HLS_TRANSCODE", "Transcoding failed for "+target.Label, err)
+				return
+			}
+			if err := uploadSegmentsAndAdjustManifest(outputManifest, baseIPFSGatewayURL); err != nil {
+				errorResponse(c, http.StatusInternalServerError, "ERR_MANIFEST_ADJUST", "Failed to adjust HLS manifest for "+target.Label, err)
+				return
+			}
+			newCID, err := uploadVideoToIPFS(outputManifest)
+			if err != nil {
+				errorResponse(c, http.StatusInternalServerError, "ERR_IPFS_UPLOAD", "Failed to upload HLS output ("+target.Label+") to IPFS", err)
+				return
+			}
+			trRecord := Transcode{
+				VideoID:    sourceVideo.ID,
+				FilePath:   outputManifest,
+				FileCID:    newCID,
+				Type:       "hls",
+				Resolution: target.Resolution,
+				CreatedAt:  time.Now(),
+			}
+			if err := DB.Create(&trRecord).Error; err != nil {
+				errorResponse(c, http.StatusInternalServerError, "ERR_DB", "Failed to save HLS transcode record ("+target.Label+")", err)
+				return
+			}
+			transcodes = append(transcodes, trRecord)
+		}
+
+		// Process additional MP4 target.
+		mp4Output := filepath.Join("./uploads", baseName+"_"+mp4Target.Label+"."+mp4Target.OutputExt)
+		if err := transcodeToMP4(payload.InputFile, mp4Output, mp4Target.Resolution); err != nil {
+			errorResponse(c, http.StatusInternalServerError, "ERR_MP4_TRANSCODE", "MP4 transcoding failed for "+mp4Target.Label, err)
+			return
+		}
+		mp4CID, err := uploadVideoToIPFS(mp4Output)
+		if err != nil {
+			errorResponse(c, http.StatusInternalServerError, "ERR_IPFS_UPLOAD", "Failed to upload MP4 output ("+mp4Target.Label+") to IPFS", err)
+			return
+		}
+		mp4Record := Transcode{
+			VideoID:    sourceVideo.ID,
+			FilePath:   mp4Output,
+			FileCID:    mp4CID,
+			Type:       "h264",
+			Resolution: mp4Target.Resolution,
+			CreatedAt:  time.Now(),
+		}
+		if err := DB.Create(&mp4Record).Error; err != nil {
+			errorResponse(c, http.StatusInternalServerError, "ERR_DB", "Failed to save MP4 transcode record ("+mp4Target.Label+")", err)
+			return
+		}
+		transcodes = append(transcodes, mp4Record)
+
+		// Reload the source video with associated transcodes.
+		if err := DB.Preload("Transcodes").First(&sourceVideo, sourceVideo.ID).Error; err != nil {
+			errorResponse(c, http.StatusInternalServerError, "ERR_DB", "Failed to reload video record", err)
 			return
 		}
 
-		// Extract base name for output naming.
-		baseName := strings.TrimSuffix(filepath.Base(payload.InputFile), filepath.Ext(payload.InputFile))
-
-		// Define transcoding targets: HLS outputs using H.264.
-		targets := []TranscodeTarget{
-			{"720p_mp4", "720", "m3u8"},
-			{"480p_mp4", "480", "m3u8"},
-			{"360p_mp4", "360", "m3u8"},
-		}
-
-		var transcodedVideos []Video
-
-		// Transcode for each target.
-		for _, target := range targets {
-			// Construct output manifest file name.
-			outputManifest := "./uploads/" + baseName + "_" + target.Label + "." + target.OutputExt
-			// Transcode using FFmpeg: HLS output with H.264 and copying audio.
-			err := transcodeToHLS(payload.InputFile, outputManifest, target.Resolution)
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Transcoding failed for " + target.Label + ": " + err.Error()})
-				return
-			}
-			// Upload the generated HLS manifest (and segments) to IPFS.
-			newCID, err := uploadVideoToIPFS(outputManifest)
-			if err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to upload transcoded video (" + target.Label + ") to IPFS: " + err.Error()})
-				return
-			}
-			// Create a new video record.
-			video := Video{
-				Title:       baseName + "_" + target.Label + "." + target.OutputExt,
-				Description: "Transcoded (" + target.Label + ") video from " + payload.InputFile,
-				FilePath:    outputManifest,
-				IPFSCID:     newCID,
-				CreatedAt:   time.Now(),
-			}
-			if err := DB.Create(&video).Error; err != nil {
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save transcoded video record (" + target.Label + "): " + err.Error()})
-				return
-			}
-			transcodedVideos = append(transcodedVideos, video)
-		}
-
-		// Return details of all transcoded videos.
-		c.JSON(http.StatusOK, gin.H{
-			"message": "Video transcoded to HLS and uploaded to IPFS successfully",
-			"videos":  transcodedVideos,
-		})
+		successResponse(c, gin.H{"video": sourceVideo}, "Video transcoded (HLS and MP4) and uploaded to IPFS successfully")
 	})
 
-	// Social interaction stub endpoint.
+	// Watch video endpoint.
+	router.GET("/video/watch", func(c *gin.Context) {
+		cid := c.Query("cid")
+		file := c.Query("file")
+		if cid != "" {
+			ipfsURL := "http://localhost:8081/ipfs/" + cid
+			c.Redirect(http.StatusTemporaryRedirect, ipfsURL)
+		} else if file != "" {
+			c.File(filepath.Join("./uploads", file))
+		} else {
+			errorResponse(c, http.StatusBadRequest, "ERR_NO_PARAM", "No 'cid' or 'file' parameter provided", nil)
+		}
+	})
+
+	// Social action stub endpoint.
 	router.POST("/social/action", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"message": "Social action recorded"})
+		successResponse(c, nil, "Social action recorded")
 	})
 
 	// Blockchain anchoring stub endpoint.
 	router.POST("/blockchain/anchor", func(c *gin.Context) {
-		c.JSON(http.StatusOK, gin.H{"message": "Blockchain anchoring stub"})
+		successResponse(c, nil, "Blockchain anchoring stub")
 	})
 
 	// Redis test endpoint.
 	router.GET("/cache/test", func(c *gin.Context) {
-		err := Cache.Set(ctx, "testKey", "Hello, Redis!", 10*time.Minute).Err()
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		if err := Cache.Set(ctx, "testKey", "Hello, Redis!", 10*time.Minute).Err(); err != nil {
+			errorResponse(c, http.StatusInternalServerError, "ERR_CACHE_SET", "Failed to set cache", err)
 			return
 		}
 		val, err := Cache.Get(ctx, "testKey").Result()
 		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			errorResponse(c, http.StatusInternalServerError, "ERR_CACHE_GET", "Failed to get cache", err)
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{
-			"message": "Cache test successful",
-			"value":   val,
-		})
+		successResponse(c, gin.H{"value": val}, "Cache test successful")
 	})
 
-	// List videos endpoint: returns video records.
+	// List videos endpoint: returns videos sorted by createdAt descending with associated transcodes.
 	router.GET("/video/list", func(c *gin.Context) {
 		var videos []Video
-		if err := DB.Find(&videos).Error; err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		if err := DB.Preload("Transcodes").Order("created_at desc").Find(&videos).Error; err != nil {
+			errorResponse(c, http.StatusInternalServerError, "ERR_DB", "Failed to list videos", err)
 			return
 		}
-		c.JSON(http.StatusOK, gin.H{"videos": videos})
+		successResponse(c, gin.H{"videos": videos}, "Videos retrieved successfully")
 	})
 
 	if err := router.Run(":8080"); err != nil {
