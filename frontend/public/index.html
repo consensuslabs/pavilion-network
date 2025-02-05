@@ -377,8 +377,8 @@
         }
 
         // Display video links.
-        // For each video, display its title and for each associated transcode,
-        // show a link in the format "title – transcode type – resolution".
+        // For each video, display its title and then for each associated transcode,
+        // show a link in the format "title – transcode type – resolution" with local and IPFS links.
         function displayTranscodedVideos(videos) {
             const listDiv = document.getElementById("transcodedList");
             listDiv.innerHTML = "";
@@ -392,7 +392,7 @@
                 videoTitle.textContent = video.title;
                 videoContainer.appendChild(videoTitle);
 
-                // Original video links.
+                // Build original video links using video.filePath.
                 let localFile = "";
                 if (video.filePath) {
                     let parts = video.filePath.split("/");
@@ -413,7 +413,7 @@
                 originalLinks.appendChild(ipfsLink);
                 videoContainer.appendChild(originalLinks);
 
-                // Display transcode details if available.
+                // List associated transcodes, if any.
                 if (video.transcodes && video.transcodes.length > 0) {
                     video.transcodes.forEach(tr => {
                         let trDiv = document.createElement("div");

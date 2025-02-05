@@ -55,8 +55,8 @@ type Transcode struct {
 	VideoID    uint      `json:"videoId"`
 	FilePath   string    `json:"filePath"`
 	FileCID    string    `gorm:"column:file_cid" json:"fileCid"`
-	Type       string    `json:"type"`       // "hls" or "h264"
-	Resolution string    `json:"resolution"` // e.g., "720"
+	Type       string    `json:"type"`       // "hlsManifest", "hlsSegment", or "h264"
+	Resolution string    `json:"resolution"` // e.g., "720", "480", "360", "240"
 	CreatedAt  time.Time `json:"createdAt"`
 }
 
@@ -131,35 +131,40 @@ func transcodeToMP4(inputFile, outputFile, scaleHeight string) error {
 	return cmd.Run()
 }
 
-// uploadSegmentsAndAdjustManifest uploads all .ts segment files referenced in the manifest to IPFS,
-// and adjusts the manifest so that each segment reference is replaced by an absolute URL.
-func uploadSegmentsAndAdjustManifest(manifestPath, baseIPFSGatewayURL string) error {
+// uploadSegmentsAndAdjustManifestForTarget scans for TS segments generated for a specific target,
+// uploads them to IPFS, adjusts the manifest file (replacing TS filenames with absolute IPFS URLs),
+// and returns a map of local TS filenames to their corresponding IPFS CID.
+func uploadSegmentsAndAdjustManifestForTarget(manifestPath, baseIPFSGatewayURL, targetLabel string) (map[string]string, error) {
 	dir := filepath.Dir(manifestPath)
-	baseName := strings.TrimSuffix(filepath.Base(manifestPath), filepath.Ext(manifestPath))
-	pattern := filepath.Join(dir, baseName+"_*"+".ts")
+	// Derive the base name from the manifest file (without extension).
+	manifestBase := strings.TrimSuffix(filepath.Base(manifestPath), filepath.Ext(manifestPath))
+	// Build a pattern to match only TS segments for this target.
+	pattern := filepath.Join(dir, manifestBase+"_*"+".ts")
 	segmentFiles, err := filepath.Glob(pattern)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	segmentCIDs := make(map[string]string)
 	for _, segFile := range segmentFiles {
 		cid, err := uploadVideoToIPFS(segFile)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		filename := filepath.Base(segFile)
 		segmentCIDs[filename] = cid
 		log.Printf("Uploaded segment %s, CID: %s", filename, cid)
 	}
 
+	// Read and adjust manifest.
 	content, err := os.ReadFile(manifestPath)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	lines := strings.Split(string(content), "\n")
 	for i, line := range lines {
 		line = strings.TrimSpace(line)
+		// For lines that are TS segment references, replace with absolute URL.
 		if line != "" && !strings.HasPrefix(line, "#") && strings.HasSuffix(line, ".ts") {
 			if segCID, ok := segmentCIDs[line]; ok {
 				lines[i] = baseIPFSGatewayURL + "/" + segCID
@@ -169,7 +174,10 @@ func uploadSegmentsAndAdjustManifest(manifestPath, baseIPFSGatewayURL string) er
 		}
 	}
 	newManifest := strings.Join(lines, "\n")
-	return os.WriteFile(manifestPath, []byte(newManifest), 0644)
+	if err := os.WriteFile(manifestPath, []byte(newManifest), 0644); err != nil {
+		return nil, err
+	}
+	return segmentCIDs, nil
 }
 
 // startP2PHost starts a libp2p host.
@@ -258,26 +266,26 @@ func main() {
 			return
 		}
 		// Read additional form fields.
-		title := c.PostForm("title")
+		inputTitle := c.PostForm("title")
 		description := c.PostForm("description")
-		// Use provided title if given; otherwise, use the fileId.
-		if title == "" {
-			title = fileId
-		}
-		video := Video{
-			FileId:      fileId,
-			Title:       title,
-			Description: description,
-			FilePath:    destination,
-			IPFSCID:     "", // will be set after IPFS upload.
-			CreatedAt:   time.Now(),
+		// Use provided title if available; otherwise, use the fileId.
+		title := fileId
+		if inputTitle != "" {
+			title = inputTitle
 		}
 		cid, err := uploadVideoToIPFS(destination)
 		if err != nil {
 			errorResponse(c, http.StatusInternalServerError, "ERR_IPFS_UPLOAD", "Failed to upload file to IPFS", err)
 			return
 		}
-		video.IPFSCID = cid
+		video := Video{
+			FileId:      fileId,
+			Title:       title,
+			Description: description,
+			FilePath:    destination,
+			IPFSCID:     cid,
+			CreatedAt:   time.Now(),
+		}
 		if err := DB.Create(&video).Error; err != nil {
 			errorResponse(c, http.StatusInternalServerError, "ERR_DB", "Failed to save video record", err)
 			return
@@ -285,7 +293,7 @@ func main() {
 		successResponse(c, gin.H{"video": video, "filePath": destination, "ipfsCid": cid}, "Video uploaded and stored in IPFS successfully")
 	})
 
-	// Transcoding endpoint:
+	// Transcoding endpoint.
 	// Accepts either an "inputFile" or a "cid" in the JSON payload.
 	// Transcoded files will be named based on the video's fileId.
 	router.POST("/video/transcode", func(c *gin.Context) {
@@ -341,28 +349,49 @@ func main() {
 				errorResponse(c, http.StatusInternalServerError, "ERR_HLS_TRANSCODE", "Transcoding failed for "+target.Label, err)
 				return
 			}
-			if err := uploadSegmentsAndAdjustManifest(outputManifest, baseIPFSGatewayURL); err != nil {
+			// Adjust the manifest for IPFS: replace TS filenames with absolute IPFS URLs.
+			segmentsMap, err := uploadSegmentsAndAdjustManifestForTarget(outputManifest, baseIPFSGatewayURL, target.Label)
+			if err != nil {
 				errorResponse(c, http.StatusInternalServerError, "ERR_MANIFEST_ADJUST", "Failed to adjust HLS manifest for "+target.Label, err)
 				return
 			}
 			newCID, err := uploadVideoToIPFS(outputManifest)
 			if err != nil {
-				errorResponse(c, http.StatusInternalServerError, "ERR_IPFS_UPLOAD", "Failed to upload HLS output ("+target.Label+") to IPFS", err)
+				errorResponse(c, http.StatusInternalServerError, "ERR_IPFS_UPLOAD", "Failed to upload HLS manifest ("+target.Label+") to IPFS", err)
 				return
 			}
-			trRecord := Transcode{
+			// Create a record for the manifest file.
+			manifestRecord := Transcode{
 				VideoID:    sourceVideo.ID,
 				FilePath:   outputManifest,
 				FileCID:    newCID,
-				Type:       "hls",
+				Type:       "hlsManifest",
 				Resolution: target.Resolution,
 				CreatedAt:  time.Now(),
 			}
-			if err := DB.Create(&trRecord).Error; err != nil {
-				errorResponse(c, http.StatusInternalServerError, "ERR_DB", "Failed to save HLS transcode record ("+target.Label+")", err)
+			if err := DB.Create(&manifestRecord).Error; err != nil {
+				errorResponse(c, http.StatusInternalServerError, "ERR_DB", "Failed to save HLS manifest record ("+target.Label+")", err)
 				return
 			}
-			transcodes = append(transcodes, trRecord)
+			transcodes = append(transcodes, manifestRecord)
+
+			// Create a record for each TS segment.
+			for segFile, segCID := range segmentsMap {
+				segmentPath := filepath.Join(filepath.Dir(outputManifest), segFile)
+				segRecord := Transcode{
+					VideoID:    sourceVideo.ID,
+					FilePath:   segmentPath,
+					FileCID:    segCID,
+					Type:       "hlsSegment",
+					Resolution: target.Resolution,
+					CreatedAt:  time.Now(),
+				}
+				if err := DB.Create(&segRecord).Error; err != nil {
+					errorResponse(c, http.StatusInternalServerError, "ERR_DB", "Failed to save HLS segment record ("+segFile+")", err)
+					return
+				}
+				transcodes = append(transcodes, segRecord)
+			}
 		}
 
 		// Process additional MP4 target.
