@@ -3,25 +3,50 @@ package main
 
 import (
 	"context"
-	"log"
+	"fmt"
+	"time"
 
-	"github.com/go-redis/redis/v8"
+	"github.com/redis/go-redis/v9"
 )
 
-var ctx = context.Background()
-var Cache *redis.Client
+// RedisClient wraps the Redis client with our custom methods
+type RedisClient struct {
+	client *redis.Client
+}
 
-func ConnectRedis() {
-	Cache = redis.NewClient(&redis.Options{
-		Addr:     "localhost:6379", // adjust if using a different host/port
-		Password: "",               // no password set
-		DB:       0,                // use default DB
+// initRedis initializes the Redis connection
+func initRedis(config RedisConfig) (*RedisClient, error) {
+	client := redis.NewClient(&redis.Options{
+		Addr:     config.Addr,
+		Password: config.Password,
+		DB:       config.DB,
 	})
 
 	// Test the connection
-	pong, err := Cache.Ping(ctx).Result()
-	if err != nil {
-		log.Fatalf("Failed to connect to Redis: %v", err)
+	ctx := context.Background()
+	if err := client.Ping(ctx).Err(); err != nil {
+		return nil, fmt.Errorf("failed to connect to Redis: %v", err)
 	}
-	log.Printf("Redis connected: %s", pong)
+
+	return &RedisClient{client: client}, nil
+}
+
+// Set stores a key-value pair in Redis
+func (r *RedisClient) Set(ctx context.Context, key string, value interface{}, ttl time.Duration) error {
+	return r.client.Set(ctx, key, value, ttl).Err()
+}
+
+// Get retrieves a value from Redis by key
+func (r *RedisClient) Get(ctx context.Context, key string) (string, error) {
+	return r.client.Get(ctx, key).Result()
+}
+
+// Delete removes a key from Redis
+func (r *RedisClient) Delete(ctx context.Context, key string) error {
+	return r.client.Del(ctx, key).Err()
+}
+
+// Close closes the Redis connection
+func (r *RedisClient) Close() error {
+	return r.client.Close()
 }

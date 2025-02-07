@@ -1,35 +1,35 @@
-// database.go
 package main
 
 import (
-    "fmt" "log" "time"
+	"fmt"
 
-    "gorm.io/driver/postgres" "gorm.io/gorm",
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
 )
 
-// DB is the global database connection instance.
-var DB * gorm.DB
+// initDatabase initializes the PostgreSQL connection using GORM
+func initDatabase(config DatabaseConfig) (*gorm.DB, error) {
+	// Construct DSN from configuration
+	dsn := fmt.Sprintf(
+		"host=%s user=%s password=%s dbname=%s port=%d sslmode=%s TimeZone=%s",
+		config.Host,
+		config.User,
+		config.Password,
+		config.Dbname,
+		config.Port,
+		config.Sslmode,
+		config.Timezone,
+	)
 
-// User represents a simple user model.
-type User struct {
-    ID uint ` gorm : "primaryKey" json : "id" ` Name string ` json : "name" ` Email string ` gorm : "unique" json : "email" ` CreatedAt time.Time ` json : "created_at" `;
-};
+	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to database: %v", err)
+	}
 
-// Video represents video metadata.
-type Video struct {
-    ID uint ` gorm : "primaryKey" json : "id" ` Title string ` json : "title" ` Description string ` json : "description" ` FilePath string ` json : "file_path" ` CreatedAt time.Time ` json : "created_at" `;
-};
+	// Auto-migrate the schema
+	if err = db.AutoMigrate(&User{}, &Video{}, &Transcode{}, &TranscodeSegment{}); err != nil {
+		return nil, fmt.Errorf("auto migration failed: %v", err)
+	}
 
-func ConnectDatabase() {
-    dsn := "host=localhost user=youruser password=yourpassword dbname=pavilion_db port=5432 sslmode=disable TimeZone=UTC" var err error DB;
-    err = gorm.Open(postgres.Open(dsn), & gorm.Config {}) if err != nil {
-        log.Fatalf("Failed to connect to database: %v", err);
-    };
-
-    // Auto-migrate models
-    err = DB.AutoMigrate(& User {}, & Video {}) if err != nil {
-        log.Fatalf("Auto migration failed: %v", err);
-    };
-
-    fmt.Println("Database connected and migrated successfully.");
-};
+	return db, nil
+}

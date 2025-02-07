@@ -1,0 +1,38 @@
+server:
+  port: 8080
+
+database:
+  host: "localhost"
+  user: "youruser"
+  password: "yourpassword"
+  dbname: "pavilion_db"
+  port: 5432
+  sslmode: "disable"
+  timezone: "UTC"
+
+redis:
+  addr: "localhost:6379"
+  password: ""
+  db: 0
+
+ipfs:
+  host: "localhost:5001"
+  gateway_url: "https://ipfs.io/ipfs/"
+
+logging:
+  level: "debug"
+
+ffmpeg:
+  path: "ffmpeg"
+  videoCodec: "libx264"
+  audioCodec: "copy"
+  preset: "fast"
+  hlsTime: 10
+  hlsPlaylistType: "vod"
+
+storage:
+  uploadDir: "./uploads"
+
+p2p:
+  port: 6000
+  rendezvous: "pavilion-network" 
