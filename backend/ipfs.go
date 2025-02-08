@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"io"
 	"os"
 
@@ -26,13 +27,22 @@ func NewIPFSService(config *Config) *IPFSService {
 func (s *IPFSService) UploadFile(filePath string) (string, error) {
 	file, err := os.Open(filePath)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to open file: %v", err)
 	}
 	defer file.Close()
 
 	cid, err := s.shell.Add(file)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to upload to IPFS: %v", err)
+	}
+	return cid, nil
+}
+
+// UploadFileStream uploads a file stream to IPFS and returns its CID.
+func (s *IPFSService) UploadFileStream(file io.Reader) (string, error) {
+	cid, err := s.shell.Add(file)
+	if err != nil {
+		return "", fmt.Errorf("failed to upload to IPFS: %v", err)
 	}
 	return cid, nil
 }

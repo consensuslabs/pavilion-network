@@ -19,6 +19,7 @@ import (
 type VideoService struct {
 	db     *gorm.DB
 	ipfs   *IPFSService
+	s3     *S3Service
 	config *Config
 }
 
@@ -28,10 +29,11 @@ type AuthService struct {
 }
 
 // NewVideoService creates a new video service instance
-func NewVideoService(db *gorm.DB, ipfs *IPFSService, config *Config) *VideoService {
+func NewVideoService(db *gorm.DB, ipfs *IPFSService, s3 *S3Service, config *Config) *VideoService {
 	return &VideoService{
 		db:     db,
 		ipfs:   ipfs,
+		s3:     s3,
 		config: config,
 	}
 }
@@ -43,85 +45,55 @@ func NewAuthService(db *gorm.DB) *AuthService {
 	}
 }
 
-// UploadVideo handles the video upload process
-func (s *VideoService) UploadVideo(file io.Reader, filename, title, description string) (*Video, error) {
+// ProcessVideo handles the video upload process
+func (s *VideoService) ProcessVideo(file multipart.File, fileHeader *multipart.FileHeader) (*Video, error) {
 	// Generate a unique file ID
 	fileId := uuid.New().String()
-	ext := filepath.Ext(filename)
-	uniqueName := fileId + ext
-	destination := filepath.Join(s.config.Storage.UploadDir, uniqueName)
 
-	// Create video record with initial status
+	// Calculate the SHA256 checksum of the file
+	hasher := sha256.New()
+	if _, err := io.Copy(hasher, file); err != nil {
+		return nil, fmt.Errorf("failed to calculate checksum: %v", err)
+	}
+	checksum := hex.EncodeToString(hasher.Sum(nil))
+	// Seek the file back to the beginning
+	if _, err := file.Seek(0, io.SeekStart); err != nil {
+		return nil, fmt.Errorf("failed to seek file to beginning: %v", err)
+	}
+
+	// 1. Upload to IPFS
+	ipfsCID, err := s.ipfs.UploadFileStream(file)
+	if err != nil {
+		return nil, fmt.Errorf("failed to upload to IPFS: %v", err)
+	}
+
+	// Seek the file back to the beginning after IPFS upload
+	if _, err := file.Seek(0, io.SeekStart); err != nil {
+		return nil, fmt.Errorf("failed to seek file to beginning: %v", err)
+	}
+
+	// 2. Upload to S3
+	fileKey := fileId + filepath.Ext(fileHeader.Filename)
+	s3URL, err := s.s3.UploadFileStream(file, fileKey)
+	if err != nil {
+		return nil, fmt.Errorf("failed to upload to S3: %v", err)
+	}
+
+	// Create video record in the database
 	video := &Video{
-		FileId:      fileId,
-		Title:       title,
-		Description: description,
-		FilePath:    destination,
-		Status:      VideoStatusPending,
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
+		FileId:    fileId,
+		Title:     fileHeader.Filename,
+		FilePath:  s3URL,
+		IPFSCID:   ipfsCID,
+		Checksum:  checksum,
+		Status:    VideoStatusPending,
+		FileSize:  fileHeader.Size,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
 	}
 
 	if err := s.db.Create(video).Error; err != nil {
-		return nil, fmt.Errorf("failed to create video record: %w", err)
-	}
-
-	// Ensure upload directory exists
-	if err := os.MkdirAll(s.config.Storage.UploadDir, 0755); err != nil {
-		s.updateVideoStatus(video, VideoStatusFailed, "Failed to create upload directory")
-		return nil, err
-	}
-
-	// Create the destination file
-	destFile, err := os.Create(destination)
-	if err != nil {
-		s.updateVideoStatus(video, VideoStatusFailed, "Failed to create destination file")
-		return nil, err
-	}
-	defer destFile.Close()
-
-	// Create a hash writer for checksum calculation
-	hash := sha256.New()
-	writer := io.MultiWriter(destFile, hash)
-
-	// Update status to uploading
-	s.updateVideoStatus(video, VideoStatusUploading, "Uploading file")
-
-	// Copy the uploaded file to the destination while calculating checksum
-	written, err := io.Copy(writer, file)
-	if err != nil {
-		s.cleanupFailedUpload(video)
-		return nil, err
-	}
-
-	// Update video record with file info
-	checksum := hex.EncodeToString(hash.Sum(nil))
-	video.Checksum = checksum
-	video.FileSize = written
-	video.Status = VideoStatusProcessing
-	video.StatusMsg = "Processing upload"
-	video.UpdatedAt = time.Now()
-
-	if err := s.db.Save(video).Error; err != nil {
-		s.cleanupFailedUpload(video)
-		return nil, err
-	}
-
-	// Upload to IPFS
-	cid, err := s.ipfs.UploadFile(destination)
-	if err != nil {
-		s.cleanupFailedUpload(video)
-		return nil, err
-	}
-
-	// Update video record with IPFS info
-	video.IPFSCID = cid
-	video.Status = VideoStatusCompleted
-	video.StatusMsg = "Upload completed"
-	video.UpdatedAt = time.Now()
-
-	if err := s.db.Save(video).Error; err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to create video record: %v", err)
 	}
 
 	return video, nil
@@ -171,7 +143,7 @@ func (s *VideoService) updateVideoStatus(video *Video, status, message string) {
 func (s *VideoService) cleanupFailedUpload(video *Video) {
 	// Update status
 	s.updateVideoStatus(video, VideoStatusFailed, "Upload failed")
-	
+
 	// Remove the file if it exists
 	if video.FilePath != "" {
 		os.Remove(video.FilePath)

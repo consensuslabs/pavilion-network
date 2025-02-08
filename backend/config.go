@@ -2,6 +2,8 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"strings"
 
 	"github.com/spf13/viper"
 )
@@ -65,7 +67,9 @@ type FfmpegConfig struct {
 
 // StorageConfig contains storage configuration settings.
 type StorageConfig struct {
-	UploadDir string `mapstructure:"uploadDir"`
+	UploadDir string     `mapstructure:"uploadDir"`
+	IPFS      IPFSConfig `mapstructure:"ipfs"`
+	S3        S3Config   `mapstructure:"s3"`
 }
 
 // P2PConfig contains P2P networking settings
@@ -76,11 +80,28 @@ type P2PConfig struct {
 
 // VideoConfig contains video upload and processing settings
 type VideoConfig struct {
-	MaxSize         int64    `mapstructure:"maxSize"`         // Maximum file size in bytes
-	MinTitleLength  int      `mapstructure:"minTitleLength"`  // Minimum title length
-	MaxTitleLength  int      `mapstructure:"maxTitleLength"`  // Maximum title length
-	MaxDescLength   int      `mapstructure:"maxDescLength"`   // Maximum description length
-	AllowedFormats  []string `mapstructure:"allowedFormats"`  // List of allowed video formats
+	MaxSize        int64    `mapstructure:"maxSize"`        // Maximum file size in bytes
+	MinTitleLength int      `mapstructure:"minTitleLength"` // Minimum title length
+	MaxTitleLength int      `mapstructure:"maxTitleLength"` // Maximum title length
+	MaxDescLength  int      `mapstructure:"maxDescLength"`  // Maximum description length
+	AllowedFormats []string `mapstructure:"allowedFormats"` // List of allowed video formats
+}
+
+// S3Config contains S3-related configuration settings
+type S3Config struct {
+	Bucket          string            `mapstructure:"bucket"`
+	Region          string            `mapstructure:"region"`
+	AccessKeyId     string            `mapstructure:"accessKeyId"`
+	SecretAccessKey string            `mapstructure:"secretAccessKey"`
+	Directories     S3DirectoryConfig `mapstructure:"directories"`
+}
+
+// S3DirectoryConfig contains S3 directory paths
+type S3DirectoryConfig struct {
+	VideoPost        string `mapstructure:"videoPost"`
+	MeetingRecording string `mapstructure:"meetingRecording"`
+	ChatAttachments  string `mapstructure:"chatAttachments"`
+	ProfilePhoto     string `mapstructure:"profilePhoto"`
 }
 
 // loadConfig loads configuration from config.yaml using Viper.
@@ -96,6 +117,66 @@ func loadConfig() (*Config, error) {
 	config := &Config{}
 	if err := viper.Unmarshal(config); err != nil {
 		return nil, fmt.Errorf("unable to decode config into struct: %v", err)
+	}
+
+	return config, nil
+}
+
+// LoadConfig loads the configuration from file and environment variables
+func LoadConfig(path string) (*Config, error) {
+	// Enable automatic environment variable loading
+	viper.AutomaticEnv()
+	viper.SetEnvPrefix("") // No prefix for env vars
+
+	// Replace dots with underscores in env vars
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+
+	// Load .env file if it exists
+	viper.SetConfigFile(".env")
+	if err := viper.ReadInConfig(); err != nil {
+		// It's okay if .env doesn't exist
+		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
+			return nil, fmt.Errorf("error reading .env file: %v", err)
+		}
+	}
+
+	// Load config.yaml
+	viper.SetConfigName("config")
+	viper.SetConfigType("yaml")
+	viper.AddConfigPath(".")
+	if err := viper.MergeInConfig(); err != nil {
+		return nil, fmt.Errorf("error reading config file: %v", err)
+	}
+
+	// Set S3 configuration from environment variables
+	if os.Getenv("S3_ACCESS_KEY_ID") != "" {
+		viper.Set("storage.s3.accessKeyId", os.Getenv("S3_ACCESS_KEY_ID"))
+	}
+	if os.Getenv("S3_SECRET_ACCESS_KEY") != "" {
+		viper.Set("storage.s3.secretAccessKey", os.Getenv("S3_SECRET_ACCESS_KEY"))
+	}
+	if os.Getenv("S3_REGION") != "" {
+		viper.Set("storage.s3.region", os.Getenv("S3_REGION"))
+	}
+	if os.Getenv("S3_BUCKET_NAME") != "" {
+		viper.Set("storage.s3.bucket", os.Getenv("S3_BUCKET_NAME"))
+	}
+
+	// Debug: Print configuration values
+	fmt.Printf("Configuration Values:\n")
+	fmt.Printf("S3_ACCESS_KEY_ID: %s\n", viper.GetString("storage.s3.accessKeyId"))
+	fmt.Printf("S3_REGION: %s\n", viper.GetString("storage.s3.region"))
+	fmt.Printf("S3_BUCKET_NAME: %s\n", viper.GetString("storage.s3.bucket"))
+	fmt.Printf("Has S3_SECRET_ACCESS_KEY: %v\n", viper.IsSet("storage.s3.secretAccessKey"))
+
+	config := &Config{}
+	if err := viper.Unmarshal(config); err != nil {
+		return nil, fmt.Errorf("unable to decode config into struct: %v", err)
+	}
+
+	// Verify S3 credentials are present
+	if config.Storage.S3.AccessKeyId == "" || config.Storage.S3.SecretAccessKey == "" {
+		return nil, fmt.Errorf("S3 credentials are missing. Please check your environment variables")
 	}
 
 	return config, nil

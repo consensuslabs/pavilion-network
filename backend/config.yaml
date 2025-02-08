@@ -30,8 +30,25 @@ ffmpeg:
   hlsTime: 10
   hlsPlaylistType: "vod"
 
+# ... other configurations ...
+
 storage:
-  uploadDir: "./uploads"
+  uploadDir: "uploads" # Keep this for now, but it will be less important
+  ipfs:
+    host: "localhost:5001"
+    gatewayURL: "https://ipfs.io/ipfs/"
+  s3:
+    bucket: "octopus-doganbros-storage"
+    region: "eu-central-1"
+    accessKeyId: ""  # Will be loaded from env
+    secretAccessKey: ""  # Will be loaded from env
+    directories:
+      videoPost: "video-posts/"
+      meetingRecording: "meeting-recordings/"
+      chatAttachments: "chat-attachments/"
+      profilePhoto: "profile-photos/"
+
+# ... other configurations ...
 
 p2p:
   port: 6000

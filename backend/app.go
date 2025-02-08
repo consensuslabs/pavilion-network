@@ -14,17 +14,21 @@ import (
 
 // App holds all application dependencies
 type App struct {
-	ctx       context.Context
-	Config    *Config
-	db        *gorm.DB
-	cache     *RedisClient
-	ipfs      *IPFSService
-	p2p       *P2P
-	router    *gin.Engine
-	video     *VideoService
-	auth      *AuthService
-	transcode *TranscodeService
-	logger    *Logger
+	ctx          context.Context
+	Config       *Config
+	db           *gorm.DB
+	cache        *RedisClient
+	ipfs         *IPFSService
+	p2p          *P2P
+	router       *gin.Engine
+	video        *VideoService
+	auth         *AuthService
+	transcode    *TranscodeService
+	logger       *Logger
+	IPFSService  *IPFSService
+	VideoService *VideoService
+	AuthService  *AuthService
+	S3Service    *S3Service
 }
 
 // NewApp creates a new application instance with all dependencies
@@ -71,23 +75,35 @@ func NewApp(ctx context.Context) (*App, error) {
 		return nil, app.logger.LogError(err, "failed to initialize IPFS")
 	}
 
+	// Initialize S3 service first
+	s3Service, err := NewS3Service(app.Config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create S3 service: %v", err)
+	}
+	app.S3Service = s3Service
+	app.logger.LogInfo("S3 Service initialized", nil)
+
+	// Initialize other services after S3
+	app.initServices()
+	app.logger.LogInfo("Services initialized", nil)
+
 	if err := app.initP2P(); err != nil {
 		return nil, app.logger.LogError(err, "failed to initialize P2P")
 	}
-
-	// Initialize services
-	app.initServices()
-	app.logger.LogInfo("Services initialized", nil)
 
 	// Setup routes
 	app.setupRoutes()
 	app.logger.LogInfo("Routes configured", nil)
 
+	app.IPFSService = app.ipfs
+	app.VideoService = app.video
+	app.AuthService = app.auth
+
 	return app, nil
 }
 
 func (a *App) initConfig() error {
-	config, err := loadConfig()
+	config, err := LoadConfig(".")
 	if err != nil {
 		return fmt.Errorf("failed to load config: %v", err)
 	}
@@ -139,7 +155,8 @@ func (a *App) initP2P() error {
 }
 
 func (a *App) initServices() {
-	a.video = NewVideoService(a.db, a.ipfs, a.Config)
+	// Initialize video service with S3Service
+	a.video = NewVideoService(a.db, a.ipfs, a.S3Service, a.Config)
 	a.auth = NewAuthService(a.db)
 	a.transcode = NewTranscodeService(a.db, a.ipfs, a.Config)
 }

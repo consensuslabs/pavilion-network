@@ -102,62 +102,17 @@ func (a *App) validateVideoUpload(file *multipart.FileHeader, title, description
 
 // handleVideoUpload handles the video upload endpoint
 func (a *App) handleVideoUpload(c *gin.Context) {
-	file, err := c.FormFile("video")
+	file, fileHeader, err := c.Request.FormFile("video")
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": "No file uploaded or invalid form data",
-			"code":  "ERR_INVALID_REQUEST",
-		})
+		a.errorResponse(c, http.StatusBadRequest, "ERR_NO_FILE", "No video file received", err)
 		return
 	}
+	defer file.Close()
 
-	title := strings.TrimSpace(c.PostForm("title"))
-	description := strings.TrimSpace(c.PostForm("description"))
-
-	// Validate the upload
-	if err := a.validateVideoUpload(file, title, description); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error": err.Error(),
-			"code":  "ERR_VALIDATION",
-		})
-		return
-	}
-
-	uploadedFile, err := file.Open()
+	// Process the video (upload to IPFS and S3)
+	video, err := a.video.ProcessVideo(file, fileHeader)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error": "Failed to open uploaded file",
-			"code":  "ERR_FILE_OPEN",
-		})
-		return
-	}
-	defer uploadedFile.Close()
-
-	video, err := a.video.UploadVideo(uploadedFile, file.Filename, title, description)
-	if err != nil {
-		switch e := err.(type) {
-		case *ValidationError:
-			c.JSON(http.StatusUnprocessableEntity, gin.H{
-				"error": e.Error(),
-				"code":  "ERR_VALIDATION",
-				"field": e.Field,
-			})
-		case *StorageError:
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": "Failed to store video file",
-				"code":  "ERR_STORAGE",
-			})
-		case *ProcessingError:
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": "Failed to process video",
-				"code":  "ERR_PROCESSING",
-			})
-		default:
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"error": "An unexpected error occurred",
-				"code":  "ERR_INTERNAL",
-			})
-		}
+		a.errorResponse(c, http.StatusInternalServerError, "ERR_UPLOAD", "Failed to process video upload", err)
 		return
 	}
 
@@ -165,7 +120,7 @@ func (a *App) handleVideoUpload(c *gin.Context) {
 		"video":    video,
 		"filePath": video.FilePath,
 		"ipfsCid":  video.IPFSCID,
-	}, "Video uploaded and stored in IPFS successfully")
+	}, "Video uploaded and stored successfully")
 }
 
 // handleVideoWatch handles the video watch endpoint
@@ -221,4 +176,34 @@ func (a *App) handleVideoStatus(c *gin.Context) {
 		"ipfsCid":   video.IPFSCID,
 		"updatedAt": video.UpdatedAt,
 	}, "Video status retrieved successfully")
+}
+
+// UploadVideoHandler handles video uploads
+func (a *App) UploadVideoHandler(c *gin.Context) {
+	// Get the uploaded file
+	file, fileHeader, err := c.Request.FormFile("file")
+	if err != nil {
+		a.logger.LogError(err, "Failed to get file from request")
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to get file"})
+		return
+	}
+	defer file.Close()
+
+	// Process the video (upload to IPFS and S3)
+	video, err := a.VideoService.ProcessVideo(file, fileHeader)
+	if err != nil {
+		a.logger.LogError(err, "Failed to process video")
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to upload video"})
+		return
+	}
+
+	// Return the IPFS CID and S3 URL
+	c.JSON(http.StatusCreated, gin.H{
+		"message":   "Video uploaded successfully",
+		"fileId":    video.FileId,
+		"ipfsCid":   video.IPFSCID,
+		"cdnUrl":    video.FilePath, // This now contains the S3/CDN URL
+		"checksum":  video.Checksum,
+		"createdAt": video.CreatedAt,
+	})
 }
