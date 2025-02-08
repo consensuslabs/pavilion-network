@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/google/uuid"
+
 	// Import your models package
 
 	"github.com/gin-gonic/gin"
@@ -31,6 +33,17 @@ func NewApp(ctx context.Context) (*App, error) {
 		ctx:    ctx,
 		router: gin.Default(),
 	}
+
+	// Add request ID middleware
+	app.router.Use(func(c *gin.Context) {
+		requestID := c.GetHeader("X-Request-ID")
+		if requestID == "" {
+			requestID = fmt.Sprintf("req-%s", uuid.New().String())
+		}
+		c.Set("request_id", requestID)
+		c.Header("X-Request-ID", requestID)
+		c.Next()
+	})
 
 	// Load configuration
 	if err := app.initConfig(); err != nil {

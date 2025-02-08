@@ -22,9 +22,23 @@ type Video struct {
 	Description string      `json:"description"`
 	FilePath    string      `json:"filePath"`
 	IPFSCID     string      `gorm:"column:ipfs_cid" json:"ipfsCid"`
+	Checksum    string      `json:"checksum"`
+	Status      string      `json:"status"` // pending, processing, completed, failed
+	StatusMsg   string      `json:"statusMsg"`
+	FileSize    int64       `json:"fileSize"`
 	CreatedAt   time.Time   `json:"createdAt"`
+	UpdatedAt   time.Time   `json:"updatedAt"`
 	Transcodes  []Transcode `json:"transcodes"`
 }
+
+// VideoStatus represents possible video states
+const (
+	VideoStatusPending    = "pending"
+	VideoStatusUploading  = "uploading"
+	VideoStatusProcessing = "processing"
+	VideoStatusCompleted  = "completed"
+	VideoStatusFailed     = "failed"
+)
 
 // Transcode model definition.
 type Transcode struct {

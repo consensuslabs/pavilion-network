@@ -16,6 +16,7 @@ type Config struct {
 	Ffmpeg   FfmpegConfig   `mapstructure:"ffmpeg"`
 	Storage  StorageConfig  `mapstructure:"storage"`
 	P2P      P2PConfig      `mapstructure:"p2p"`
+	Video    VideoConfig    `mapstructure:"video"`
 }
 
 // ServerConfig contains server specific configurations.
@@ -71,6 +72,15 @@ type StorageConfig struct {
 type P2PConfig struct {
 	Port       int    `mapstructure:"port"`
 	Rendezvous string `mapstructure:"rendezvous"`
+}
+
+// VideoConfig contains video upload and processing settings
+type VideoConfig struct {
+	MaxSize         int64    `mapstructure:"maxSize"`         // Maximum file size in bytes
+	MinTitleLength  int      `mapstructure:"minTitleLength"`  // Minimum title length
+	MaxTitleLength  int      `mapstructure:"maxTitleLength"`  // Maximum title length
+	MaxDescLength   int      `mapstructure:"maxDescLength"`   // Maximum description length
+	AllowedFormats  []string `mapstructure:"allowedFormats"`  // List of allowed video formats
 }
 
 // loadConfig loads configuration from config.yaml using Viper.

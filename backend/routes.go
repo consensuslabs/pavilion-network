@@ -23,4 +23,5 @@ func SetupRoutes(router *gin.Engine, app *App) {
 	router.POST("/video/upload", app.handleVideoUpload)
 	router.GET("/video/watch", app.handleVideoWatch)
 	router.GET("/video/list", app.handleVideoList)
+	router.GET("/video/status/:fileId", app.handleVideoStatus)
 }
