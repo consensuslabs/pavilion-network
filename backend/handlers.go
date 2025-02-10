@@ -109,18 +109,43 @@ func (a *App) handleVideoUpload(c *gin.Context) {
 	}
 	defer file.Close()
 
+	// Get title and description from form
+	title := c.PostForm("title")
+	description := c.PostForm("description")
+
+	// Validate the upload
+	if err := a.video.validateVideoUpload(fileHeader, title, description); err != nil {
+		a.errorResponse(c, http.StatusBadRequest, "ERR_VALIDATION", err.Error(), err)
+		return
+	}
+
 	// Process the video (upload to IPFS and S3)
-	video, err := a.video.ProcessVideo(file, fileHeader)
+	video, err := a.video.ProcessVideo(file, fileHeader, title, description)
 	if err != nil {
 		a.errorResponse(c, http.StatusInternalServerError, "ERR_UPLOAD", "Failed to process video upload", err)
 		return
 	}
 
+	// Create a response with progress information
+	videoResponse := gin.H{
+		"id":          video.ID,
+		"fileId":      video.FileId,
+		"title":       video.Title,
+		"description": video.Description,
+		"filePath":    video.FilePath,
+		"ipfsCid":     video.IPFSCID,
+		"status":      video.Status,
+		"statusMsg":   video.StatusMsg,
+		"fileSize":    video.FileSize,
+		"createdAt":   video.CreatedAt,
+		"updatedAt":   video.UpdatedAt,
+	}
+
 	a.successResponse(c, gin.H{
-		"video":    video,
+		"video":    videoResponse,
 		"filePath": video.FilePath,
 		"ipfsCid":  video.IPFSCID,
-	}, "Video uploaded and stored successfully")
+	}, video.StatusMsg)
 }
 
 // handleVideoWatch handles the video watch endpoint
@@ -172,7 +197,6 @@ func (a *App) handleVideoStatus(c *gin.Context) {
 		"fileId":    video.FileId,
 		"title":     video.Title,
 		"fileSize":  video.FileSize,
-		"checksum":  video.Checksum,
 		"ipfsCid":   video.IPFSCID,
 		"updatedAt": video.UpdatedAt,
 	}, "Video status retrieved successfully")
@@ -189,21 +213,24 @@ func (a *App) UploadVideoHandler(c *gin.Context) {
 	}
 	defer file.Close()
 
+	// Get title and description from form
+	title := c.PostForm("title")
+	description := c.PostForm("description")
+
 	// Process the video (upload to IPFS and S3)
-	video, err := a.VideoService.ProcessVideo(file, fileHeader)
+	video, err := a.VideoService.ProcessVideo(file, fileHeader, title, description)
 	if err != nil {
 		a.logger.LogError(err, "Failed to process video")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to upload video"})
 		return
 	}
 
-	// Return the IPFS CID and S3 URL
+	// Return the IPFS CID and S3 URL without checksum
 	c.JSON(http.StatusCreated, gin.H{
 		"message":   "Video uploaded successfully",
 		"fileId":    video.FileId,
 		"ipfsCid":   video.IPFSCID,
-		"cdnUrl":    video.FilePath, // This now contains the S3/CDN URL
-		"checksum":  video.Checksum,
+		"cdnUrl":    video.FilePath,
 		"createdAt": video.CreatedAt,
 	})
 }

@@ -2,8 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
-	"strings"
 
 	"github.com/spf13/viper"
 )
@@ -124,53 +122,47 @@ func loadConfig() (*Config, error) {
 
 // LoadConfig loads the configuration from file and environment variables
 func LoadConfig(path string) (*Config, error) {
-	// Enable automatic environment variable loading
-	viper.AutomaticEnv()
-	viper.SetEnvPrefix("") // No prefix for env vars
+	// Create a new Viper instance to avoid conflicts
+	v := viper.New()
 
-	// Replace dots with underscores in env vars
-	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
-
-	// Load .env file if it exists
-	viper.SetConfigFile(".env")
-	if err := viper.ReadInConfig(); err != nil {
-		// It's okay if .env doesn't exist
-		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
-			return nil, fmt.Errorf("error reading .env file: %v", err)
-		}
+	// Load .env file first
+	v.SetConfigFile(".env")
+	err := v.ReadInConfig()
+	if err != nil {
+		return nil, fmt.Errorf("error reading .env file: %v", err)
 	}
 
-	// Load config.yaml
-	viper.SetConfigName("config")
-	viper.SetConfigType("yaml")
-	viper.AddConfigPath(".")
-	if err := viper.MergeInConfig(); err != nil {
+	// Get values from .env file
+	accessKeyID := v.GetString("S3_ACCESS_KEY_ID")
+	secretAccessKey := v.GetString("S3_SECRET_ACCESS_KEY")
+	region := v.GetString("S3_REGION")
+	bucket := v.GetString("S3_BUCKET_NAME")
+
+	// Create a new Viper instance for yaml config
+	v = viper.New()
+	v.SetConfigName("config")
+	v.SetConfigType("yaml")
+	v.AddConfigPath(".")
+
+	if err := v.ReadInConfig(); err != nil {
 		return nil, fmt.Errorf("error reading config file: %v", err)
 	}
 
-	// Set S3 configuration from environment variables
-	if os.Getenv("S3_ACCESS_KEY_ID") != "" {
-		viper.Set("storage.s3.accessKeyId", os.Getenv("S3_ACCESS_KEY_ID"))
-	}
-	if os.Getenv("S3_SECRET_ACCESS_KEY") != "" {
-		viper.Set("storage.s3.secretAccessKey", os.Getenv("S3_SECRET_ACCESS_KEY"))
-	}
-	if os.Getenv("S3_REGION") != "" {
-		viper.Set("storage.s3.region", os.Getenv("S3_REGION"))
-	}
-	if os.Getenv("S3_BUCKET_NAME") != "" {
-		viper.Set("storage.s3.bucket", os.Getenv("S3_BUCKET_NAME"))
-	}
+	// Set S3 values from .env
+	v.Set("storage.s3.accessKeyId", accessKeyID)
+	v.Set("storage.s3.secretAccessKey", secretAccessKey)
+	v.Set("storage.s3.region", region)
+	v.Set("storage.s3.bucket", bucket)
 
 	// Debug: Print configuration values
 	fmt.Printf("Configuration Values:\n")
-	fmt.Printf("S3_ACCESS_KEY_ID: %s\n", viper.GetString("storage.s3.accessKeyId"))
-	fmt.Printf("S3_REGION: %s\n", viper.GetString("storage.s3.region"))
-	fmt.Printf("S3_BUCKET_NAME: %s\n", viper.GetString("storage.s3.bucket"))
-	fmt.Printf("Has S3_SECRET_ACCESS_KEY: %v\n", viper.IsSet("storage.s3.secretAccessKey"))
+	fmt.Printf("S3_ACCESS_KEY_ID: %s\n", v.GetString("storage.s3.accessKeyId"))
+	fmt.Printf("S3_REGION: %s\n", v.GetString("storage.s3.region"))
+	fmt.Printf("S3_BUCKET_NAME: %s\n", v.GetString("storage.s3.bucket"))
+	fmt.Printf("Has S3_SECRET_ACCESS_KEY: %v\n", v.IsSet("storage.s3.secretAccessKey"))
 
 	config := &Config{}
-	if err := viper.Unmarshal(config); err != nil {
+	if err := v.Unmarshal(config); err != nil {
 		return nil, fmt.Errorf("unable to decode config into struct: %v", err)
 	}
 

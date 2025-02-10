@@ -27,15 +27,23 @@ function updateUploadStatus(fileId) {
                 statusContainer.className = `status-container status-${status.status}`;
 
                 document.getElementById('statusText').textContent = status.status;
-                document.getElementById('statusMessage').textContent = status.message || '-';
+                document.getElementById('statusMessage').textContent = status.statusMsg || '-';
                 document.getElementById('statusFileSize').textContent = formatFileSize(status.fileSize);
-                document.getElementById('statusChecksum').textContent = status.checksum || '-';
                 document.getElementById('statusIpfsCid').textContent = status.ipfsCid || '-';
                 document.getElementById('statusUpdatedAt').textContent = new Date(status.updatedAt).toLocaleString();
 
+                // Extract progress percentage from status message if available
+                let progress = 0;
+                if (status.statusMsg) {
+                    const match = status.statusMsg.match(/(\d+(\.\d+)?)%/);
+                    if (match) {
+                        progress = parseFloat(match[1]);
+                    }
+                }
+
                 // Update progress bar based on status
-                if (status.status === 'uploading' && typeof status.progress === 'number') {
-                    updateProgressBar(status.progress);
+                if (status.status === 'uploading') {
+                    updateProgressBar(progress);
                 } else if (status.status === 'completed') {
                     updateProgressBar(100);
                 }
@@ -119,17 +127,9 @@ function initVideoUpload() {
             clearInterval(uploadStatusCheckInterval);
         }
 
-        // Create XMLHttpRequest to track upload progress
+        // Create XMLHttpRequest to track initial upload progress
         const xhr = new XMLHttpRequest();
         xhr.open('POST', '/video/upload', true);
-
-        xhr.upload.onprogress = function (e) {
-            if (e.lengthComputable) {
-                const percentComplete = (e.loaded / e.total) * 100;
-                console.log(`Upload progress: ${percentComplete}%`);
-                updateProgressBar(percentComplete);
-            }
-        };
 
         xhr.onload = function () {
             console.log('Upload completed, status:', xhr.status);
@@ -138,11 +138,13 @@ function initVideoUpload() {
                     const response = JSON.parse(xhr.responseText);
                     console.log('Upload response:', response);
                     displayResult("uploadResult", response);
-                    if (response.data && response.data.fileId) {
-                        updateUploadStatus(response.data.fileId);
+                    if (response.data && response.data.video && response.data.video.fileId) {
+                        // Start checking upload status immediately
+                        updateUploadStatus(response.data.video.fileId);
+                        // Set interval to check status every 1 second
                         uploadStatusCheckInterval = setInterval(() => {
-                            updateUploadStatus(response.data.fileId);
-                        }, 2000);
+                            updateUploadStatus(response.data.video.fileId);
+                        }, 1000);
                     }
                 } catch (err) {
                     console.error('Error parsing response:', err);
@@ -153,15 +155,13 @@ function initVideoUpload() {
                 try {
                     const errorResponse = JSON.parse(xhr.responseText);
                     if (errorResponse.error) {
-                        handleError("uploadResult", new Error(errorResponse.error));
-                        // Hide progress bar on error
+                        handleError("uploadResult", new Error(errorResponse.error.message || errorResponse.error));
                         progressContainer.style.display = 'none';
-                        // Show error status
                         if (statusContainer) {
                             statusContainer.style.display = 'block';
                             statusContainer.className = 'status-container status-failed';
                             document.getElementById('statusText').textContent = 'Failed';
-                            document.getElementById('statusMessage').textContent = errorResponse.error;
+                            document.getElementById('statusMessage').textContent = errorResponse.error.message || errorResponse.error;
                         }
                     } else {
                         handleError("uploadResult", new Error(`Upload failed: ${xhr.statusText}`));
@@ -175,9 +175,7 @@ function initVideoUpload() {
         xhr.onerror = function () {
             console.error('Upload network error');
             handleError("uploadResult", new Error('Upload failed: Network error'));
-            // Hide progress bar on error
             progressContainer.style.display = 'none';
-            // Show error status
             if (statusContainer) {
                 statusContainer.style.display = 'block';
                 statusContainer.className = 'status-container status-failed';
