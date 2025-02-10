@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -136,21 +137,24 @@ func (a *App) initIPFS() error {
 }
 
 func (a *App) initP2P() error {
-	p2p, err := NewP2PNode(a.ctx, a.Config.P2P.Port, a.Config.P2P.Rendezvous)
-	if err != nil {
-		return fmt.Errorf("failed to create P2P node: %v", err)
-	}
-
-	// Subscribe to default topics
-	defaultTopics := []string{"videos", "transcodes"}
-	for _, topic := range defaultTopics {
-		if _, _, err := p2p.Subscribe(topic); err != nil {
-			return fmt.Errorf("failed to subscribe to topic %s: %v", topic, err)
+	// Temporarily disabled P2P functionality
+	/*
+		p2p, err := NewP2PNode(a.ctx, a.Config.P2P.Port, a.Config.P2P.Rendezvous)
+		if err != nil {
+			return fmt.Errorf("failed to create P2P node: %v", err)
 		}
-		a.logger.LogInfo(fmt.Sprintf("Subscribed to topic: %s", topic), nil)
-	}
 
-	a.p2p = p2p
+		// Subscribe to default topics
+		defaultTopics := []string{"videos", "transcodes"}
+		for _, topic := range defaultTopics {
+			if _, _, err := p2p.Subscribe(topic); err != nil {
+				return fmt.Errorf("failed to subscribe to topic %s: %v", topic, err)
+			}
+			a.logger.LogInfo(fmt.Sprintf("Subscribed to topic: %s", topic), nil)
+		}
+
+		a.p2p = p2p
+	*/
 	return nil
 }
 
@@ -177,23 +181,63 @@ func (a *App) Run() error {
 
 // Shutdown gracefully shuts down the application
 func (a *App) Shutdown() error {
-	a.logger.LogInfo("Shutting down application", nil)
+	a.logger.LogInfo("Initiating graceful shutdown", nil)
 
-	// Close P2P connections
-	if err := a.p2p.Close(); err != nil {
-		a.logger.LogWarn("Error closing P2P connections", map[string]interface{}{
-			"error": err.Error(),
-		})
+	// Create a timeout context for shutdown
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
+	// Close P2P connections if enabled
+	if a.p2p != nil {
+		if err := a.p2p.Close(); err != nil {
+			a.logger.LogWarn("Error closing P2P connections", map[string]interface{}{
+				"error": err.Error(),
+			})
+		}
 	}
 
 	// Close cache connections
-	if err := a.cache.Close(); err != nil {
-		a.logger.LogWarn("Error closing cache connections", map[string]interface{}{
-			"error": err.Error(),
-		})
+	if a.cache != nil {
+		if err := a.cache.Close(); err != nil {
+			a.logger.LogWarn("Error closing cache connections", map[string]interface{}{
+				"error": err.Error(),
+			})
+		}
 	}
 
-	// Add any other cleanup needed here
+	// Close database connections
+	if a.db != nil {
+		sqlDB, err := a.db.DB()
+		if err != nil {
+			a.logger.LogWarn("Error getting underlying database instance", map[string]interface{}{
+				"error": err.Error(),
+			})
+		} else {
+			if err := sqlDB.Close(); err != nil {
+				a.logger.LogWarn("Error closing database connections", map[string]interface{}{
+					"error": err.Error(),
+				})
+			}
+		}
+	}
+
+	// Close IPFS connections if any
+	if a.ipfs != nil {
+		if err := a.ipfs.Close(); err != nil {
+			a.logger.LogWarn("Error closing IPFS connections", map[string]interface{}{
+				"error": err.Error(),
+			})
+		}
+	}
+
+	// Wait for context timeout or completion
+	<-ctx.Done()
+	if err := ctx.Err(); err != nil && err != context.Canceled {
+		a.logger.LogWarn("Shutdown timed out", map[string]interface{}{
+			"error": err.Error(),
+		})
+		return err
+	}
 
 	a.logger.LogInfo("Application shutdown complete", nil)
 	return nil

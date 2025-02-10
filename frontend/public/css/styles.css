@@ -120,44 +120,123 @@ textarea {
 }
 
 .status-container {
-    margin: 10px 0;
+    margin: 15px 0;
     padding: 15px;
-    border: 1px solid #ddd;
     border-radius: 4px;
-    background-color: #f9f9f9;
+    background-color: #f8f9fa;
+    border-left: 4px solid #ccc;
 }
 
 .status-container p {
     margin: 5px 0;
 }
 
-.status-pending { 
-    background-color: #fff3cd; 
-    border-color: #ffeeba;
+.status-container.status-pending {
+    border-left-color: #ffc107;
+    background-color: #fff3cd;
 }
 
-.status-uploading { 
-    background-color: #cce5ff; 
-    border-color: #b8daff;
+.status-container.status-uploading {
+    border-left-color: #17a2b8;
+    background-color: #d1ecf1;
 }
 
-.status-processing { 
-    background-color: #d4edda; 
-    border-color: #c3e6cb;
+.status-container.status-completed {
+    border-left-color: #28a745;
+    background-color: #d4edda;
 }
 
-.status-completed { 
-    background-color: #d1e7dd; 
-    border-color: #badbcc;
-}
-
-.status-failed { 
-    background-color: #f8d7da; 
-    border-color: #f5c6cb;
+.status-container.status-failed {
+    border-left-color: #dc3545;
+    background-color: #f8d7da;
 }
 
 .file-info {
     font-size: 0.85em;
     color: #666;
     margin-left: 10px;
+}
+
+#uploadProgress {
+    margin: 15px 0;
+    background-color: #f0f0f0;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+#uploadProgressBar {
+    width: 0;
+    height: 20px;
+    background-color: #17a2b8;
+    color: white;
+    text-align: center;
+    line-height: 20px;
+    transition: width 0.3s ease;
+}
+
+.status-details {
+    margin-top: 10px;
+    font-size: 0.9em;
+}
+
+.status-details p {
+    margin: 5px 0;
+}
+
+.status-details strong {
+    color: #495057;
+    margin-right: 5px;
+}
+
+.video-item {
+    border-left: 4px solid #ccc;
+    margin-bottom: 20px;
+    padding: 15px;
+    background-color: #fff;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.video-item[data-status="pending"] {
+    border-left-color: #ffc107;
+}
+
+.video-item[data-status="uploading"] {
+    border-left-color: #17a2b8;
+}
+
+.video-item[data-status="completed"] {
+    border-left-color: #28a745;
+}
+
+.video-item[data-status="failed"] {
+    border-left-color: #dc3545;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 3px;
+    font-size: 0.8em;
+    font-weight: 500;
+    text-transform: uppercase;
+}
+
+.status-badge.pending {
+    background-color: #fff3cd;
+    color: #856404;
+}
+
+.status-badge.uploading {
+    background-color: #d1ecf1;
+    color: #0c5460;
+}
+
+.status-badge.completed {
+    background-color: #d4edda;
+    color: #155724;
+}
+
+.status-badge.failed {
+    background-color: #f8d7da;
+    color: #721c24;
 }

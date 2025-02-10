@@ -26,6 +26,17 @@ func initDatabase(config DatabaseConfig) (*gorm.DB, error) {
 		return nil, fmt.Errorf("failed to connect to database: %v", err)
 	}
 
+	// Create the upload_status enum type if it doesn't exist
+	if err := db.Exec(`DO $$ 
+		BEGIN
+			IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'upload_status') THEN
+				CREATE TYPE upload_status AS ENUM ('pending', 'uploading', 'completed', 'failed');
+			END IF;
+		END
+		$$;`).Error; err != nil {
+		return nil, fmt.Errorf("failed to create upload_status enum: %v", err)
+	}
+
 	// Auto-migrate the schema
 	if err = db.AutoMigrate(&User{}, &Video{}, &Transcode{}, &TranscodeSegment{}); err != nil {
 		return nil, fmt.Errorf("auto migration failed: %v", err)

@@ -74,3 +74,10 @@ func (s *IPFSService) DownloadFile(cid string) (string, error) {
 func (s *IPFSService) GetGatewayURL(cid string) string {
 	return s.host + cid
 }
+
+// Close closes any open IPFS connections and resources
+func (s *IPFSService) Close() error {
+	// Currently, the IPFS service doesn't maintain any long-lived connections
+	// This is a placeholder for future connection cleanup if needed
+	return nil
+}

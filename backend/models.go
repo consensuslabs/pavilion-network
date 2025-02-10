@@ -2,6 +2,8 @@ package main
 
 import (
 	"time"
+
+	"gorm.io/gorm"
 )
 
 // User model definition.
@@ -12,23 +14,66 @@ type User struct {
 	CreatedAt time.Time `json:"createdAt"`
 }
 
+// UploadStatus represents the video upload status
+type UploadStatus string
+
+// Upload status enum values
+const (
+	UploadStatusPending   UploadStatus = "pending"
+	UploadStatusUploading UploadStatus = "uploading"
+	UploadStatusCompleted UploadStatus = "completed"
+	UploadStatusFailed    UploadStatus = "failed"
+)
+
 // Video model definition.
 // fileId stores the unique identifier generated during upload.
 // Transcodes represents the one-to-many relation to the Transcode table.
 type Video struct {
-	ID          uint        `gorm:"primaryKey" json:"id"`
-	FileId      string      `json:"fileId"`
-	Title       string      `json:"title"`
-	Description string      `json:"description"`
-	FilePath    string      `json:"filePath"`
-	IPFSCID     string      `gorm:"column:ipfs_cid" json:"ipfsCid"`
-	Checksum    string      `json:"checksum"`
-	Status      string      `json:"status"` // pending, processing, completed, failed
-	StatusMsg   string      `json:"statusMsg"`
-	FileSize    int64       `json:"fileSize"`
-	CreatedAt   time.Time   `json:"createdAt"`
-	UpdatedAt   time.Time   `json:"updatedAt"`
-	Transcodes  []Transcode `json:"transcodes"`
+	ID           uint         `gorm:"primaryKey" json:"id"`
+	FileId       string       `json:"fileId"`
+	Title        string       `json:"title"`
+	Description  string       `json:"description"`
+	FilePath     string       `json:"filePath"`
+	IPFSCID      string       `gorm:"column:ipfs_cid" json:"ipfsCid"`
+	Checksum     string       `json:"checksum"`
+	UploadStatus UploadStatus `gorm:"type:upload_status;default:'pending'" json:"uploadStatus"`
+	FileSize     int64        `json:"fileSize"`
+	CreatedAt    time.Time    `json:"createdAt"`
+	UpdatedAt    time.Time    `json:"updatedAt"`
+	Transcodes   []Transcode  `json:"transcodes"`
+}
+
+// BeforeCreate hook to validate UploadStatus before saving
+func (v *Video) BeforeCreate(tx *gorm.DB) error {
+	if v.UploadStatus == "" {
+		v.UploadStatus = UploadStatusPending
+	}
+	return nil
+}
+
+// IsValidUploadStatus checks if a status is valid
+func IsValidUploadStatus(status UploadStatus) bool {
+	switch status {
+	case UploadStatusPending, UploadStatusUploading, UploadStatusCompleted, UploadStatusFailed:
+		return true
+	}
+	return false
+}
+
+// GetUploadStatusMessage returns a user-friendly message for the upload status
+func (v *Video) GetUploadStatusMessage() string {
+	switch v.UploadStatus {
+	case UploadStatusPending:
+		return "Upload pending"
+	case UploadStatusUploading:
+		return "Upload in progress"
+	case UploadStatusCompleted:
+		return "Upload completed successfully"
+	case UploadStatusFailed:
+		return "Upload failed"
+	default:
+		return "Unknown status"
+	}
 }
 
 // VideoStatus represents possible video states

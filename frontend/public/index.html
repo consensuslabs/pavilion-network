@@ -57,29 +57,32 @@
                 <label for="description">Description:</label>
                 <textarea id="description" placeholder="Enter video description"></textarea>
             </div>
-            <button type="submit" class="button">Upload Video</button>
+            <div class="api-row">
+                <button type="submit" class="button">Upload Video</button>
+                <span>/video/upload</span>
+            </div>
         </form>
 
-        <!-- Upload Progress -->
-        <div id="uploadProgress" style="display: none;">
-            <h3>Upload Progress</h3>
-            <div class="progress-container">
-                <div id="uploadProgressBar" class="progress-bar">0%</div>
+        <!-- Upload Status Section -->
+        <div id="uploadStatus" style="display: none;" class="status-container">
+            <div class="status-header">
+                <span class="status-badge" id="statusText">pending</span>
+                <p id="statusMessage" class="status-message">-</p>
+            </div>
+            <div class="status-details">
+                <p><strong>File Size:</strong> <span id="statusFileSize">-</span></p>
+                <p><strong>IPFS CID:</strong> <span id="statusIpfsCid">-</span></p>
+                <p><strong>Last Updated:</strong> <span id="statusUpdatedAt">-</span></p>
             </div>
         </div>
 
-        <!-- Upload Status -->
-        <div id="uploadStatus" style="display: none;">
-            <h3>Upload Status</h3>
-            <p><strong>Status:</strong> <span id="statusText">-</span></p>
-            <p><strong>Message:</strong> <span id="statusMessage">-</span></p>
-            <p><strong>File Size:</strong> <span id="statusFileSize">-</span></p>
-            <p><strong>Checksum:</strong> <span id="statusChecksum">-</span></p>
-            <p><strong>IPFS CID:</strong> <span id="statusIpfsCid">-</span></p>
-            <p><strong>Last Updated:</strong> <span id="statusUpdatedAt">-</span></p>
+        <!-- Upload Progress -->
+        <div id="uploadProgress" style="display: none;">
+            <div id="uploadProgressBar" class="progress-bar">0%</div>
         </div>
 
-        <textarea id="uploadResult" readonly></textarea>
+        <!-- Upload Result -->
+        <textarea id="uploadResult" rows="4" class="form-control mt-3" readonly></textarea>
         <hr>
 
         <!-- Transcode Video Section -->

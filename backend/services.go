@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
+	"log"
 	"mime/multipart"
 	"os"
 	"path/filepath"
@@ -85,14 +86,13 @@ func (s *VideoService) ProcessVideo(file multipart.File, fileHeader *multipart.F
 
 	// Set initial status as uploading
 	video := &Video{
-		FileId:      "", // Will be set after IPFS upload
-		Title:       title,
-		Description: description,
-		Status:      VideoStatusUploading,
-		StatusMsg:   "Uploading to IPFS...",
-		FileSize:    fileHeader.Size,
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
+		FileId:       "", // Will be set after IPFS upload
+		Title:        title,
+		Description:  description,
+		UploadStatus: UploadStatusUploading,
+		FileSize:     fileHeader.Size,
+		CreatedAt:    time.Now(),
+		UpdatedAt:    time.Now(),
 	}
 
 	// Save initial video record to get an ID
@@ -102,41 +102,31 @@ func (s *VideoService) ProcessVideo(file multipart.File, fileHeader *multipart.F
 
 	// Create progress reader for IPFS upload (50% of total progress)
 	ipfsProgress := func(bytesRead, totalBytes int64) {
-		progress := float64(bytesRead) / float64(totalBytes) * 50.0 // 0-50%
-		video.StatusMsg = fmt.Sprintf("Uploading to IPFS... %.1f%%", progress)
-		s.updateVideoStatus(video, VideoStatusUploading, video.StatusMsg)
+		s.updateVideoStatus(video, UploadStatusUploading)
 	}
 	ipfsReader := NewProgressReader(file, fileHeader.Size, ipfsProgress)
 
 	// 1. Upload to IPFS first to get the CID
 	ipfsCID, err := s.ipfs.UploadFileStream(ipfsReader)
 	if err != nil {
-		video.Status = VideoStatusFailed
-		video.StatusMsg = fmt.Sprintf("Failed to upload to IPFS: %v", err)
-		s.updateVideoStatus(video, video.Status, video.StatusMsg)
+		s.updateVideoStatus(video, UploadStatusFailed)
 		return nil, fmt.Errorf("failed to upload to IPFS: %v", err)
 	}
 
 	// Update video with IPFS information
 	video.FileId = ipfsCID
 	video.IPFSCID = ipfsCID
-	video.Status = VideoStatusUploading
-	video.StatusMsg = "Uploading to S3..."
-	s.updateVideoStatus(video, video.Status, video.StatusMsg)
+	s.updateVideoStatus(video, UploadStatusUploading)
 
 	// Seek the file back to the beginning after IPFS upload
 	if _, err := file.Seek(0, io.SeekStart); err != nil {
-		video.Status = VideoStatusFailed
-		video.StatusMsg = fmt.Sprintf("Failed to process file: %v", err)
-		s.updateVideoStatus(video, video.Status, video.StatusMsg)
+		s.updateVideoStatus(video, UploadStatusFailed)
 		return nil, fmt.Errorf("failed to seek file to beginning: %v", err)
 	}
 
 	// Create progress reader for S3 upload (50-100% of total progress)
 	s3Progress := func(bytesRead, totalBytes int64) {
-		progress := 50.0 + (float64(bytesRead) / float64(totalBytes) * 50.0) // 50-100%
-		video.StatusMsg = fmt.Sprintf("Uploading to S3... %.1f%%", progress)
-		s.updateVideoStatus(video, VideoStatusUploading, video.StatusMsg)
+		s.updateVideoStatus(video, UploadStatusUploading)
 	}
 	s3Reader := NewProgressReader(file, fileHeader.Size, s3Progress)
 
@@ -145,35 +135,42 @@ func (s *VideoService) ProcessVideo(file multipart.File, fileHeader *multipart.F
 	fileKey := ipfsCID + fileExt
 	s3URL, err := s.s3.UploadFileStream(s3Reader, fileKey)
 	if err != nil {
-		video.Status = VideoStatusFailed
-		video.StatusMsg = fmt.Sprintf("Failed to upload to S3: %v", err)
-		s.updateVideoStatus(video, video.Status, video.StatusMsg)
+		s.updateVideoStatus(video, UploadStatusFailed)
 		return nil, fmt.Errorf("failed to upload to S3: %v", err)
 	}
 
 	// Update final status and information
 	video.FilePath = s3URL
 	video.Checksum = checksum
-	video.Status = VideoStatusCompleted
-	video.StatusMsg = "Upload completed successfully"
-	video.UpdatedAt = time.Now()
-	s.updateVideoStatus(video, video.Status, video.StatusMsg)
+	s.updateVideoStatus(video, UploadStatusCompleted)
 
 	return video, nil
 }
 
 // isAllowedFileType checks if the given file extension is in the allowed formats list
 func (s *VideoService) isAllowedFileType(ext string) bool {
-	ext = strings.TrimPrefix(ext, ".")
+	// Remove the dot from the extension if present and convert to lowercase
+	ext = strings.ToLower(strings.TrimPrefix(ext, "."))
+
+	// Log the extension being checked
+	log.Printf("Checking file extension: %s against allowed formats: %v", ext, s.config.Video.AllowedFormats)
+
 	for _, format := range s.config.Video.AllowedFormats {
-		if strings.EqualFold(format, ext) {
+		format = strings.ToLower(format)
+		if format == ext {
+			log.Printf("Found matching format: %s", format)
 			return true
 		}
 	}
+
+	log.Printf("No matching format found for extension: %s", ext)
 	return false
 }
 
 func (s *VideoService) validateVideoUpload(file *multipart.FileHeader, title, description string) error {
+	log.Printf("Validating video upload - Filename: %s, Size: %d, Title length: %d, Description length: %d",
+		file.Filename, file.Size, len(title), len(description))
+
 	if file == nil {
 		return fmt.Errorf("no file provided")
 	}
@@ -183,8 +180,11 @@ func (s *VideoService) validateVideoUpload(file *multipart.FileHeader, title, de
 	}
 
 	ext := strings.ToLower(filepath.Ext(file.Filename))
+	log.Printf("Extracted file extension: %s from filename: %s", ext, file.Filename)
+
 	if !s.isAllowedFileType(ext) {
-		return fmt.Errorf("unsupported file type: %s", ext)
+		log.Printf("File type validation failed for extension: %s", ext)
+		return fmt.Errorf("unsupported file type: %s. Allowed types: %v", ext, s.config.Video.AllowedFormats)
 	}
 
 	if title == "" {
@@ -203,13 +203,13 @@ func (s *VideoService) validateVideoUpload(file *multipart.FileHeader, title, de
 		return fmt.Errorf("description must not exceed %d characters", s.config.Video.MaxDescLength)
 	}
 
+	log.Printf("Video upload validation successful for file: %s", file.Filename)
 	return nil
 }
 
-// updateVideoStatus updates the video status and message
-func (s *VideoService) updateVideoStatus(video *Video, status, message string) {
-	video.Status = status
-	video.StatusMsg = message
+// updateVideoStatus updates the video status
+func (s *VideoService) updateVideoStatus(video *Video, status UploadStatus) {
+	video.UploadStatus = status
 	video.UpdatedAt = time.Now()
 	s.db.Save(video)
 }
@@ -217,7 +217,7 @@ func (s *VideoService) updateVideoStatus(video *Video, status, message string) {
 // cleanupFailedUpload handles cleanup of failed uploads
 func (s *VideoService) cleanupFailedUpload(video *Video) {
 	// Update status
-	s.updateVideoStatus(video, VideoStatusFailed, "Upload failed")
+	s.updateVideoStatus(video, UploadStatusFailed)
 
 	// Remove the file if it exists
 	if video.FilePath != "" {

@@ -102,8 +102,14 @@ func (a *App) validateVideoUpload(file *multipart.FileHeader, title, description
 
 // handleVideoUpload handles the video upload endpoint
 func (a *App) handleVideoUpload(c *gin.Context) {
+	requestID := c.GetString("request_id")
+
 	file, fileHeader, err := c.Request.FormFile("video")
 	if err != nil {
+		a.logger.LogInfo("No video file received", map[string]interface{}{
+			"request_id": requestID,
+			"error":      err.Error(),
+		})
 		a.errorResponse(c, http.StatusBadRequest, "ERR_NO_FILE", "No video file received", err)
 		return
 	}
@@ -113,8 +119,23 @@ func (a *App) handleVideoUpload(c *gin.Context) {
 	title := c.PostForm("title")
 	description := c.PostForm("description")
 
+	// Log request parameters
+	a.logger.LogInfo("Received video upload request", map[string]interface{}{
+		"request_id":         requestID,
+		"filename":           fileHeader.Filename,
+		"filesize":           fileHeader.Size,
+		"title":              title,
+		"description_length": len(description),
+		"content_type":       fileHeader.Header.Get("Content-Type"),
+	})
+
 	// Validate the upload
 	if err := a.video.validateVideoUpload(fileHeader, title, description); err != nil {
+		a.logger.LogInfo("Video upload validation failed", map[string]interface{}{
+			"request_id": requestID,
+			"filename":   fileHeader.Filename,
+			"error":      err.Error(),
+		})
 		a.errorResponse(c, http.StatusBadRequest, "ERR_VALIDATION", err.Error(), err)
 		return
 	}
@@ -122,6 +143,11 @@ func (a *App) handleVideoUpload(c *gin.Context) {
 	// Process the video (upload to IPFS and S3)
 	video, err := a.video.ProcessVideo(file, fileHeader, title, description)
 	if err != nil {
+		a.logger.LogInfo("Video processing failed", map[string]interface{}{
+			"request_id": requestID,
+			"filename":   fileHeader.Filename,
+			"error":      err.Error(),
+		})
 		a.errorResponse(c, http.StatusInternalServerError, "ERR_UPLOAD", "Failed to process video upload", err)
 		return
 	}
@@ -134,18 +160,28 @@ func (a *App) handleVideoUpload(c *gin.Context) {
 		"description": video.Description,
 		"filePath":    video.FilePath,
 		"ipfsCid":     video.IPFSCID,
-		"status":      video.Status,
-		"statusMsg":   video.StatusMsg,
+		"status":      video.UploadStatus,
+		"statusMsg":   video.GetUploadStatusMessage(),
 		"fileSize":    video.FileSize,
 		"createdAt":   video.CreatedAt,
 		"updatedAt":   video.UpdatedAt,
 	}
 
+	// Log successful response
+	a.logger.LogInfo("Video upload processed successfully", map[string]interface{}{
+		"request_id": requestID,
+		"filename":   fileHeader.Filename,
+		"video_id":   video.ID,
+		"file_id":    video.FileId,
+		"ipfs_cid":   video.IPFSCID,
+		"status":     video.UploadStatus,
+	})
+
 	a.successResponse(c, gin.H{
 		"video":    videoResponse,
 		"filePath": video.FilePath,
 		"ipfsCid":  video.IPFSCID,
-	}, video.StatusMsg)
+	}, video.GetUploadStatusMessage())
 }
 
 // handleVideoWatch handles the video watch endpoint
@@ -192,8 +228,8 @@ func (a *App) handleVideoStatus(c *gin.Context) {
 	}
 
 	a.successResponse(c, gin.H{
-		"status":    video.Status,
-		"message":   video.StatusMsg,
+		"status":    video.UploadStatus,
+		"message":   video.GetUploadStatusMessage(),
 		"fileId":    video.FileId,
 		"title":     video.Title,
 		"fileSize":  video.FileSize,

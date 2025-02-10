@@ -23,19 +23,34 @@ function updateUploadStatus(fileId) {
             if (data.data) {
                 const status = data.data;
                 const statusContainer = document.getElementById('uploadStatus');
-                statusContainer.style.display = 'block';
-                statusContainer.className = `status-container status-${status.status}`;
+                const progressContainer = document.getElementById('uploadProgress');
+                
+                // Only show status container for completed or failed states
+                if (['completed', 'failed'].includes(status.status)) {
+                    // Stop polling
+                    clearInterval(uploadStatusCheckInterval);
+                    uploadStatusCheckInterval = null;
 
-                document.getElementById('statusText').textContent = status.status;
-                document.getElementById('statusMessage').textContent = status.statusMsg || '-';
-                document.getElementById('statusFileSize').textContent = formatFileSize(status.fileSize);
-                document.getElementById('statusIpfsCid').textContent = status.ipfsCid || '-';
-                document.getElementById('statusUpdatedAt').textContent = new Date(status.updatedAt).toLocaleString();
+                    // Hide progress bar
+                    progressContainer.style.display = 'none';
+
+                    // Show final status
+                    statusContainer.style.display = 'block';
+                    statusContainer.className = `status-container status-${status.status}`;
+
+                    document.getElementById('statusText').textContent = status.status;
+                    document.getElementById('statusMessage').textContent = status.message || '-';
+                    document.getElementById('statusFileSize').textContent = formatFileSize(status.fileSize);
+                    document.getElementById('statusIpfsCid').textContent = status.ipfsCid || '-';
+                    document.getElementById('statusUpdatedAt').textContent = new Date(status.updatedAt).toLocaleString();
+                } else {
+                    statusContainer.style.display = 'none';
+                }
 
                 // Extract progress percentage from status message if available
                 let progress = 0;
-                if (status.statusMsg) {
-                    const match = status.statusMsg.match(/(\d+(\.\d+)?)%/);
+                if (status.message) {
+                    const match = status.message.match(/(\d+(\.\d+)?)%/);
                     if (match) {
                         progress = parseFloat(match[1]);
                     }
@@ -47,16 +62,12 @@ function updateUploadStatus(fileId) {
                 } else if (status.status === 'completed') {
                     updateProgressBar(100);
                 }
-
-                // Stop checking if we reach a final state
-                if (['completed', 'failed'].includes(status.status)) {
-                    clearInterval(uploadStatusCheckInterval);
-                }
             }
         })
         .catch(err => {
             console.error('Error checking upload status:', err);
             clearInterval(uploadStatusCheckInterval);
+            uploadStatusCheckInterval = null;
             handleError("uploadResult", err);
         });
 }
@@ -116,7 +127,7 @@ function initVideoUpload() {
         progressContainer.style.display = 'block';
         updateProgressBar(0);
 
-        // Reset status container
+        // Reset and hide status container
         const statusContainer = document.getElementById('uploadStatus');
         if (statusContainer) {
             statusContainer.style.display = 'none';
@@ -130,6 +141,40 @@ function initVideoUpload() {
         // Create XMLHttpRequest to track initial upload progress
         const xhr = new XMLHttpRequest();
         xhr.open('POST', '/video/upload', true);
+
+        // Add upload progress handler
+        xhr.upload.onprogress = function(e) {
+            if (e.lengthComputable) {
+                const percent = (e.loaded / e.total) * 100;
+                console.log(`Upload progress: ${percent.toFixed(2)}%`);
+                updateProgressBar(percent);
+            }
+        };
+
+        // Add upload start handler
+        xhr.upload.onloadstart = function() {
+            console.log('Upload started');
+            progressContainer.style.display = 'block';
+            updateProgressBar(0);
+        };
+
+        // Add upload complete handler
+        xhr.upload.onload = function() {
+            console.log('Upload completed');
+            updateProgressBar(100);
+        };
+
+        // Add upload error handler
+        xhr.upload.onerror = function() {
+            console.error('Upload failed');
+            progressContainer.style.display = 'none';
+            if (statusContainer) {
+                statusContainer.style.display = 'block';
+                statusContainer.className = 'status-container status-failed';
+                document.getElementById('statusText').textContent = 'failed';
+                document.getElementById('statusMessage').textContent = 'Upload failed due to network error';
+            }
+        };
 
         xhr.onload = function () {
             console.log('Upload completed, status:', xhr.status);
@@ -160,7 +205,7 @@ function initVideoUpload() {
                         if (statusContainer) {
                             statusContainer.style.display = 'block';
                             statusContainer.className = 'status-container status-failed';
-                            document.getElementById('statusText').textContent = 'Failed';
+                            document.getElementById('statusText').textContent = 'failed';
                             document.getElementById('statusMessage').textContent = errorResponse.error.message || errorResponse.error;
                         }
                     } else {
@@ -169,18 +214,6 @@ function initVideoUpload() {
                 } catch (err) {
                     handleError("uploadResult", new Error(`Upload failed: ${xhr.statusText}`));
                 }
-            }
-        };
-
-        xhr.onerror = function () {
-            console.error('Upload network error');
-            handleError("uploadResult", new Error('Upload failed: Network error'));
-            progressContainer.style.display = 'none';
-            if (statusContainer) {
-                statusContainer.style.display = 'block';
-                statusContainer.className = 'status-container status-failed';
-                document.getElementById('statusText').textContent = 'Failed';
-                document.getElementById('statusMessage').textContent = 'Network error occurred during upload';
             }
         };
 
@@ -264,13 +297,22 @@ function displayTranscodedVideos(videos) {
 
         const details = document.createElement('div');
         details.className = 'video-details';
+        
+        // Create status badge
+        const statusBadge = document.createElement('span');
+        statusBadge.className = `status-badge ${video.uploadStatus}`;
+        statusBadge.textContent = video.uploadStatus;
+        
         details.innerHTML = `
-            <p><strong>Status:</strong> ${video.status}</p>
+            <p><strong>Status:</strong> ${statusBadge.outerHTML}</p>
             <p><strong>File Size:</strong> ${formatFileSize(video.fileSize)}</p>
             <p><strong>Created:</strong> ${new Date(video.createdAt).toLocaleString()}</p>
             <p><strong>Updated:</strong> ${new Date(video.updatedAt).toLocaleString()}</p>
             ${video.ipfsCid ? `<p><strong>IPFS CID:</strong> ${video.ipfsCid}</p>` : ''}
         `;
+
+        // Set the status attribute for styling
+        videoElement.setAttribute('data-status', video.uploadStatus);
 
         const links = document.createElement('div');
         links.className = 'link-list';

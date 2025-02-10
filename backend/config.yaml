@@ -60,7 +60,7 @@ video:
   maxTitleLength: 100
   maxDescLength: 500
   allowedFormats:
-    - ".mp4"
-    - ".mov"
-    - ".avi"
-    - ".webm"
+    - "mp4"
+    - "mov"
+    - "avi"
+    - "webm"
