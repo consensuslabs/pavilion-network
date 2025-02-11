@@ -15,13 +15,20 @@ function openTab(evt, tabName) {
 }
 
 // Display result in textarea
-function displayResult(id, result) {
-    document.getElementById(id).value = JSON.stringify(result, null, 2);
+function displayResult(elementId, data) {
+    const element = document.getElementById(elementId);
+    if (element) {
+        element.value = JSON.stringify(data, null, 2);
+    }
 }
 
 // Handle and display error in textarea
-function handleError(id, err) {
-    document.getElementById(id).value = "Error: " + err.message;
+function handleError(elementId, error) {
+    const element = document.getElementById(elementId);
+    if (element) {
+        const errorMessage = error.error ? error.error.message || error.error : error.message || error;
+        element.value = JSON.stringify({ error: errorMessage }, null, 2);
+    }
 }
 
 // Extract base filename from path

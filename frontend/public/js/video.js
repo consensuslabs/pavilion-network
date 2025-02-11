@@ -223,45 +223,64 @@ function initVideoUpload() {
 }
 
 function transcodeVideo() {
+    console.log('transcodeVideo function called');
     const transcodeOption = document.querySelector('input[name="transcodeOption"]:checked').value;
-    let payload = {};
+    console.log('Selected transcode option:', transcodeOption);
+    
     if (transcodeOption === "cid") {
-        const sourceCID = document.getElementById("transcodeCIDInput").value.trim();
-        if (!sourceCID) {
+        const cid = document.getElementById("transcodeCIDInput").value.trim();
+        console.log('Input CID value:', cid);
+        
+        if (!cid) {
+            console.log('No CID provided, showing alert');
             alert("Please enter a CID for transcoding.");
             return;
         }
-        payload = {
-            sourceCID: sourceCID
-        };
+        
+        const payload = { cid: cid };
+        console.log('Preparing transcode request with payload:', payload);
+        const jsonBody = JSON.stringify(payload);
+        console.log('Request JSON body:', jsonBody);
+        
+        fetch("/video/transcode", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json"
+            },
+            body: jsonBody
+        })
+        .then(response => {
+            console.log('Response status:', response.status);
+            console.log('Response headers:', response.headers);
+            return response.text().then(text => {
+                try {
+                    console.log('Raw response text:', text);
+                    const data = JSON.parse(text);
+                    console.log('Parsed response data:', data);
+                    if (!response.ok) {
+                        throw data;
+                    }
+                    return data;
+                } catch (e) {
+                    console.error('JSON parse error:', e);
+                    throw new Error('Invalid JSON response: ' + text);
+                }
+            });
+        })
+        .then(data => {
+            console.log('Successfully processed response data:', data);
+            displayResult("transcodeResult", data);
+        })
+        .catch(error => {
+            console.error('Transcode error:', error);
+            console.error('Error details:', error);
+            handleError("transcodeResult", error);
+        });
     } else {
-        const file = document.getElementById("transcodeFile").files[0];
-        if (!file) {
-            alert("Please select a video file for transcoding.");
-            return;
-        }
-        const title = document.getElementById("transcodeTitle").value.trim();
-        const description = document.getElementById("transcodeDescription").value.trim();
-
-        const formData = new FormData();
-        formData.append("video", file);
-        formData.append("title", title);
-        formData.append("description", description);
-
-        payload = formData;
+        console.log('Invalid transcode option, showing alert');
+        alert("Please upload your video first using the upload form, then use the returned CID for transcoding.");
     }
-
-    transcodeWithPayload(payload);
-}
-
-function transcodeWithPayload(payload) {
-    fetch("/video/transcode", {
-        method: "POST",
-        body: payload
-    })
-        .then(res => res.json())
-        .then(data => displayResult("transcodeResult", data))
-        .catch(err => handleError("transcodeResult", err));
 }
 
 function listVideos() {

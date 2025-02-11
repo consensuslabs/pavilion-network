@@ -8,7 +8,7 @@ import (
 )
 
 // initDatabase initializes the PostgreSQL connection using GORM
-func initDatabase(config DatabaseConfig) (*gorm.DB, error) {
+func initDatabase(config *DatabaseConfig) (*gorm.DB, error) {
 	// Construct DSN from configuration
 	dsn := fmt.Sprintf(
 		"host=%s user=%s password=%s dbname=%s port=%d sslmode=%s TimeZone=%s",

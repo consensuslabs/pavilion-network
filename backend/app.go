@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/google/uuid"
-
 	// Import your models package
 
 	"github.com/gin-gonic/gin"
@@ -33,72 +31,54 @@ type App struct {
 }
 
 // NewApp creates a new application instance with all dependencies
-func NewApp(ctx context.Context) (*App, error) {
-	app := &App{
-		ctx:    ctx,
-		router: gin.Default(),
-	}
-
-	// Add request ID middleware
-	app.router.Use(func(c *gin.Context) {
-		requestID := c.GetHeader("X-Request-ID")
-		if requestID == "" {
-			requestID = fmt.Sprintf("req-%s", uuid.New().String())
-		}
-		c.Set("request_id", requestID)
-		c.Header("X-Request-ID", requestID)
-		c.Next()
-	})
-
-	// Load configuration
-	if err := app.initConfig(); err != nil {
-		return nil, fmt.Errorf("failed to load config: %v", err)
-	}
-
+func NewApp(ctx context.Context, config *Config) (*App, error) {
 	// Initialize logger
-	logger, err := NewLogger(app.Config.Logging)
+	logger, err := NewLogger(config.Logging)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize logger: %v", err)
 	}
-	app.logger = logger
-	app.logger.LogInfo("Logger initialized", nil)
 
-	// Initialize components
-	if err := app.initDatabase(); err != nil {
-		return nil, app.logger.LogError(err, "failed to initialize database")
-	}
-
-	if err := app.initCache(); err != nil {
-		return nil, app.logger.LogError(err, "failed to initialize cache")
-	}
-
-	if err := app.initIPFS(); err != nil {
-		return nil, app.logger.LogError(err, "failed to initialize IPFS")
-	}
-
-	// Initialize S3 service first
-	s3Service, err := NewS3Service(app.Config)
+	// Initialize database
+	db, err := initDatabase(&config.Database)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create S3 service: %v", err)
+		return nil, fmt.Errorf("failed to setup database: %v", err)
 	}
-	app.S3Service = s3Service
-	app.logger.LogInfo("S3 Service initialized", nil)
 
-	// Initialize other services after S3
-	app.initServices()
-	app.logger.LogInfo("Services initialized", nil)
+	// Initialize IPFS service
+	ipfs := NewIPFSService(config)
 
-	if err := app.initP2P(); err != nil {
-		return nil, app.logger.LogError(err, "failed to initialize P2P")
+	// Initialize S3 service
+	s3Service, err := NewS3Service(config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize S3 service: %v", err)
+	}
+
+	// Create router
+	router := gin.Default()
+
+	// Initialize all services
+	videoService := NewVideoService(db, ipfs, s3Service, config)
+	authService := NewAuthService(db)
+	transcodeService := NewTranscodeService(db, ipfs, s3Service, config, logger)
+
+	app := &App{
+		ctx:          ctx,
+		Config:       config,
+		db:           db,
+		router:       router,
+		ipfs:         ipfs,
+		S3Service:    s3Service,
+		video:        videoService,
+		VideoService: videoService,
+		auth:         authService,
+		AuthService:  authService,
+		transcode:    transcodeService,
+		logger:       logger,
+		IPFSService:  ipfs,
 	}
 
 	// Setup routes
 	app.setupRoutes()
-	app.logger.LogInfo("Routes configured", nil)
-
-	app.IPFSService = app.ipfs
-	app.VideoService = app.video
-	app.AuthService = app.auth
 
 	return app, nil
 }
@@ -113,7 +93,7 @@ func (a *App) initConfig() error {
 }
 
 func (a *App) initDatabase() error {
-	db, err := initDatabase(a.Config.Database)
+	db, err := initDatabase(&a.Config.Database)
 	if err != nil {
 		return fmt.Errorf("failed to initialize database: %v", err)
 	}
@@ -162,11 +142,26 @@ func (a *App) initServices() {
 	// Initialize video service with S3Service
 	a.video = NewVideoService(a.db, a.ipfs, a.S3Service, a.Config)
 	a.auth = NewAuthService(a.db)
-	a.transcode = NewTranscodeService(a.db, a.ipfs, a.Config)
+	a.transcode = NewTranscodeService(a.db, a.ipfs, a.S3Service, a.Config, a.logger)
 }
 
 func (a *App) setupRoutes() {
-	SetupRoutes(a.router, a)
+	// Health check
+	a.router.GET("/health", a.handleHealthCheck)
+
+	// Auth routes
+	a.router.POST("/auth/login", a.handleLogin)
+
+	// Video routes
+	a.router.POST("/video/upload", a.handleVideoUpload)
+	a.router.GET("/video/watch", a.handleVideoWatch)
+	a.router.GET("/video/list", a.handleVideoList)
+	a.router.GET("/video/status/:fileId", a.handleVideoStatus)
+	a.router.POST("/video/transcode", a.handleVideoTranscode)
+
+	// Static file serving
+	a.router.Static("/public", "../frontend/public")
+	a.router.Static("/uploads", a.Config.Storage.UploadDir)
 }
 
 // Run starts the application

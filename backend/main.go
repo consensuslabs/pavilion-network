@@ -13,8 +13,14 @@ func main() {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	// Create new app instance
-	app, err := NewApp(ctx)
+	// Load configuration
+	config, err := LoadConfig(".")
+	if err != nil {
+		log.Fatalf("Failed to load config: %v", err)
+	}
+
+	// Create new app instance with both context and config
+	app, err := NewApp(ctx, config)
 	if err != nil {
 		log.Fatalf("Failed to create app: %v", err)
 	}

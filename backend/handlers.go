@@ -1,7 +1,9 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"mime/multipart"
 	"net/http"
 	"path/filepath"
@@ -238,35 +240,97 @@ func (a *App) handleVideoStatus(c *gin.Context) {
 	}, "Video status retrieved successfully")
 }
 
-// UploadVideoHandler handles video uploads
-func (a *App) UploadVideoHandler(c *gin.Context) {
-	// Get the uploaded file
-	file, fileHeader, err := c.Request.FormFile("file")
+// handleVideoTranscode handles the /video/transcode endpoint
+func (a *App) handleVideoTranscode(c *gin.Context) {
+	// Log raw request body for debugging
+	bodyBytes, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		a.logger.LogError(err, "Failed to get file from request")
-		c.JSON(http.StatusBadRequest, gin.H{"error": "Failed to get file"})
+		a.logger.LogInfo("Error reading raw request body", map[string]interface{}{"error": err.Error()})
+	} else {
+		a.logger.LogInfo("Raw request body received", map[string]interface{}{"body": string(bodyBytes)})
+	}
+	// Restore the request body so that it can be read again by ShouldBindJSON
+	c.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+
+	var jsonInput struct {
+		CID string `json:"cid"`
+	}
+	if err := c.ShouldBindJSON(&jsonInput); err != nil {
+		a.logger.LogInfo("Invalid JSON input", map[string]interface{}{"error": err.Error()})
+		a.errorResponse(c, http.StatusBadRequest, "ERR_INVALID_JSON", "Invalid JSON input. Please provide cid in request body", err)
 		return
 	}
-	defer file.Close()
 
-	// Get title and description from form
-	title := c.PostForm("title")
-	description := c.PostForm("description")
-
-	// Process the video (upload to IPFS and S3)
-	video, err := a.VideoService.ProcessVideo(file, fileHeader, title, description)
-	if err != nil {
-		a.logger.LogError(err, "Failed to process video")
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to upload video"})
+	// Check if CID is empty
+	if jsonInput.CID == "" {
+		a.logger.LogInfo("Missing CID in request body", map[string]interface{}{
+			"error": "missing_cid",
+		})
+		a.errorResponse(c, http.StatusBadRequest, "ERR_MISSING_CID", "Missing CID in request body", nil)
 		return
 	}
 
-	// Return the IPFS CID and S3 URL without checksum
-	c.JSON(http.StatusCreated, gin.H{
-		"message":   "Video uploaded successfully",
-		"fileId":    video.FileId,
-		"ipfsCid":   video.IPFSCID,
-		"cdnUrl":    video.FilePath,
-		"createdAt": video.CreatedAt,
+	// Start transcoding process
+	a.logger.LogInfo("Starting transcoding process", map[string]interface{}{
+		"cid": jsonInput.CID,
 	})
+
+	result, err := a.transcode.ProcessTranscode(jsonInput.CID)
+	if err != nil {
+		a.logger.LogInfo("Transcoding failed", map[string]interface{}{
+			"error": err.Error(),
+			"cid":   jsonInput.CID,
+		})
+		a.errorResponse(c, http.StatusInternalServerError, "ERR_TRANSCODE", fmt.Sprintf("Failed to process transcode: %v", err), err)
+		return
+	}
+
+	// Format response
+	response := formatTranscodeResponse(result)
+	a.successResponse(c, response, "Transcoding started successfully")
+}
+
+type TranscodeResponse struct {
+	Success bool                 `json:"success"`
+	Formats map[string][]Version `json:"formats"`
+}
+
+type Version struct {
+	Resolution  string   `json:"resolution"`
+	StorageType string   `json:"storage_type"`
+	URL         string   `json:"url"`
+	CID         string   `json:"cid,omitempty"`
+	Segments    []string `json:"segments,omitempty"`
+}
+
+func formatTranscodeResponse(result *TranscodeResult) TranscodeResponse {
+	response := TranscodeResponse{
+		Success: true,
+		Formats: make(map[string][]Version),
+	}
+
+	// Group transcodes by format
+	for _, transcode := range result.Transcodes {
+		version := Version{
+			Resolution:  transcode.Resolution,
+			StorageType: transcode.StorageType,
+			URL:         transcode.FilePath,
+			CID:         transcode.FileCID,
+		}
+
+		// For HLS format, add segment URLs
+		if transcode.Format == "hls" {
+			segmentURLs := make([]string, 0)
+			for _, segment := range result.TranscodeSegments {
+				if segment.TranscodeID == transcode.ID {
+					segmentURLs = append(segmentURLs, segment.FilePath)
+				}
+			}
+			version.Segments = segmentURLs
+		}
+
+		response.Formats[transcode.Format] = append(response.Formats[transcode.Format], version)
+	}
+
+	return response
 }

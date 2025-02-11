@@ -40,7 +40,7 @@ type Video struct {
 	FileSize     int64        `json:"fileSize"`
 	CreatedAt    time.Time    `json:"createdAt"`
 	UpdatedAt    time.Time    `json:"updatedAt"`
-	Transcodes   []Transcode  `json:"transcodes"`
+	Transcodes   []Transcode  `gorm:"foreignKey:VideoID" json:"transcodes"`
 }
 
 // BeforeCreate hook to validate UploadStatus before saving
@@ -87,13 +87,15 @@ const (
 
 // Transcode model definition.
 type Transcode struct {
-	ID         uint      `gorm:"primaryKey" json:"id"`
-	VideoID    uint      `json:"videoId"`
-	FilePath   string    `json:"filePath"`
-	FileCID    string    `gorm:"column:file_cid" json:"fileCid"`
-	Type       string    `json:"type"`       // "hlsManifest", "hlsSegment", or "h264"
-	Resolution string    `json:"resolution"` // e.g., "720", "480", "360", "240"
-	CreatedAt  time.Time `json:"createdAt"`
+	ID          uint      `gorm:"primaryKey" json:"id"`
+	VideoID     uint      `json:"videoId"`
+	FilePath    string    `json:"filePath"`
+	FileCID     string    `gorm:"column:file_cid" json:"fileCid"`
+	Format      string    `json:"format"`      // "hls" or "mp4"
+	Resolution  string    `json:"resolution"`  // e.g., "720", "480", "360"
+	StorageType string    `json:"storageType"` // "ipfs" or "s3"
+	Type        string    `json:"type"`        // "manifest" or "video"
+	CreatedAt   time.Time `json:"createdAt"`
 }
 
 // TranscodeSegment model for transcoded HLS segments.
@@ -102,13 +104,16 @@ type TranscodeSegment struct {
 	TranscodeID uint      `json:"transcodeId"`
 	FilePath    string    `json:"filePath"`
 	FileCID     string    `gorm:"column:file_cid" json:"fileCid"`
+	StorageType string    `json:"storageType"` // "ipfs" or "s3"
 	Sequence    int       `json:"sequence"`
+	Duration    float64   `json:"duration"`
 	CreatedAt   time.Time `json:"createdAt"`
 }
 
 // TranscodeTarget defines parameters for each transcoded output.
 type TranscodeTarget struct {
-	Label      string // e.g., "720pMp4", "480pMp4", "360pMp4", "240pMp4"
-	Resolution string // target height (e.g., "720", "480", "360", "240")
-	OutputExt  string // "m3u8" for HLS outputs, "mp4" for progressive MP4
+	Label       string // e.g., "720p"
+	Resolution  string // target height (e.g., "720", "480", "360")
+	Format      string // "hls" or "mp4"
+	StorageType string // "ipfs" or "s3"
 }

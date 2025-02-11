@@ -55,6 +55,13 @@ func (pr *ProgressReader) Read(p []byte) (int, error) {
 
 // NewVideoService creates a new video service instance
 func NewVideoService(db *gorm.DB, ipfs *IPFSService, s3 *S3Service, config *Config) *VideoService {
+	if config == nil {
+		log.Fatal("Config cannot be nil when creating VideoService")
+	}
+	if config.Video.MaxSize == 0 {
+		log.Printf("Warning: Video max size is set to 0, using default of 100MB")
+		config.Video.MaxSize = 100 * 1024 * 1024 // 100MB default
+	}
 	return &VideoService{
 		db:     db,
 		ipfs:   ipfs,
@@ -168,17 +175,23 @@ func (s *VideoService) isAllowedFileType(ext string) bool {
 }
 
 func (s *VideoService) validateVideoUpload(file *multipart.FileHeader, title, description string) error {
-	log.Printf("Validating video upload - Filename: %s, Size: %d, Title length: %d, Description length: %d",
-		file.Filename, file.Size, len(title), len(description))
+	if s.config == nil {
+		return fmt.Errorf("video service configuration is not properly initialized")
+	}
 
 	if file == nil {
 		return fmt.Errorf("no file provided")
 	}
 
+	log.Printf("Validating video upload - Filename: %s, Size: %d, Title length: %d, Description length: %d",
+		file.Filename, file.Size, len(title), len(description))
+
+	// Check file size
 	if file.Size > s.config.Video.MaxSize {
-		return fmt.Errorf("file size exceeds maximum allowed size of %d bytes", s.config.Video.MaxSize)
+		return fmt.Errorf("file size (%d bytes) exceeds maximum allowed size of %d bytes", file.Size, s.config.Video.MaxSize)
 	}
 
+	// Check file extension
 	ext := strings.ToLower(filepath.Ext(file.Filename))
 	log.Printf("Extracted file extension: %s from filename: %s", ext, file.Filename)
 
@@ -187,6 +200,7 @@ func (s *VideoService) validateVideoUpload(file *multipart.FileHeader, title, de
 		return fmt.Errorf("unsupported file type: %s. Allowed types: %v", ext, s.config.Video.AllowedFormats)
 	}
 
+	// Validate title
 	if title == "" {
 		return fmt.Errorf("title is required")
 	}
@@ -199,6 +213,7 @@ func (s *VideoService) validateVideoUpload(file *multipart.FileHeader, title, de
 		return fmt.Errorf("title must not exceed %d characters", s.config.Video.MaxTitleLength)
 	}
 
+	// Validate description length
 	if len(description) > s.config.Video.MaxDescLength {
 		return fmt.Errorf("description must not exceed %d characters", s.config.Video.MaxDescLength)
 	}
