@@ -3,12 +3,21 @@ server:
 
 database:
   host: "localhost"
-  user: "youruser"
-  password: "yourpassword"
   dbname: "pavilion_db"
-  port: 5432
+  port: 26257
+  user: "root"
+  password: ""
   sslmode: "disable"
   timezone: "UTC"
+  pool:
+    maxIdleConns: 10
+    maxOpenConns: 100
+    connMaxLifetime: 1h  # Duration string format: "1h" for 1 hour, "30m" for 30 minutes, etc.
+
+  # Postgres
+  # user: "youruser"
+  # password: "yourpassword"
+  # port: 5432
 
 redis:
   addr: "localhost:6379"

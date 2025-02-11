@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/spf13/viper"
 )
@@ -33,6 +34,11 @@ type DatabaseConfig struct {
 	Port     int    `mapstructure:"port"`
 	Sslmode  string `mapstructure:"sslmode"`
 	Timezone string `mapstructure:"timezone"`
+	Pool     struct {
+		MaxIdleConns    int           `mapstructure:"maxIdleConns"`
+		MaxOpenConns    int           `mapstructure:"maxOpenConns"`
+		ConnMaxLifetime time.Duration `mapstructure:"connMaxLifetime"`
+	} `mapstructure:"pool"`
 }
 
 // RedisConfig contains Redis connection settings.

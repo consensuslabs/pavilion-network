@@ -1,9 +1,7 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
-	"io"
 	"mime/multipart"
 	"net/http"
 	"path/filepath"
@@ -242,21 +240,13 @@ func (a *App) handleVideoStatus(c *gin.Context) {
 
 // handleVideoTranscode handles the /video/transcode endpoint
 func (a *App) handleVideoTranscode(c *gin.Context) {
-	// Log raw request body for debugging
-	bodyBytes, err := io.ReadAll(c.Request.Body)
-	if err != nil {
-		a.logger.LogInfo("Error reading raw request body", map[string]interface{}{"error": err.Error()})
-	} else {
-		a.logger.LogInfo("Raw request body received", map[string]interface{}{"body": string(bodyBytes)})
-	}
-	// Restore the request body so that it can be read again by ShouldBindJSON
-	c.Request.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
-
 	var jsonInput struct {
 		CID string `json:"cid"`
 	}
 	if err := c.ShouldBindJSON(&jsonInput); err != nil {
-		a.logger.LogInfo("Invalid JSON input", map[string]interface{}{"error": err.Error()})
+		a.logger.LogInfo("Invalid JSON input", map[string]interface{}{
+			"error": err.Error(),
+		})
 		a.errorResponse(c, http.StatusBadRequest, "ERR_INVALID_JSON", "Invalid JSON input. Please provide cid in request body", err)
 		return
 	}

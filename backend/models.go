@@ -8,7 +8,7 @@ import (
 
 // User model definition.
 type User struct {
-	ID        uint      `gorm:"primaryKey" json:"id"`
+	ID        int64     `gorm:"primaryKey;autoIncrement:false;type:bigint;default:unique_rowid()" json:"id"`
 	Name      string    `json:"name"`
 	Email     string    `gorm:"unique" json:"email"`
 	CreatedAt time.Time `json:"createdAt"`
@@ -26,11 +26,9 @@ const (
 )
 
 // Video model definition.
-// fileId stores the unique identifier generated during upload.
-// Transcodes represents the one-to-many relation to the Transcode table.
 type Video struct {
-	ID           uint         `gorm:"primaryKey" json:"id"`
-	FileId       string       `json:"fileId"`
+	ID           int64        `gorm:"primaryKey;autoIncrement:false;type:bigint;default:unique_rowid()" json:"id"`
+	FileId       string       `gorm:"unique" json:"fileId"`
 	Title        string       `json:"title"`
 	Description  string       `json:"description"`
 	FilePath     string       `json:"filePath"`
@@ -87,8 +85,8 @@ const (
 
 // Transcode model definition.
 type Transcode struct {
-	ID          uint      `gorm:"primaryKey" json:"id"`
-	VideoID     uint      `json:"videoId"`
+	ID          int64     `gorm:"primaryKey;autoIncrement:false;type:bigint;default:unique_rowid()" json:"id"`
+	VideoID     int64     `json:"videoId"`
 	FilePath    string    `json:"filePath"`
 	FileCID     string    `gorm:"column:file_cid" json:"fileCid"`
 	Format      string    `json:"format"`      // "hls" or "mp4"
@@ -100,8 +98,8 @@ type Transcode struct {
 
 // TranscodeSegment model for transcoded HLS segments.
 type TranscodeSegment struct {
-	ID          uint      `gorm:"primaryKey" json:"id"`
-	TranscodeID uint      `json:"transcodeId"`
+	ID          int64     `gorm:"primaryKey;autoIncrement:false;type:bigint;default:unique_rowid()" json:"id"`
+	TranscodeID int64     `json:"transcodeId"`
 	FilePath    string    `json:"filePath"`
 	FileCID     string    `gorm:"column:file_cid" json:"fileCid"`
 	StorageType string    `json:"storageType"` // "ipfs" or "s3"
