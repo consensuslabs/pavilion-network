@@ -23,11 +23,6 @@ type VideoService struct {
 	config *Config
 }
 
-// AuthService handles authentication-related business logic
-type AuthService struct {
-	db *gorm.DB
-}
-
 // ProgressReader wraps an io.Reader to track read progress
 type ProgressReader struct {
 	reader     io.Reader
@@ -67,13 +62,6 @@ func NewVideoService(db *gorm.DB, ipfs *IPFSService, s3 *S3Service, config *Conf
 		ipfs:   ipfs,
 		s3:     s3,
 		config: config,
-	}
-}
-
-// NewAuthService creates a new auth service instance
-func NewAuthService(db *gorm.DB) *AuthService {
-	return &AuthService{
-		db: db,
 	}
 }
 
@@ -254,19 +242,4 @@ func (s *VideoService) GetVideoList() ([]Video, error) {
 	var videos []Video
 	err := s.db.Preload("Transcodes").Order("created_at desc").Find(&videos).Error
 	return videos, err
-}
-
-// Login handles user authentication
-func (s *AuthService) Login(email string) (*User, error) {
-	user := &User{
-		Name:      "Test User",
-		Email:     email,
-		CreatedAt: time.Now(),
-	}
-
-	if err := s.db.Create(user).Error; err != nil {
-		return nil, err
-	}
-
-	return user, nil
 }

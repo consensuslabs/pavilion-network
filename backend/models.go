@@ -6,14 +6,6 @@ import (
 	"gorm.io/gorm"
 )
 
-// User model definition.
-type User struct {
-	ID        int64     `gorm:"primaryKey;autoIncrement:false;type:bigint;default:unique_rowid()" json:"id"`
-	Name      string    `json:"name"`
-	Email     string    `gorm:"unique" json:"email"`
-	CreatedAt time.Time `json:"createdAt"`
-}
-
 // UploadStatus represents the video upload status
 type UploadStatus string
 

@@ -1,6 +1,3 @@
-// Note: This file is no longer needed as routes are now defined in app.go
-// in the setupRoutes method.
-
 package main
 
 import (
@@ -15,9 +12,6 @@ func SetupRoutes(router *gin.Engine, app *App) {
 
 	// Health check
 	router.GET("/health", app.handleHealthCheck)
-
-	// Auth routes
-	router.POST("/auth/login", app.handleLogin)
 
 	// Video routes
 	router.POST("/video/upload", app.handleVideoUpload)

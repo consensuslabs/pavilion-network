@@ -53,16 +53,6 @@ func (a *App) handleHealthCheck(c *gin.Context) {
 	a.successResponse(c, nil, "Health check successful")
 }
 
-// handleLogin handles the OAuth login endpoint
-func (a *App) handleLogin(c *gin.Context) {
-	user, err := a.auth.Login("test@example.com")
-	if err != nil {
-		a.errorResponse(c, http.StatusInternalServerError, "ERR_DB", "Failed to save user", err)
-		return
-	}
-	a.successResponse(c, gin.H{"user": user}, "OAuth login stub - token: dummy-token")
-}
-
 // validateVideoUpload validates the video upload request against configuration settings
 func (a *App) validateVideoUpload(file *multipart.FileHeader, title, description string) error {
 	// Check file size

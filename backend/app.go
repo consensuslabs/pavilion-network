@@ -5,8 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	// Import your models package
-
+	"github.com/consensuslabs/pavilion-network/backend/internal/auth"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
@@ -21,12 +20,12 @@ type App struct {
 	p2p          *P2P
 	router       *gin.Engine
 	video        *VideoService
-	auth         *AuthService
+	auth         *auth.Service
 	transcode    *TranscodeService
 	logger       *Logger
 	IPFSService  *IPFSService
 	VideoService *VideoService
-	AuthService  *AuthService
+	AuthService  *auth.Service
 	S3Service    *S3Service
 }
 
@@ -58,7 +57,7 @@ func NewApp(ctx context.Context, config *Config) (*App, error) {
 
 	// Initialize all services
 	videoService := NewVideoService(db, ipfs, s3Service, config)
-	authService := NewAuthService(db)
+	authService := auth.NewService(db)
 	transcodeService := NewTranscodeService(db, ipfs, s3Service, config, logger)
 
 	app := &App{
@@ -141,16 +140,17 @@ func (a *App) initP2P() error {
 func (a *App) initServices() {
 	// Initialize video service with S3Service
 	a.video = NewVideoService(a.db, a.ipfs, a.S3Service, a.Config)
-	a.auth = NewAuthService(a.db)
+	a.auth = auth.NewService(a.db)
 	a.transcode = NewTranscodeService(a.db, a.ipfs, a.S3Service, a.Config, a.logger)
 }
 
 func (a *App) setupRoutes() {
+	// Create auth handler
+	authHandler := auth.NewHandler(a.auth)
+	authHandler.RegisterRoutes(a.router)
+
 	// Health check
 	a.router.GET("/health", a.handleHealthCheck)
-
-	// Auth routes
-	a.router.POST("/auth/login", a.handleLogin)
 
 	// Video routes
 	a.router.POST("/video/upload", a.handleVideoUpload)

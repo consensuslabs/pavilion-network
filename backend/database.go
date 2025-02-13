@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/consensuslabs/pavilion-network/backend/internal/auth"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -71,7 +72,7 @@ func initDatabase(config *DatabaseConfig) (*gorm.DB, error) {
 	}
 
 	// Auto-migrate the schema
-	if err = db.AutoMigrate(&User{}, &Video{}, &Transcode{}, &TranscodeSegment{}); err != nil {
+	if err = db.AutoMigrate(&auth.User{}, &auth.RefreshToken{}, &Video{}, &Transcode{}, &TranscodeSegment{}); err != nil {
 		return nil, fmt.Errorf("auto migration failed: %v", err)
 	}
 
