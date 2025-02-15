@@ -3,7 +3,6 @@ package auth
 import (
 	"time"
 
-	"github.com/golang-jwt/jwt/v5"
 	"gorm.io/gorm"
 )
 
@@ -28,28 +27,6 @@ type RefreshToken struct {
 	ExpiresAt time.Time  `json:"expiresAt"`
 	CreatedAt time.Time  `json:"createdAt"`
 	RevokedAt *time.Time `json:"revokedAt,omitempty"`
-}
-
-// LoginRequest represents the login request payload
-type LoginRequest struct {
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required,min=8"`
-}
-
-// LoginResponse represents the login response
-type LoginResponse struct {
-	User         User   `json:"user"`
-	AccessToken  string `json:"accessToken"`
-	RefreshToken string `json:"refreshToken"`
-	TokenType    string `json:"tokenType"`
-	ExpiresIn    int    `json:"expiresIn"` // Seconds until the access token expires
-}
-
-// TokenClaims represents the JWT claims
-type TokenClaims struct {
-	UserID int64  `json:"userId"`
-	Email  string `json:"email"`
-	jwt.RegisteredClaims
 }
 
 // BeforeCreate hook for User model

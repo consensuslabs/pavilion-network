@@ -47,10 +47,10 @@ storage:
     host: "localhost:5001"
     gatewayURL: "https://ipfs.io/ipfs/"
   s3:
-    bucket: "octopus-doganbros-storage"
-    region: "eu-central-1"
-    accessKeyId: ""  # Will be loaded from env
-    secretAccessKey: ""  # Will be loaded from env
+    bucket: "octopus-doganbros-storage" # Will be loaded from env then from config.yaml
+    region: "eu-central-1" # Will be loaded from env then from config.yaml
+    accessKeyId: ""   # Will be loaded from env then from config.yaml
+    secretAccessKey: ""   # Will be loaded from env then from config.yaml
     directories:
       videoPost: "video-posts/"
       meetingRecording: "meeting-recordings/"
@@ -69,7 +69,7 @@ video:
   maxTitleLength: 100
   maxDescLength: 500
   allowedFormats:
-    - "mp4"
-    - "mov"
-    - "avi"
-    - "webm"
+    - ".mp4"
+    - ".mov"
+    - ".avi"
+    - ".webm"

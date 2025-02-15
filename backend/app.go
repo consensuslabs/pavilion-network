@@ -3,9 +3,11 @@ package main
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/consensuslabs/pavilion-network/backend/internal/auth"
+	"github.com/consensuslabs/pavilion-network/backend/internal/video"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
@@ -19,14 +21,13 @@ type App struct {
 	ipfs         *IPFSService
 	p2p          *P2P
 	router       *gin.Engine
-	video        *VideoService
 	auth         *auth.Service
 	transcode    *TranscodeService
 	logger       *Logger
 	IPFSService  *IPFSService
-	VideoService *VideoService
 	AuthService  *auth.Service
 	S3Service    *S3Service
+	videoHandler *video.VideoHandler
 }
 
 // NewApp creates a new application instance with all dependencies
@@ -52,29 +53,72 @@ func NewApp(ctx context.Context, config *Config) (*App, error) {
 		return nil, fmt.Errorf("failed to initialize S3 service: %v", err)
 	}
 
-	// Create router
-	router := gin.Default()
-
-	// Initialize all services
-	videoService := NewVideoService(db, ipfs, s3Service, config)
+	// Initialize auth service
 	authService := auth.NewService(db)
-	transcodeService := NewTranscodeService(db, ipfs, s3Service, config, logger)
 
+	// Create app instance
 	app := &App{
-		ctx:          ctx,
-		Config:       config,
-		db:           db,
-		router:       router,
-		ipfs:         ipfs,
-		S3Service:    s3Service,
-		video:        videoService,
-		VideoService: videoService,
-		auth:         authService,
-		AuthService:  authService,
-		transcode:    transcodeService,
-		logger:       logger,
-		IPFSService:  ipfs,
+		ctx:         ctx,
+		Config:      config,
+		db:          db,
+		ipfs:        ipfs,
+		logger:      logger,
+		IPFSService: ipfs,
+		S3Service:   s3Service,
+		auth:        authService,
 	}
+
+	// Initialize video service
+	videoService := video.NewService(db, ipfs, s3Service, &video.Config{
+		Storage: struct{ UploadDir string }{
+			UploadDir: config.Storage.UploadDir,
+		},
+		Video: struct {
+			MaxSize        int64
+			MinTitleLength int
+			MaxTitleLength int
+			MaxDescLength  int
+			AllowedFormats []string
+		}{
+			MaxSize:        config.Video.MaxSize,
+			MinTitleLength: config.Video.MinTitleLength,
+			MaxTitleLength: config.Video.MaxTitleLength,
+			MaxDescLength:  config.Video.MaxDescLength,
+			AllowedFormats: config.Video.AllowedFormats,
+		},
+	})
+
+	// Initialize video handler app context
+	videoApp := &video.App{
+		Config: &video.Config{
+			Storage: struct{ UploadDir string }{
+				UploadDir: config.Storage.UploadDir,
+			},
+			Video: struct {
+				MaxSize        int64
+				MinTitleLength int
+				MaxTitleLength int
+				MaxDescLength  int
+				AllowedFormats []string
+			}{
+				MaxSize:        config.Video.MaxSize,
+				MinTitleLength: config.Video.MinTitleLength,
+				MaxTitleLength: config.Video.MaxTitleLength,
+				MaxDescLength:  config.Video.MaxDescLength,
+				AllowedFormats: config.Video.AllowedFormats,
+			},
+		},
+		Logger:          logger,
+		Video:           videoService,
+		IPFS:            ipfs,
+		ResponseHandler: app,
+	}
+
+	// Initialize video handler
+	app.videoHandler = video.NewVideoHandler(videoApp)
+
+	// Initialize router
+	app.router = gin.Default()
 
 	// Setup routes
 	app.setupRoutes()
@@ -138,30 +182,24 @@ func (a *App) initP2P() error {
 }
 
 func (a *App) initServices() {
-	// Initialize video service with S3Service
-	a.video = NewVideoService(a.db, a.ipfs, a.S3Service, a.Config)
 	a.auth = auth.NewService(a.db)
 	a.transcode = NewTranscodeService(a.db, a.ipfs, a.S3Service, a.Config, a.logger)
 }
 
 func (a *App) setupRoutes() {
-	// Create auth handler
-	authHandler := auth.NewHandler(a.auth)
-	authHandler.RegisterRoutes(a.router)
+	// Static file serving
+	a.router.Static("/public", "../frontend/public")
+	a.router.Static("/uploads", a.Config.Storage.UploadDir)
 
 	// Health check
 	a.router.GET("/health", a.handleHealthCheck)
 
 	// Video routes
-	a.router.POST("/video/upload", a.handleVideoUpload)
-	a.router.GET("/video/watch", a.handleVideoWatch)
-	a.router.GET("/video/list", a.handleVideoList)
-	a.router.GET("/video/status/:fileId", a.handleVideoStatus)
-	a.router.POST("/video/transcode", a.handleVideoTranscode)
-
-	// Static file serving
-	a.router.Static("/public", "../frontend/public")
-	a.router.Static("/uploads", a.Config.Storage.UploadDir)
+	a.router.POST("/video/upload", a.videoHandler.HandleUpload)
+	a.router.GET("/video/watch", a.videoHandler.HandleWatch)
+	a.router.GET("/video/list", a.videoHandler.HandleList)
+	a.router.GET("/video/status/:fileId", a.videoHandler.HandleStatus)
+	a.router.POST("/video/transcode", a.videoHandler.HandleTranscode)
 }
 
 // Run starts the application
@@ -236,4 +274,42 @@ func (a *App) Shutdown() error {
 
 	a.logger.LogInfo("Application shutdown complete", nil)
 	return nil
+}
+
+// Add response handler methods to App
+func (a *App) SuccessResponse(c *gin.Context, data interface{}, message string) {
+	c.JSON(http.StatusOK, gin.H{
+		"success": true,
+		"data":    data,
+		"message": message,
+	})
+}
+
+func (a *App) ErrorResponse(c *gin.Context, status int, code, message string, err error) {
+	errMsg := ""
+	if err != nil {
+		errMsg = err.Error()
+	}
+
+	requestID, _ := c.Get("request_id")
+
+	c.JSON(status, gin.H{
+		"success": false,
+		"error": gin.H{
+			"code":       code,
+			"message":    message,
+			"details":    errMsg,
+			"request_id": requestID,
+		},
+	})
+
+	// Log error with request ID and context
+	a.logger.LogInfo(message, map[string]interface{}{
+		"request_id": requestID,
+		"code":       code,
+		"status":     status,
+	})
+	if err != nil {
+		a.logger.LogError(err, message)
+	}
 }

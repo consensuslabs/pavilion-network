@@ -1,0 +1,34 @@
+services:
+
+  cockroachdb-1:
+    image: cockroachdb/cockroach:v22.1.12
+    command: start-single-node --insecure
+    ports:
+      - "26257:26257"
+      - "8082:8080"
+    volumes:
+      - cockroach_data_1:/cockroach/cockroach-data
+
+  redis:
+    image: redis
+    container_name: pavilion-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  ipfs:
+    image: ipfs/go-ipfs
+    container_name: pavilion-ipfs
+    ports:
+      - "4001:4001" # Swarm port
+      - "5001:5001" # API port
+      - "8081:8080" # Gateway port
+    volumes:
+      - ipfs_data:/data/ipfs
+
+volumes:
+  # pgdata:
+  cockroach_data_1:
+  redis_data:
+  ipfs_data:

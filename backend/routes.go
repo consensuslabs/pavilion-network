@@ -14,9 +14,10 @@ func SetupRoutes(router *gin.Engine, app *App) {
 	router.GET("/health", app.handleHealthCheck)
 
 	// Video routes
-	router.POST("/video/upload", app.handleVideoUpload)
-	router.GET("/video/watch", app.handleVideoWatch)
-	router.GET("/video/list", app.handleVideoList)
-	router.GET("/video/status/:fileId", app.handleVideoStatus)
-	router.POST("/video/transcode", app.handleVideoTranscode)
+	videoHandler := app.videoHandler
+	router.POST("/video/upload", videoHandler.HandleUpload)
+	router.GET("/video/watch", videoHandler.HandleWatch)
+	router.GET("/video/list", videoHandler.HandleList)
+	router.GET("/video/status/:fileId", videoHandler.HandleStatus)
+	router.POST("/video/transcode", videoHandler.HandleTranscode)
 }

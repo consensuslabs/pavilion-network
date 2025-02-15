@@ -139,10 +139,10 @@ func LoadConfig(path string) (*Config, error) {
 	}
 
 	// Get values from .env file
-	accessKeyID := v.GetString("S3_ACCESS_KEY_ID")
-	secretAccessKey := v.GetString("S3_SECRET_ACCESS_KEY")
-	region := v.GetString("S3_REGION")
-	bucket := v.GetString("S3_BUCKET_NAME")
+	envAccessKeyID := v.GetString("S3_ACCESS_KEY_ID")
+	envSecretAccessKey := v.GetString("S3_SECRET_ACCESS_KEY")
+	envRegion := v.GetString("S3_REGION")
+	envBucket := v.GetString("S3_BUCKET_NAME")
 
 	// Create a new Viper instance for yaml config
 	v = viper.New()
@@ -154,11 +154,19 @@ func LoadConfig(path string) (*Config, error) {
 		return nil, fmt.Errorf("error reading config file: %v", err)
 	}
 
-	// Set S3 values from .env
-	v.Set("storage.s3.accessKeyId", accessKeyID)
-	v.Set("storage.s3.secretAccessKey", secretAccessKey)
-	v.Set("storage.s3.region", region)
-	v.Set("storage.s3.bucket", bucket)
+	// Set S3 values from .env if present, otherwise keep config.yml values
+	if envAccessKeyID != "" {
+		v.Set("storage.s3.accessKeyId", envAccessKeyID)
+	}
+	if envSecretAccessKey != "" {
+		v.Set("storage.s3.secretAccessKey", envSecretAccessKey)
+	}
+	if envRegion != "" {
+		v.Set("storage.s3.region", envRegion)
+	}
+	if envBucket != "" {
+		v.Set("storage.s3.bucket", envBucket)
+	}
 
 	// Debug: Print configuration values
 	fmt.Printf("Configuration Values:\n")
@@ -172,9 +180,9 @@ func LoadConfig(path string) (*Config, error) {
 		return nil, fmt.Errorf("unable to decode config into struct: %v", err)
 	}
 
-	// Verify S3 credentials are present
+	// Verify that at least one source (env or config) provides S3 credentials
 	if config.Storage.S3.AccessKeyId == "" || config.Storage.S3.SecretAccessKey == "" {
-		return nil, fmt.Errorf("S3 credentials are missing. Please check your environment variables")
+		return nil, fmt.Errorf("S3 credentials are missing. Please check your environment variables or config file")
 	}
 
 	return config, nil
