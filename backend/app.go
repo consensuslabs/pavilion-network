@@ -3,13 +3,13 @@ package main
 import (
 	"context"
 	"fmt"
-	"net/http"
 	"time"
 
 	"github.com/consensuslabs/pavilion-network/backend/internal/auth"
 	"github.com/consensuslabs/pavilion-network/backend/internal/cache"
 	"github.com/consensuslabs/pavilion-network/backend/internal/config"
 	"github.com/consensuslabs/pavilion-network/backend/internal/database"
+	"github.com/consensuslabs/pavilion-network/backend/internal/health"
 	httpHandler "github.com/consensuslabs/pavilion-network/backend/internal/http"
 	"github.com/consensuslabs/pavilion-network/backend/internal/logger"
 	"github.com/consensuslabs/pavilion-network/backend/internal/video"
@@ -19,19 +19,21 @@ import (
 
 // App holds all application dependencies
 type App struct {
-	ctx          context.Context
-	Config       *config.Config
-	db           *gorm.DB
-	dbService    database.Service
-	cache        cache.Service
-	ipfs         *IPFSService
-	router       *gin.Engine
-	auth         *auth.Service
-	logger       logger.Logger
-	IPFSService  *IPFSService
-	AuthService  *auth.Service
-	S3Service    *S3Service
-	videoHandler *video.VideoHandler
+	ctx           context.Context
+	Config        *config.Config
+	db            *gorm.DB
+	dbService     database.Service
+	cache         cache.Service
+	ipfs          *IPFSService
+	router        *gin.Engine
+	auth          *auth.Service
+	logger        logger.Logger
+	IPFSService   *IPFSService
+	AuthService   *auth.Service
+	S3Service     *S3Service
+	videoHandler  *video.VideoHandler
+	healthHandler *health.Handler
+	httpHandler   httpHandler.ResponseHandler
 }
 
 // NewApp creates a new application instance
@@ -40,6 +42,9 @@ func NewApp(ctx context.Context, cfg *config.Config) (*App, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize logger: %v", err)
 	}
+
+	// Initialize response handler
+	responseHandler := httpHandler.NewResponseHandler(loggerService)
 
 	// Initialize database service
 	dbService := database.NewDatabaseService(&cfg.Database, loggerService)
@@ -79,6 +84,9 @@ func NewApp(ctx context.Context, cfg *config.Config) (*App, error) {
 	// Initialize router
 	router := gin.Default()
 
+	// Initialize health handler
+	healthHandler := health.NewHandler(responseHandler)
+
 	// Initialize video app context
 	videoApp := &video.App{
 		Config: &video.Config{
@@ -103,34 +111,28 @@ func NewApp(ctx context.Context, cfg *config.Config) (*App, error) {
 		},
 		Logger:          loggerService,
 		IPFS:            ipfsService,
-		ResponseHandler: nil, // Will be set after app creation
+		ResponseHandler: responseHandler,
 	}
 
 	// Initialize video handler
 	videoHandler := video.NewVideoHandler(videoApp)
 
 	app := &App{
-		ctx:          ctx,
-		Config:       cfg,
-		db:           db,
-		dbService:    dbService,
-		cache:        cacheService,
-		ipfs:         ipfsService,
-		router:       router,
-		auth:         authService,
-		logger:       loggerService,
-		IPFSService:  ipfsService,
-		AuthService:  authService,
-		S3Service:    s3Service,
-		videoHandler: videoHandler,
-	}
-
-	// Set the response handler for video app
-	videoApp.ResponseHandler = app
-
-	// Initialize P2P
-	if err := app.initP2P(); err != nil {
-		return nil, fmt.Errorf("failed to initialize P2P: %v", err)
+		ctx:           ctx,
+		Config:        cfg,
+		db:            db,
+		dbService:     dbService,
+		cache:         cacheService,
+		ipfs:          ipfsService,
+		router:        router,
+		auth:          authService,
+		logger:        loggerService,
+		IPFSService:   ipfsService,
+		AuthService:   authService,
+		S3Service:     s3Service,
+		videoHandler:  videoHandler,
+		healthHandler: healthHandler,
+		httpHandler:   responseHandler,
 	}
 
 	return app, nil
@@ -195,7 +197,7 @@ func (a *App) setupRoutes() error {
 	}
 
 	// Health check
-	a.router.GET("/health", a.handleHealthCheck)
+	a.router.GET("/health", a.healthHandler.HandleHealthCheck)
 
 	// Video routes
 	a.router.POST("/video/upload", a.videoHandler.HandleUpload)
@@ -275,42 +277,4 @@ func (a *App) Shutdown() error {
 
 	a.logger.LogInfo("Application shutdown complete", nil)
 	return nil
-}
-
-// Add response handler methods to App
-func (a *App) SuccessResponse(c *gin.Context, data interface{}, message string) {
-	c.JSON(http.StatusOK, gin.H{
-		"success": true,
-		"data":    data,
-		"message": message,
-	})
-}
-
-func (a *App) ErrorResponse(c *gin.Context, status int, code, message string, err error) {
-	errMsg := ""
-	if err != nil {
-		errMsg = err.Error()
-	}
-
-	requestID, _ := c.Get("request_id")
-
-	c.JSON(status, gin.H{
-		"success": false,
-		"error": gin.H{
-			"code":       code,
-			"message":    message,
-			"details":    errMsg,
-			"request_id": requestID,
-		},
-	})
-
-	// Log error with request ID and context
-	a.logger.LogInfo(message, map[string]interface{}{
-		"request_id": requestID,
-		"code":       code,
-		"status":     status,
-	})
-	if err != nil {
-		a.logger.LogError(err, message)
-	}
 }

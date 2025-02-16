@@ -11,7 +11,7 @@ func SetupRoutes(router *gin.Engine, app *App) {
 	router.Static("/uploads", app.Config.Storage.UploadDir)
 
 	// Health check
-	router.GET("/health", app.handleHealthCheck)
+	router.GET("/health", app.healthHandler.HandleHealthCheck)
 
 	// Video routes
 	videoHandler := app.videoHandler
