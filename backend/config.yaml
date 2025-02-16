@@ -32,7 +32,8 @@ logging:
   level: "debug"
 
 ffmpeg:
-  path: "ffmpeg"
+  path: "/usr/local/bin/ffmpeg"
+  probePath: "/usr/local/bin/ffprobe"
   videoCodec: "libx264"
   audioCodec: "copy"
   preset: "fast"
@@ -42,26 +43,23 @@ ffmpeg:
 # ... other configurations ...
 
 storage:
-  uploadDir: "uploads" # Keep this for now, but it will be less important
+  uploadDir: "uploads"
+  tempDir: "temp"
   ipfs:
-    host: "localhost:5001"
-    gatewayURL: "https://ipfs.io/ipfs/"
+    apiAddress: "/ip4/127.0.0.1/tcp/5001"
+    gateway: "http://localhost:8080"
   s3:
-    bucket: "octopus-doganbros-storage" # Will be loaded from env then from config.yaml
-    region: "eu-central-1" # Will be loaded from env then from config.yaml
-    accessKeyId: ""   # Will be loaded from env then from config.yaml
-    secretAccessKey: ""   # Will be loaded from env then from config.yaml
+    endpoint: "s3.amazonaws.com"
+    bucket: "octopus-doganbros-storage"
+    region: "eu-central-1"
+    accessKeyId: ""
+    secretAccessKey: ""
+    useSSL: true
     directories:
       videoPost: "video-posts/"
       meetingRecording: "meeting-recordings/"
       chatAttachments: "chat-attachments/"
       profilePhoto: "profile-photos/"
-
-# ... other configurations ...
-
-p2p:
-  port: 6000
-  rendezvous: "pavilion-network" 
 
 video:
   maxSize: 104857600  # 100MB in bytes

@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -8,14 +9,78 @@
     <link href="css/styles.css" rel="stylesheet" />
     <style>
         /* Fallback styles in case CSS doesn't load */
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        .api-row { margin: 10px 0; }
-        textarea { width: 100%; min-height: 100px; margin: 10px 0; }
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+
+        .api-row {
+            margin: 10px 0;
+        }
+
+        textarea {
+            width: 100%;
+            min-height: 100px;
+            margin: 10px 0;
+        }
+
+        .phase-progress {
+            margin: 15px 0;
+            padding: 10px;
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+
+        .phase-progress h4 {
+            margin: 0 0 10px 0;
+            color: #333;
+        }
+
+        .progress-details {
+            margin-left: 15px;
+        }
+
+        .progress-details p {
+            margin: 5px 0;
+            font-size: 14px;
+        }
+
+        .status-container {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 8px;
+            background: #fff;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .status-badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .status-container.status-completed .status-badge {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .status-container.status-failed .status-badge {
+            background: #f44336;
+            color: white;
+        }
+
+        .status-container.status-pending .status-badge {
+            background: #FFC107;
+            color: black;
+        }
     </style>
 </head>
+
 <body>
     <h1>Pavilion Network MVP - Test Interface</h1>
-    
+
     <div class="tab">
         <button class="tablinks" onclick="openTab(event, 'User')" id="defaultOpen">User APIs</button>
         <button class="tablinks" onclick="openTab(event, 'Video')">Video APIs</button>
@@ -71,6 +136,30 @@
             </div>
             <div class="status-details">
                 <p><strong>File Size:</strong> <span id="statusFileSize">-</span></p>
+                <p><strong>Current Phase:</strong> <span id="currentPhase">-</span></p>
+                <p><strong>Total Progress:</strong> <span id="totalProgress">0%</span></p>
+
+                <!-- IPFS Progress -->
+                <div id="ipfsProgress" class="phase-progress">
+                    <h4>IPFS Upload</h4>
+                    <div class="progress-details">
+                        <p>Progress: <span id="ipfsPercentage">0%</span></p>
+                        <p>Uploaded: <span id="ipfsBytesUploaded">-</span></p>
+                        <p>Duration: <span id="ipfsDuration">-</span></p>
+                    </div>
+                </div>
+
+                <!-- S3 Progress -->
+                <div id="s3Progress" class="phase-progress">
+                    <h4>S3 Upload</h4>
+                    <div class="progress-details">
+                        <p>Progress: <span id="s3Percentage">0%</span></p>
+                        <p>Uploaded: <span id="s3BytesUploaded">-</span></p>
+                        <p>Duration: <span id="s3Duration">-</span></p>
+                    </div>
+                </div>
+
+                <p><strong>Estimated Duration:</strong> <span id="estimatedDuration">-</span></p>
                 <p><strong>IPFS CID:</strong> <span id="statusIpfsCid">-</span></p>
                 <p><strong>Last Updated:</strong> <span id="statusUpdatedAt">-</span></p>
             </div>
@@ -175,8 +264,10 @@
         // Log resource loading
         debugLog('Starting script loading...');
     </script>
-    <script src="js/utils.js" onerror="debugLog('Failed to load utils.js')" onload="debugLog('utils.js loaded successfully')"></script>
-    <script src="js/video.js" onerror="debugLog('Failed to load video.js')" onload="debugLog('video.js loaded successfully')"></script>
+    <script src="js/utils.js" onerror="debugLog('Failed to load utils.js')"
+        onload="debugLog('utils.js loaded successfully')"></script>
+    <script src="js/video.js" onerror="debugLog('Failed to load video.js')"
+        onload="debugLog('video.js loaded successfully')"></script>
     <script>
         // Social API
         function socialAction() {
@@ -265,4 +356,5 @@
         });
     </script>
 </body>
+
 </html>

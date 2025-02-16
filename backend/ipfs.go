@@ -5,21 +5,22 @@ import (
 	"io"
 	"os"
 
+	"github.com/consensuslabs/pavilion-network/backend/internal/config"
 	"github.com/google/uuid"
 	shell "github.com/ipfs/go-ipfs-api"
 )
 
-// IPFSService handles all IPFS-related operations
+// IPFSService handles IPFS operations
 type IPFSService struct {
-	shell *shell.Shell
-	host  string
+	shell      *shell.Shell
+	gatewayURL string
 }
 
 // NewIPFSService creates a new IPFS service instance
-func NewIPFSService(config *Config) *IPFSService {
+func NewIPFSService(cfg *config.Config) *IPFSService {
 	return &IPFSService{
-		shell: shell.NewShell(config.IPFS.Host),
-		host:  config.IPFS.GatewayURL,
+		shell:      shell.NewShell(cfg.Storage.IPFS.APIAddress),
+		gatewayURL: cfg.Storage.IPFS.Gateway,
 	}
 }
 
@@ -72,7 +73,7 @@ func (s *IPFSService) DownloadFile(cid string) (string, error) {
 
 // GetGatewayURL returns the IPFS gateway URL for a given CID
 func (s *IPFSService) GetGatewayURL(cid string) string {
-	return s.host + cid
+	return s.gatewayURL + cid
 }
 
 // Close closes any open IPFS connections and resources

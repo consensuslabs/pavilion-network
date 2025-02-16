@@ -17,50 +17,63 @@ function updateProgressBar(percent) {
 }
 
 function updateUploadStatus(fileId) {
+    console.log('Checking status for fileId:', fileId);
     fetch(`/video/status/${fileId}`)
         .then(res => res.json())
         .then(data => {
+            console.log('Status response:', data);
             if (data.data) {
                 const status = data.data;
+                console.log('Current status:', status.status, 'Phase:', status.currentPhase);
+
                 const statusContainer = document.getElementById('uploadStatus');
                 const progressContainer = document.getElementById('uploadProgress');
-                
-                // Only show status container for completed or failed states
+
+                // Show status container for all states
+                statusContainer.style.display = 'block';
+                statusContainer.className = `status-container status-${status.status}`;
+
+                // Update basic information
+                document.getElementById('statusText').textContent = status.status;
+                document.getElementById('statusMessage').textContent = status.errorMessage || status.status;
+                document.getElementById('statusFileSize').textContent = formatFileSize(status.fileSize);
+                document.getElementById('currentPhase').textContent = status.currentPhase || '-';
+                document.getElementById('totalProgress').textContent = `${Math.round(status.totalProgress)}%`;
+                document.getElementById('estimatedDuration').textContent = status.estimatedDuration || '-';
+                document.getElementById('statusIpfsCid').textContent = status.ipfsCid || '-';
+                document.getElementById('statusUpdatedAt').textContent = new Date().toLocaleString();
+
+                // Update IPFS progress
+                if (status.ipfsProgress) {
+                    document.getElementById('ipfsProgress').style.display = 'block';
+                    document.getElementById('ipfsPercentage').textContent = `${Math.round(status.ipfsProgress.percentage)}%`;
+                    document.getElementById('ipfsBytesUploaded').textContent = formatFileSize(status.ipfsProgress.bytesUploaded);
+                    document.getElementById('ipfsDuration').textContent = status.ipfsProgress.duration || 'In progress';
+                    console.log('IPFS Progress:', status.ipfsProgress.percentage + '%');
+                } else {
+                    document.getElementById('ipfsProgress').style.display = 'none';
+                }
+
+                // Update S3 progress
+                if (status.s3Progress) {
+                    document.getElementById('s3Progress').style.display = 'block';
+                    document.getElementById('s3Percentage').textContent = `${Math.round(status.s3Progress.percentage)}%`;
+                    document.getElementById('s3BytesUploaded').textContent = formatFileSize(status.s3Progress.bytesUploaded);
+                    document.getElementById('s3Duration').textContent = status.s3Progress.duration || 'In progress';
+                    console.log('S3 Progress:', status.s3Progress.percentage + '%');
+                } else {
+                    document.getElementById('s3Progress').style.display = 'none';
+                }
+
+                // Update overall progress bar
+                updateProgressBar(status.totalProgress);
+                console.log('Total Progress:', status.totalProgress + '%');
+
+                // Stop polling if completed or failed
                 if (['completed', 'failed'].includes(status.status)) {
-                    // Stop polling
+                    console.log('Upload finished with status:', status.status);
                     clearInterval(uploadStatusCheckInterval);
                     uploadStatusCheckInterval = null;
-
-                    // Hide progress bar
-                    progressContainer.style.display = 'none';
-
-                    // Show final status
-                    statusContainer.style.display = 'block';
-                    statusContainer.className = `status-container status-${status.status}`;
-
-                    document.getElementById('statusText').textContent = status.status;
-                    document.getElementById('statusMessage').textContent = status.message || '-';
-                    document.getElementById('statusFileSize').textContent = formatFileSize(status.fileSize);
-                    document.getElementById('statusIpfsCid').textContent = status.ipfsCid || '-';
-                    document.getElementById('statusUpdatedAt').textContent = new Date(status.updatedAt).toLocaleString();
-                } else {
-                    statusContainer.style.display = 'none';
-                }
-
-                // Extract progress percentage from status message if available
-                let progress = 0;
-                if (status.message) {
-                    const match = status.message.match(/(\d+(\.\d+)?)%/);
-                    if (match) {
-                        progress = parseFloat(match[1]);
-                    }
-                }
-
-                // Update progress bar based on status
-                if (status.status === 'uploading') {
-                    updateProgressBar(progress);
-                } else if (status.status === 'completed') {
-                    updateProgressBar(100);
                 }
             }
         })
@@ -83,7 +96,7 @@ function initVideoUpload() {
 
     // Add file input change handler for instant feedback
     const fileInput = document.getElementById("videoFile");
-    fileInput.addEventListener('change', function(e) {
+    fileInput.addEventListener('change', function (e) {
         const file = e.target.files[0];
         if (file) {
             if (file.size > MAX_FILE_SIZE) {
@@ -143,7 +156,7 @@ function initVideoUpload() {
         xhr.open('POST', '/video/upload', true);
 
         // Add upload progress handler
-        xhr.upload.onprogress = function(e) {
+        xhr.upload.onprogress = function (e) {
             if (e.lengthComputable) {
                 const percent = (e.loaded / e.total) * 100;
                 console.log(`Upload progress: ${percent.toFixed(2)}%`);
@@ -152,20 +165,20 @@ function initVideoUpload() {
         };
 
         // Add upload start handler
-        xhr.upload.onloadstart = function() {
+        xhr.upload.onloadstart = function () {
             console.log('Upload started');
             progressContainer.style.display = 'block';
             updateProgressBar(0);
         };
 
         // Add upload complete handler
-        xhr.upload.onload = function() {
+        xhr.upload.onload = function () {
             console.log('Upload completed');
             updateProgressBar(100);
         };
 
         // Add upload error handler
-        xhr.upload.onerror = function() {
+        xhr.upload.onerror = function () {
             console.error('Upload failed');
             progressContainer.style.display = 'none';
             if (statusContainer) {
@@ -181,15 +194,22 @@ function initVideoUpload() {
             if (xhr.status === 200) {
                 try {
                     const response = JSON.parse(xhr.responseText);
-                    console.log('Upload response:', response);
+                    console.log('Full upload response:', JSON.stringify(response, null, 2));
                     displayResult("uploadResult", response);
-                    if (response.data && response.data.video && response.data.video.fileId) {
-                        // Start checking upload status immediately
-                        updateUploadStatus(response.data.video.fileId);
-                        // Set interval to check status every 1 second
-                        uploadStatusCheckInterval = setInterval(() => {
-                            updateUploadStatus(response.data.video.fileId);
-                        }, 1000);
+                    if (response.data) {
+                        console.log('Response data:', response.data);
+                        const fileId = response.data.fileId || response.data.tempFileId;
+                        if (fileId) {
+                            console.log('Starting status check for fileId:', fileId);
+                            // Start checking upload status immediately
+                            updateUploadStatus(fileId);
+                            // Set interval to check status every 1 second
+                            uploadStatusCheckInterval = setInterval(() => {
+                                updateUploadStatus(fileId);
+                            }, 1000);
+                        } else {
+                            console.error('No fileId found in response:', response);
+                        }
                     }
                 } catch (err) {
                     console.error('Error parsing response:', err);
@@ -199,6 +219,7 @@ function initVideoUpload() {
                 console.error('Upload failed:', xhr.statusText);
                 try {
                     const errorResponse = JSON.parse(xhr.responseText);
+                    console.error('Error response:', errorResponse);
                     if (errorResponse.error) {
                         handleError("uploadResult", new Error(errorResponse.error.message || errorResponse.error));
                         progressContainer.style.display = 'none';
@@ -226,22 +247,22 @@ function transcodeVideo() {
     console.log('transcodeVideo function called');
     const transcodeOption = document.querySelector('input[name="transcodeOption"]:checked').value;
     console.log('Selected transcode option:', transcodeOption);
-    
+
     if (transcodeOption === "cid") {
         const cid = document.getElementById("transcodeCIDInput").value.trim();
         console.log('Input CID value:', cid);
-        
+
         if (!cid) {
             console.log('No CID provided, showing alert');
             alert("Please enter a CID for transcoding.");
             return;
         }
-        
+
         const payload = { cid: cid };
         console.log('Preparing transcode request with payload:', payload);
         const jsonBody = JSON.stringify(payload);
         console.log('Request JSON body:', jsonBody);
-        
+
         fetch("/video/transcode", {
             method: "POST",
             headers: {
@@ -250,33 +271,33 @@ function transcodeVideo() {
             },
             body: jsonBody
         })
-        .then(response => {
-            console.log('Response status:', response.status);
-            console.log('Response headers:', response.headers);
-            return response.text().then(text => {
-                try {
-                    console.log('Raw response text:', text);
-                    const data = JSON.parse(text);
-                    console.log('Parsed response data:', data);
-                    if (!response.ok) {
-                        throw data;
+            .then(response => {
+                console.log('Response status:', response.status);
+                console.log('Response headers:', response.headers);
+                return response.text().then(text => {
+                    try {
+                        console.log('Raw response text:', text);
+                        const data = JSON.parse(text);
+                        console.log('Parsed response data:', data);
+                        if (!response.ok) {
+                            throw data;
+                        }
+                        return data;
+                    } catch (e) {
+                        console.error('JSON parse error:', e);
+                        throw new Error('Invalid JSON response: ' + text);
                     }
-                    return data;
-                } catch (e) {
-                    console.error('JSON parse error:', e);
-                    throw new Error('Invalid JSON response: ' + text);
-                }
+                });
+            })
+            .then(data => {
+                console.log('Successfully processed response data:', data);
+                displayResult("transcodeResult", data);
+            })
+            .catch(error => {
+                console.error('Transcode error:', error);
+                console.error('Error details:', error);
+                handleError("transcodeResult", error);
             });
-        })
-        .then(data => {
-            console.log('Successfully processed response data:', data);
-            displayResult("transcodeResult", data);
-        })
-        .catch(error => {
-            console.error('Transcode error:', error);
-            console.error('Error details:', error);
-            handleError("transcodeResult", error);
-        });
     } else {
         console.log('Invalid transcode option, showing alert');
         alert("Please upload your video first using the upload form, then use the returned CID for transcoding.");
@@ -316,12 +337,12 @@ function displayTranscodedVideos(videos) {
 
         const details = document.createElement('div');
         details.className = 'video-details';
-        
+
         // Create status badge
         const statusBadge = document.createElement('span');
         statusBadge.className = `status-badge ${video.uploadStatus}`;
         statusBadge.textContent = video.uploadStatus;
-        
+
         details.innerHTML = `
             <p><strong>Status:</strong> ${statusBadge.outerHTML}</p>
             <p><strong>File Size:</strong> ${formatFileSize(video.fileSize)}</p>

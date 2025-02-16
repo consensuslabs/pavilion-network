@@ -7,6 +7,11 @@ import (
 	"time"
 
 	"github.com/consensuslabs/pavilion-network/backend/internal/auth"
+	"github.com/consensuslabs/pavilion-network/backend/internal/cache"
+	"github.com/consensuslabs/pavilion-network/backend/internal/config"
+	"github.com/consensuslabs/pavilion-network/backend/internal/database"
+	httpHandler "github.com/consensuslabs/pavilion-network/backend/internal/http"
+	"github.com/consensuslabs/pavilion-network/backend/internal/logger"
 	"github.com/consensuslabs/pavilion-network/backend/internal/video"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -15,40 +20,55 @@ import (
 // App holds all application dependencies
 type App struct {
 	ctx          context.Context
-	Config       *Config
+	Config       *config.Config
 	db           *gorm.DB
-	cache        *RedisClient
+	dbService    database.Service
+	cache        cache.Service
 	ipfs         *IPFSService
-	p2p          *P2P
 	router       *gin.Engine
 	auth         *auth.Service
-	transcode    *TranscodeService
-	logger       *Logger
+	logger       logger.Logger
 	IPFSService  *IPFSService
 	AuthService  *auth.Service
 	S3Service    *S3Service
 	videoHandler *video.VideoHandler
 }
 
-// NewApp creates a new application instance with all dependencies
-func NewApp(ctx context.Context, config *Config) (*App, error) {
-	// Initialize logger
-	logger, err := NewLogger(config.Logging)
+// NewApp creates a new application instance
+func NewApp(ctx context.Context, cfg *config.Config) (*App, error) {
+	loggerService, err := logger.NewService(&cfg.Logging)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize logger: %v", err)
 	}
 
-	// Initialize database
-	db, err := initDatabase(&config.Database)
+	// Initialize database service
+	dbService := database.NewDatabaseService(&cfg.Database, loggerService)
+	db, err := dbService.Connect()
 	if err != nil {
-		return nil, fmt.Errorf("failed to setup database: %v", err)
+		return nil, fmt.Errorf("failed to connect to database: %v", err)
+	}
+
+	// Initialize cache service
+	redisConfig := &cache.Config{
+		Addr:     cfg.Redis.Addr,
+		Password: cfg.Redis.Password,
+		DB:       cfg.Redis.DB,
+	}
+	cacheService, err := cache.NewRedisService(redisConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize Redis service: %v", err)
 	}
 
 	// Initialize IPFS service
-	ipfs := NewIPFSService(config)
+	ipfsService := NewIPFSService(cfg)
 
 	// Initialize S3 service
-	s3Service, err := NewS3Service(config)
+	s3Config := &config.Config{
+		Storage: config.StorageConfig{
+			S3: cfg.Storage.S3,
+		},
+	}
+	s3Service, err := NewS3Service(s3Config)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize S3 service: %v", err)
 	}
@@ -56,43 +76,14 @@ func NewApp(ctx context.Context, config *Config) (*App, error) {
 	// Initialize auth service
 	authService := auth.NewService(db)
 
-	// Create app instance
-	app := &App{
-		ctx:         ctx,
-		Config:      config,
-		db:          db,
-		ipfs:        ipfs,
-		logger:      logger,
-		IPFSService: ipfs,
-		S3Service:   s3Service,
-		auth:        authService,
-	}
+	// Initialize router
+	router := gin.Default()
 
-	// Initialize video service
-	videoService := video.NewService(db, ipfs, s3Service, &video.Config{
-		Storage: struct{ UploadDir string }{
-			UploadDir: config.Storage.UploadDir,
-		},
-		Video: struct {
-			MaxSize        int64
-			MinTitleLength int
-			MaxTitleLength int
-			MaxDescLength  int
-			AllowedFormats []string
-		}{
-			MaxSize:        config.Video.MaxSize,
-			MinTitleLength: config.Video.MinTitleLength,
-			MaxTitleLength: config.Video.MaxTitleLength,
-			MaxDescLength:  config.Video.MaxDescLength,
-			AllowedFormats: config.Video.AllowedFormats,
-		},
-	})
-
-	// Initialize video handler app context
+	// Initialize video app context
 	videoApp := &video.App{
 		Config: &video.Config{
 			Storage: struct{ UploadDir string }{
-				UploadDir: config.Storage.UploadDir,
+				UploadDir: cfg.Storage.UploadDir,
 			},
 			Video: struct {
 				MaxSize        int64
@@ -101,42 +92,62 @@ func NewApp(ctx context.Context, config *Config) (*App, error) {
 				MaxDescLength  int
 				AllowedFormats []string
 			}{
-				MaxSize:        config.Video.MaxSize,
-				MinTitleLength: config.Video.MinTitleLength,
-				MaxTitleLength: config.Video.MaxTitleLength,
-				MaxDescLength:  config.Video.MaxDescLength,
-				AllowedFormats: config.Video.AllowedFormats,
+				MaxSize:        cfg.Video.MaxSize,
+				MinTitleLength: cfg.Video.MinTitleLength,
+				MaxTitleLength: cfg.Video.MaxTitleLength,
+				MaxDescLength:  cfg.Video.MaxDescLength,
+				AllowedFormats: cfg.Video.AllowedFormats,
 			},
+			TempDir: cfg.Storage.TempDir,
+			Ffmpeg:  cfg.Ffmpeg,
 		},
-		Logger:          logger,
-		Video:           videoService,
-		IPFS:            ipfs,
-		ResponseHandler: app,
+		Logger:          loggerService,
+		IPFS:            ipfsService,
+		ResponseHandler: nil, // Will be set after app creation
 	}
 
 	// Initialize video handler
-	app.videoHandler = video.NewVideoHandler(videoApp)
+	videoHandler := video.NewVideoHandler(videoApp)
 
-	// Initialize router
-	app.router = gin.Default()
+	app := &App{
+		ctx:          ctx,
+		Config:       cfg,
+		db:           db,
+		dbService:    dbService,
+		cache:        cacheService,
+		ipfs:         ipfsService,
+		router:       router,
+		auth:         authService,
+		logger:       loggerService,
+		IPFSService:  ipfsService,
+		AuthService:  authService,
+		S3Service:    s3Service,
+		videoHandler: videoHandler,
+	}
 
-	// Setup routes
-	app.setupRoutes()
+	// Set the response handler for video app
+	videoApp.ResponseHandler = app
+
+	// Initialize P2P
+	if err := app.initP2P(); err != nil {
+		return nil, fmt.Errorf("failed to initialize P2P: %v", err)
+	}
 
 	return app, nil
 }
 
 func (a *App) initConfig() error {
-	config, err := LoadConfig(".")
+	configService := config.NewConfigService(a.logger)
+	cfg, err := configService.Load(".")
 	if err != nil {
 		return fmt.Errorf("failed to load config: %v", err)
 	}
-	a.Config = config
+	a.Config = cfg
 	return nil
 }
 
 func (a *App) initDatabase() error {
-	db, err := initDatabase(&a.Config.Database)
+	db, err := a.dbService.Connect()
 	if err != nil {
 		return fmt.Errorf("failed to initialize database: %v", err)
 	}
@@ -145,11 +156,15 @@ func (a *App) initDatabase() error {
 }
 
 func (a *App) initCache() error {
-	cache, err := initRedis(a.Config.Redis)
+	cacheService, err := cache.NewRedisService(&cache.Config{
+		Addr:     a.Config.Redis.Addr,
+		Password: a.Config.Redis.Password,
+		DB:       a.Config.Redis.DB,
+	})
 	if err != nil {
-		return fmt.Errorf("failed to initialize Redis: %v", err)
+		return fmt.Errorf("failed to initialize Redis service: %v", err)
 	}
-	a.cache = cache
+	a.cache = cacheService
 	return nil
 }
 
@@ -160,36 +175,24 @@ func (a *App) initIPFS() error {
 }
 
 func (a *App) initP2P() error {
-	// Temporarily disabled P2P functionality
-	/*
-		p2p, err := NewP2PNode(a.ctx, a.Config.P2P.Port, a.Config.P2P.Rendezvous)
-		if err != nil {
-			return fmt.Errorf("failed to create P2P node: %v", err)
-		}
-
-		// Subscribe to default topics
-		defaultTopics := []string{"videos", "transcodes"}
-		for _, topic := range defaultTopics {
-			if _, _, err := p2p.Subscribe(topic); err != nil {
-				return fmt.Errorf("failed to subscribe to topic %s: %v", topic, err)
-			}
-			a.logger.LogInfo(fmt.Sprintf("Subscribed to topic: %s", topic), nil)
-		}
-
-		a.p2p = p2p
-	*/
 	return nil
 }
 
 func (a *App) initServices() {
 	a.auth = auth.NewService(a.db)
-	a.transcode = NewTranscodeService(a.db, a.ipfs, a.S3Service, a.Config, a.logger)
 }
 
-func (a *App) setupRoutes() {
-	// Static file serving
-	a.router.Static("/public", "../frontend/public")
-	a.router.Static("/uploads", a.Config.Storage.UploadDir)
+func (a *App) setupRoutes() error {
+	// Configure static file serving
+	if err := httpHandler.ServeStaticFiles(a.router, []httpHandler.StaticFileConfig{
+		{
+			URLPath:   "/public",
+			FilePath:  "../frontend/public",
+			IndexFile: "index.html",
+		},
+	}); err != nil {
+		return fmt.Errorf("failed to configure static files: %v", err)
+	}
 
 	// Health check
 	a.router.GET("/health", a.handleHealthCheck)
@@ -200,10 +203,17 @@ func (a *App) setupRoutes() {
 	a.router.GET("/video/list", a.videoHandler.HandleList)
 	a.router.GET("/video/status/:fileId", a.videoHandler.HandleStatus)
 	a.router.POST("/video/transcode", a.videoHandler.HandleTranscode)
+
+	return nil
 }
 
 // Run starts the application
 func (a *App) Run() error {
+	// Setup routes
+	if err := a.setupRoutes(); err != nil {
+		return fmt.Errorf("failed to setup routes: %v", err)
+	}
+
 	port := a.Config.Server.Port
 	a.logger.LogInfo(fmt.Sprintf("Starting server on port %d", port), nil)
 	if err := a.router.Run(fmt.Sprintf(":%d", port)); err != nil {
@@ -219,15 +229,6 @@ func (a *App) Shutdown() error {
 	// Create a timeout context for shutdown
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
-
-	// Close P2P connections if enabled
-	if a.p2p != nil {
-		if err := a.p2p.Close(); err != nil {
-			a.logger.LogWarn("Error closing P2P connections", map[string]interface{}{
-				"error": err.Error(),
-			})
-		}
-	}
 
 	// Close cache connections
 	if a.cache != nil {

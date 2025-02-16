@@ -2,12 +2,15 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
 
 	_ "github.com/consensuslabs/pavilion-network/backend/docs"
+	"github.com/consensuslabs/pavilion-network/backend/internal/config"
+	"github.com/consensuslabs/pavilion-network/backend/internal/logger"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 )
@@ -29,40 +32,54 @@ import (
 
 // @securityDefinitions.basic  BasicAuth
 func main() {
-	// Create a context that can be cancelled
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := context.Background()
 
-	// Load configuration
-	config, err := LoadConfig(".")
+	// Initialize logger for bootstrapping
+	loggerService, err := logger.NewService(&logger.Config{Level: "debug"})
 	if err != nil {
-		log.Fatalf("Failed to load config: %v", err)
+		log.Fatalf("Failed to initialize logger: %v", err)
 	}
 
-	// Create new app instance with both context and config
-	app, err := NewApp(ctx, config)
+	// Load configuration
+	configService := config.NewConfigService(loggerService)
+	cfg, err := configService.Load(".")
 	if err != nil {
-		log.Fatalf("Failed to create app: %v", err)
+		loggerService.LogFatal(err, "Failed to load configuration")
+	}
+
+	// Create a context that will be canceled on interrupt
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	// Set up signal handling
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		<-sigChan
+		log.Println("Received shutdown signal")
+		cancel()
+	}()
+
+	// Create and run application
+	app, err := NewApp(ctx, cfg)
+	if err != nil {
+		loggerService.LogFatal(err, "Failed to initialize application")
 	}
 
 	// Add Swagger documentation route
 	app.router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
-	// Handle graceful shutdown
-	go func() {
-		sigChan := make(chan os.Signal, 1)
-		signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-		<-sigChan
-		log.Println("Received shutdown signal")
-
-		if err := app.Shutdown(); err != nil {
-			log.Printf("Error during shutdown: %v", err)
-		}
-		cancel()
-	}()
-
 	// Start the application
 	if err := app.Run(); err != nil {
-		log.Fatalf("Error running app: %v", err)
+		log.Printf("Application error: %v", err)
+	}
+
+	// Wait for context cancellation
+	<-ctx.Done()
+
+	// Perform graceful shutdown
+	if err := app.Shutdown(); err != nil {
+		fmt.Printf("Error during shutdown: %v\n", err)
+		os.Exit(1)
 	}
 }
