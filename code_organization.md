@@ -1,153 +1,242 @@
 # Code Organization Guidelines
 
 ## Package Structure
-Each package should follow a consistent structure with clear separation of concerns:
+Each package follows a consistent structure with clear separation of concerns:
 
 ```
-package/
-├── handler.go    (HTTP/API layer)
-├── interface.go  (interfaces)
-├── model.go      (data models)
-├── service.go    (business logic)
-├── repository.go (data access, if needed)
-└── validation.go (validation logic)
+backend/
+├── internal/                  # Internal packages
+│   ├── auth/                 # Authentication package
+│   │   ├── handler.go        # HTTP handlers
+│   │   ├── interface.go      # Public interfaces
+│   │   ├── model.go          # Data models
+│   │   ├── service.go        # Business logic
+│   │   ├── types.go          # Type definitions
+│   │   └── validation.go     # Validation logic
+│   │
+│   ├── storage/              # Storage package
+│   │   ├── interface.go      # Storage interfaces
+│   │   ├── types.go          # Shared types
+│   │   ├── adapter.go        # Interface adapters
+│   │   ├── ipfs/            # IPFS implementation
+│   │   │   └── service.go   # IPFS service
+│   │   └── s3/              # S3 implementation
+│   │       └── service.go   # S3 service
+│   │
+│   ├── http/                 # HTTP package
+│   │   ├── interface.go      # HTTP interfaces
+│   │   ├── middleware.go     # HTTP middleware
+│   │   ├── response_handler.go # Response handling
+│   │   ├── static.go         # Static file serving
+│   │   └── types.go          # HTTP types
+│   │
+│   ├── video/                # Video package
+│   │   ├── handler.go        # Video handlers
+│   │   ├── interface.go      # Video interfaces
+│   │   ├── model.go          # Video models
+│   │   ├── service.go        # Video business logic
+│   │   ├── types.go          # Video types
+│   │   └── validation.go     # Video validation
+│   │
+│   ├── config/               # Configuration package
+│   │   ├── interface.go      # Config interfaces
+│   │   ├── service.go        # Config loading
+│   │   └── types.go          # Config types
+│   │
+│   ├── logger/               # Logging package
+│   │   ├── interface.go      # Logger interfaces
+│   │   ├── service.go        # Logger implementation
+│   │   └── types.go          # Logger types
+│   │
+│   ├── database/             # Database package
+│   │   ├── interface.go      # Database interfaces
+│   │   └── service.go        # Database service
+│   │
+│   ├── cache/                # Cache package
+│   │   ├── interface.go      # Cache interfaces
+│   │   ├── service.go        # Redis implementation
+│   │   └── types.go          # Cache types
+│   │
+│   ├── errors/               # Error package
+│   │   ├── constants.go      # Error constants
+│   │   ├── errors.go         # Error types
+│   │   └── types.go          # Error definitions
+│   │
+│   └── health/               # Health check package
+│       ├── handler.go        # Health handlers
+│       └── interface.go      # Health interfaces
+│
+├── migrations/               # Database migrations
+│   ├── main.go              # Migration runner
+│   └── 001_create_*.go      # Migration files
+│
+├── app.go                    # Application setup
+├── main.go                   # Entry point
+└── routes.go                 # Route definitions
 ```
 
-## File Naming Conventions
-- Use singular form for file names (e.g., `model.go` not `models.go`)
-- Be descriptive but concise
-- Use lowercase with underscores for multiple words (though single-word filenames are preferred in Go)
-- Be consistent across the project
+## Package Responsibilities
 
-## File Responsibilities
+### Main Package (`backend/`)
+- Application initialization and configuration
+- Service orchestration
+- Route setup
+- Graceful shutdown handling
 
-### `handler.go`
-- Contains HTTP handlers/controllers
-- Handles request/response logic
-- Input validation and sanitization
-- Route-specific error handling
-- No business logic
+### Auth Package (`internal/auth/`)
+- User authentication and authorization
+- JWT token management
+- Session handling
+- User model and operations
 
-### `interface.go`
-- Contains all interfaces for the package
-- If an interface is used only within a package, define it in that package
-- If an interface is used across packages, define it in the package that uses it (not the one that implements it)
-- Keep interfaces small and focused
+### Storage Package (`internal/storage/`)
+- File storage abstraction
+- IPFS implementation
+- S3 implementation
+- Storage type definitions
+- Interface adapters for compatibility
 
-### `model.go`
-- Contains data models/entities
-- Database model definitions
-- JSON/serialization tags
-- Basic model methods
-- No business logic
+### HTTP Package (`internal/http/`)
+- HTTP response handling
+- Middleware functions
+- Static file serving
+- Common HTTP types and utilities
 
-### `service.go`
-- Contains business logic
-- Implements interfaces defined in `interface.go`
-- Coordinates between different components
-- Handles complex operations
-- Business rule validation
+### Video Package (`internal/video/`)
+- Video upload handling
+- Video processing
+- Transcoding operations
+- Video metadata management
 
-### `repository.go`
-- Contains data access logic
-- Database operations
-- Query implementations
-- No business logic
-
-### `validation.go`
-- Contains validation logic
-- Input validation rules
-- Custom validators
-- Validation helper functions
-
-### `type.go` (if needed)
-- Contains custom types
+### Config Package (`internal/config/`)
+- Configuration loading
+- Environment variable handling
+- Configuration validation
 - Type definitions
-- Type conversion methods
-- Configuration structures
+
+### Logger Package (`internal/logger/`)
+- Logging interface
+- Structured logging
+- Log level management
+- Context-aware logging
+
+### Database Package (`internal/database/`)
+- Database connection management
+- Migration support
+- Common database operations
+- Connection pooling
+
+### Cache Package (`internal/cache/`)
+- Redis implementation
+- Cache interface
+- TTL management
+- Cache operations
+
+### Errors Package (`internal/errors/`)
+- Error type definitions
+- Error constants
+- Error handling utilities
+- Custom error types
+
+### Health Package (`internal/health/`)
+- Health check endpoints
+- System status monitoring
+- Dependency health checks
+
+## Design Principles
+
+### 1. Interface Segregation
+- Each package defines its interfaces in `interface.go`
+- Interfaces are kept small and focused
+- Dependencies are defined through interfaces
+- Implementation details are hidden
+
+### 2. Dependency Injection
+- Services receive their dependencies through constructors
+- No global state
+- Easy to test and mock
+- Clear dependency chain
+
+### 3. Error Handling
+- Consistent error types
+- Proper error wrapping
+- Contextual error information
+- Clear error messages
+
+### 4. Configuration
+- Type-safe configuration
+- Environment variable support
+- Validation at startup
+- Sensible defaults
+
+### 5. Adapters
+- Interface adapters for compatibility
+- Clean integration between packages
+- Minimal dependencies
+- Clear separation of concerns
 
 ## Best Practices
 
-### Single Responsibility Principle
-- Each file should have a single, well-defined purpose
-- Files should be focused and relatively small (<200 lines)
-- Related functionality should be grouped together
-- Split large files into smaller, more focused ones
+1. **Package Organization**
+   - Keep packages focused and small
+   - Clear separation of concerns
+   - Consistent file naming
+   - Proper interface definitions
 
-### Interface Design
-- Define interfaces where they are used, not where they are implemented
-- Keep interfaces small and focused
-- Use composition for complex interfaces
-- Document interface methods clearly
+2. **Error Handling**
+   - Use custom error types
+   - Include context in errors
+   - Proper logging
+   - Clean error messages
 
-### Model Organization
-- Keep database models in `model.go`
-- Separate DTOs (Data Transfer Objects) if needed
-- Group related models together
-- Include model validation methods where appropriate
+3. **Configuration**
+   - Type-safe configuration
+   - Environment variables
+   - Validation
+   - Documentation
 
-### Code Organization Rules
-1. No circular dependencies
-2. Clear separation of concerns
-3. Consistent error handling
-4. Proper logging and instrumentation
-5. Clear and consistent naming conventions
-6. Documentation for public APIs
-7. Tests alongside the code they test
+4. **Testing**
+   - Unit tests for each package
+   - Integration tests
+   - Mock interfaces
+   - Test coverage
 
-## Example Package Structure
-
-### Video Package
-```
-video/
-├── handler.go     (HTTP handlers for video operations)
-├── interface.go   (VideoService, IPFSService, etc.)
-├── model.go       (Video struct and related models)
-├── service.go     (Video business logic)
-├── validation.go  (Video validation rules)
-└── type.go        (Config and other types)
-```
-
-### Auth Package
-```
-auth/
-├── handler.go     (Authentication handlers)
-├── interface.go   (AuthService, TokenService, etc.)
-├── model.go       (User, Token models)
-├── service.go     (Authentication business logic)
-└── validation.go  (Auth validation rules)
-```
+5. **Documentation**
+   - Clear package documentation
+   - Interface documentation
+   - Example usage
+   - Clear comments
 
 ## Implementation Guidelines
 
-1. **Keep Files Small**
-   - Aim for <200 lines per file
-   - Split functionality when files grow too large
-   - Use meaningful file names that reflect content
+1. **File Size**
+   - Keep files under 500 lines
+   - Split large files
+   - One concept per file
+   - Clear file purpose
 
-2. **Clear Dependencies**
-   - Explicitly declare dependencies
-   - Use dependency injection
-   - Avoid global state
+2. **Dependencies**
+   - Minimize external dependencies
+   - Version control
+   - Security updates
+   - Proper vendoring
 
-3. **Error Handling**
-   - Use consistent error types
-   - Proper error wrapping
-   - Meaningful error messages
+3. **Logging**
+   - Structured logging
+   - Proper log levels
+   - Context information
+   - Performance consideration
 
-4. **Documentation**
-   - Document public APIs
-   - Include examples where helpful
-   - Keep documentation up to date
-
-5. **Testing**
-   - Write tests alongside code
-   - Follow table-driven test patterns
-   - Mock external dependencies
+4. **Security**
+   - Proper authentication
+   - Authorization checks
+   - Input validation
+   - Secure defaults
 
 ## Maintenance
 
-- Review and update this document as needed
-- Ensure new code follows these guidelines
-- Refactor existing code gradually to match these patterns
-- Discuss and agree on changes to these guidelines with the team 
+- Regular dependency updates
+- Security patches
+- Performance monitoring
+- Code reviews
+- Documentation updates 

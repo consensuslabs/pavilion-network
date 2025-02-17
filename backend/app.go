@@ -12,6 +12,9 @@ import (
 	"github.com/consensuslabs/pavilion-network/backend/internal/health"
 	httpHandler "github.com/consensuslabs/pavilion-network/backend/internal/http"
 	"github.com/consensuslabs/pavilion-network/backend/internal/logger"
+	"github.com/consensuslabs/pavilion-network/backend/internal/storage"
+	"github.com/consensuslabs/pavilion-network/backend/internal/storage/ipfs"
+	"github.com/consensuslabs/pavilion-network/backend/internal/storage/s3"
 	"github.com/consensuslabs/pavilion-network/backend/internal/video"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -24,13 +27,11 @@ type App struct {
 	db            *gorm.DB
 	dbService     database.Service
 	cache         cache.Service
-	ipfs          *IPFSService
 	router        *gin.Engine
 	auth          *auth.Service
 	logger        logger.Logger
-	IPFSService   *IPFSService
-	AuthService   *auth.Service
-	S3Service     *S3Service
+	ipfsService   storage.IPFSService
+	s3Service     storage.S3Service
 	videoHandler  *video.VideoHandler
 	healthHandler *health.Handler
 	httpHandler   httpHandler.ResponseHandler
@@ -65,15 +66,23 @@ func NewApp(ctx context.Context, cfg *config.Config) (*App, error) {
 	}
 
 	// Initialize IPFS service
-	ipfsService := NewIPFSService(cfg)
+	ipfsConfig := &storage.IPFSConfig{
+		APIAddress: cfg.Storage.IPFS.APIAddress,
+		Gateway:    cfg.Storage.IPFS.Gateway,
+	}
+	ipfsService := ipfs.NewService(ipfsConfig, loggerService)
+	ipfsAdapter := storage.NewVideoIPFSAdapter(ipfsService)
 
 	// Initialize S3 service
-	s3Config := &config.Config{
-		Storage: config.StorageConfig{
-			S3: cfg.Storage.S3,
-		},
+	s3Config := &storage.S3Config{
+		Endpoint:        cfg.Storage.S3.Endpoint,
+		AccessKeyID:     cfg.Storage.S3.AccessKeyID,
+		SecretAccessKey: cfg.Storage.S3.SecretAccessKey,
+		UseSSL:          cfg.Storage.S3.UseSSL,
+		Region:          cfg.Storage.S3.Region,
+		Bucket:          cfg.Storage.S3.Bucket,
 	}
-	s3Service, err := NewS3Service(s3Config)
+	s3Service, err := s3.NewService(s3Config, loggerService)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize S3 service: %v", err)
 	}
@@ -110,7 +119,7 @@ func NewApp(ctx context.Context, cfg *config.Config) (*App, error) {
 			Ffmpeg:  cfg.Ffmpeg,
 		},
 		Logger:          loggerService,
-		IPFS:            ipfsService,
+		IPFS:            ipfsAdapter,
 		ResponseHandler: responseHandler,
 	}
 
@@ -123,13 +132,11 @@ func NewApp(ctx context.Context, cfg *config.Config) (*App, error) {
 		db:            db,
 		dbService:     dbService,
 		cache:         cacheService,
-		ipfs:          ipfsService,
 		router:        router,
 		auth:          authService,
 		logger:        loggerService,
-		IPFSService:   ipfsService,
-		AuthService:   authService,
-		S3Service:     s3Service,
+		ipfsService:   ipfsService,
+		s3Service:     s3Service,
 		videoHandler:  videoHandler,
 		healthHandler: healthHandler,
 		httpHandler:   responseHandler,
@@ -171,8 +178,12 @@ func (a *App) initCache() error {
 }
 
 func (a *App) initIPFS() error {
-	ipfs := NewIPFSService(a.Config)
-	a.ipfs = ipfs
+	ipfsConfig := &storage.IPFSConfig{
+		APIAddress: a.Config.Storage.IPFS.APIAddress,
+		Gateway:    a.Config.Storage.IPFS.Gateway,
+	}
+	ipfsService := ipfs.NewService(ipfsConfig, a.logger)
+	a.ipfsService = ipfsService
 	return nil
 }
 
@@ -258,8 +269,8 @@ func (a *App) Shutdown() error {
 	}
 
 	// Close IPFS connections if any
-	if a.ipfs != nil {
-		if err := a.ipfs.Close(); err != nil {
+	if a.ipfsService != nil {
+		if err := a.ipfsService.Close(); err != nil {
 			a.logger.LogWarn("Error closing IPFS connections", map[string]interface{}{
 				"error": err.Error(),
 			})
