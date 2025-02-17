@@ -8,7 +8,7 @@ database:
   dbname: "pavilion_db"
   port: 26257
   user: "root"
-  password: ""
+  password: ${DATABASE_PASSWORD:-}
   sslmode: "disable"
   timezone: "UTC"
   pool:

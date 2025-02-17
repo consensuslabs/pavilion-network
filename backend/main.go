@@ -8,7 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	_ "github.com/consensuslabs/pavilion-network/backend/docs"
+	_ "github.com/consensuslabs/pavilion-network/backend/docs/api"
 	"github.com/consensuslabs/pavilion-network/backend/internal/config"
 	"github.com/consensuslabs/pavilion-network/backend/internal/logger"
 	swaggerFiles "github.com/swaggo/files"
