@@ -1,3 +1,5 @@
+environment: ${ENV:-development}  # Can be 'development', 'staging', or 'production'
+
 server:
   port: 8080
 

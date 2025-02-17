@@ -13,17 +13,19 @@ import (
 
 // DatabaseService implements the Service interface
 type DatabaseService struct {
-	config *config.DatabaseConfig
-	logger Logger
-	db     *gorm.DB
+	config          *config.DatabaseConfig
+	logger          Logger
+	db              *gorm.DB
+	migrationConfig *MigrationConfig
 }
 
 // NewDatabaseService creates a new database service instance
 func NewDatabaseService(config *config.DatabaseConfig, logger Logger) *DatabaseService {
-	return &DatabaseService{
+	service := &DatabaseService{
 		config: config,
 		logger: logger,
 	}
+	return service
 }
 
 // Connect establishes a connection to the database
@@ -80,6 +82,10 @@ func (s *DatabaseService) Connect() (*gorm.DB, error) {
 	sqlDB.SetMaxOpenConns(s.config.Pool.MaxOpen)
 	sqlDB.SetMaxIdleConns(s.config.Pool.MaxIdle)
 
+	// Initialize migration config now that we have the database connection
+	s.migrationConfig = NewMigrationConfig(db)
+	s.logger.LogInfo(fmt.Sprintf("Initialized migration config for environment: %s", s.migrationConfig.Environment), nil)
+
 	// Create enum type using a transaction to handle CockroachDB's transaction retry logic
 	err = db.Transaction(func(tx *gorm.DB) error {
 		return tx.Exec(`CREATE TYPE IF NOT EXISTS upload_status AS ENUM ('pending', 'uploading', 'completed', 'failed')`).Error
@@ -88,9 +94,30 @@ func (s *DatabaseService) Connect() (*gorm.DB, error) {
 		return nil, fmt.Errorf("failed to create upload_status enum: %v", err)
 	}
 
-	// Auto-migrate the schema
-	if err = db.AutoMigrate(&auth.User{}, &auth.RefreshToken{}, &video.Video{}, &video.Transcode{}, &video.TranscodeSegment{}); err != nil {
-		return nil, fmt.Errorf("auto migration failed: %v", err)
+	// Initialize migration tracking table
+	if err := s.migrationConfig.InitializeMigrationTable(); err != nil {
+		return nil, fmt.Errorf("failed to initialize migration tracking: %v", err)
+	}
+
+	// Get list of applied migrations
+	migrations, err := s.migrationConfig.GetAppliedMigrations()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get applied migrations: %v", err)
+	}
+
+	s.logger.LogInfo(fmt.Sprintf("Found %d previously applied migrations", len(migrations)), nil)
+	for _, migration := range migrations {
+		s.logger.LogInfo(fmt.Sprintf("Migration %s applied at %s", migration.Name, migration.AppliedAt), nil)
+	}
+
+	// Only run auto-migration in development or when explicitly enabled
+	if s.migrationConfig.ShouldAutoMigrate() {
+		if err = db.AutoMigrate(&auth.User{}, &auth.RefreshToken{}, &video.Video{}, &video.Transcode{}, &video.TranscodeSegment{}); err != nil {
+			return nil, fmt.Errorf("auto migration failed: %v", err)
+		}
+		s.logger.LogInfo("Auto-migration completed successfully", nil)
+	} else {
+		s.logger.LogInfo("Skipping auto-migration based on environment configuration", nil)
 	}
 
 	s.db = db

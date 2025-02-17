@@ -16,6 +16,7 @@ import (
 	"github.com/consensuslabs/pavilion-network/backend/internal/storage/ipfs"
 	"github.com/consensuslabs/pavilion-network/backend/internal/storage/s3"
 	"github.com/consensuslabs/pavilion-network/backend/internal/video"
+	"github.com/consensuslabs/pavilion-network/backend/migrations"
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 )
@@ -53,6 +54,12 @@ func NewApp(ctx context.Context, cfg *config.Config) (*App, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to database: %v", err)
 	}
+
+	// Run migrations
+	if err := migrations.RunMigrations(db, "up"); err != nil {
+		return nil, fmt.Errorf("failed to run migrations: %v", err)
+	}
+	loggerService.LogInfo("Database migrations completed successfully", nil)
 
 	// Initialize cache service
 	redisConfig := &cache.Config{
