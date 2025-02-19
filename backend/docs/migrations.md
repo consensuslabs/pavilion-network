@@ -148,7 +148,7 @@ func (c *MigrationConfig) ShouldRunMigration() bool {
     }
 
     // In development, check AUTO_MIGRATE
-    if c.Environment == "development" {
+    if c.Environment == "development" || c.Environment == "test"{
         return c.AutoMigrate
     }
 

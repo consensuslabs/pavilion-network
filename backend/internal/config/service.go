@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"os"
 	"path/filepath"
 
 	"github.com/spf13/viper"
@@ -22,7 +23,12 @@ func NewConfigService(logger Logger) *ConfigService {
 // Load loads the configuration from the specified path
 func (s *ConfigService) Load(path string) (*Config, error) {
 	viper.AddConfigPath(path)
-	viper.SetConfigName("config")
+	// Use test configuration file if ENV is set to test
+	if os.Getenv("ENV") == "test" {
+		viper.SetConfigName("config_test")
+	} else {
+		viper.SetConfigName("config")
+	}
 	viper.SetConfigType("yaml")
 
 	// Set default values

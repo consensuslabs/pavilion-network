@@ -28,7 +28,10 @@ func (h *Handler) RegisterRoutes(router *gin.Engine) {
 
 // handleLogin handles the login endpoint
 func (h *Handler) handleLogin(c *gin.Context) {
-	user, err := h.service.Login("test@example.com")
+	identifier := c.PostForm("identifier")
+	password := c.PostForm("password")
+
+	user, err := h.service.Login(identifier, password)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"success": false,

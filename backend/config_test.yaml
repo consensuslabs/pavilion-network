@@ -1,25 +1,21 @@
-environment: ${ENV:-development}  # Can be 'development', 'staging', or 'production'
+environment: "test"  # Testing environment
 
 server:
   port: 8080
 
+
 database:
   host: "localhost"
-  dbname: "pavilion_db"
+  dbname: "pavilion_test"
   port: 26257
   user: "root"
   password: ${DB_PASSWORD:-}
   sslmode: "disable"
   timezone: "UTC"
   pool:
-    maxIdleConns: 10
-    maxOpenConns: 100
+    maxOpen: 100
+    maxIdle: 10
     connMaxLifetime: 1h  # Duration string format: "1h" for 1 hour, "30m" for 30 minutes, etc.
-
-  # Postgres
-  # user: "youruser"
-  # password: "yourpassword"
-  # port: 5432
 
 redis:
   addr: "localhost:6379"
@@ -27,7 +23,7 @@ redis:
   db: 0
 
 ipfs:
-  host: "localhost:5001"
+  host: "localhost"
   gateway_url: "https://ipfs.io/ipfs/"
 
 logging:
@@ -72,4 +68,4 @@ video:
     - ".mp4"
     - ".mov"
     - ".avi"
-    - ".webm"
+    - ".webm" 

@@ -2,12 +2,13 @@ package auth
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
 // AuthService handles authentication operations
 type AuthService interface {
-	Login(email, password string) (*LoginResponse, error)
-	Logout(userID int64, refreshToken string) error
+	Login(identifier, password string) (*LoginResponse, error)
+	Logout(userID uuid.UUID, refreshToken string) error
 	RefreshToken(refreshToken string) (*LoginResponse, error)
 	ValidateToken(token string) (*TokenClaims, error)
 }

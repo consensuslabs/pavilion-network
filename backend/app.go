@@ -38,6 +38,27 @@ type App struct {
 	httpHandler   httpHandler.ResponseHandler
 }
 
+// DummyTokenService is a simple implementation of auth.TokenService for development/testing purposes
+// Remove or replace with a proper implementation in production.
+
+type DummyTokenService struct{}
+
+func (d DummyTokenService) GenerateAccessToken(user *auth.User) (string, error) {
+	return "dummy_access_token", nil
+}
+
+func (d DummyTokenService) GenerateRefreshToken(user *auth.User) (string, error) {
+	return "dummy_refresh_token", nil
+}
+
+func (d DummyTokenService) ValidateAccessToken(token string) (*auth.TokenClaims, error) {
+	return &auth.TokenClaims{}, nil
+}
+
+func (d DummyTokenService) ValidateRefreshToken(token string) (*auth.TokenClaims, error) {
+	return &auth.TokenClaims{}, nil
+}
+
 // NewApp creates a new application instance
 func NewApp(ctx context.Context, cfg *config.Config) (*App, error) {
 	loggerService, err := logger.NewService(&cfg.Logging)
@@ -95,7 +116,7 @@ func NewApp(ctx context.Context, cfg *config.Config) (*App, error) {
 	}
 
 	// Initialize auth service
-	authService := auth.NewService(db)
+	authService := auth.NewService(db, DummyTokenService{})
 
 	// Initialize router
 	router := gin.Default()
@@ -199,7 +220,7 @@ func (a *App) initP2P() error {
 }
 
 func (a *App) initServices() {
-	a.auth = auth.NewService(a.db)
+	a.auth = auth.NewService(a.db, DummyTokenService{})
 }
 
 func (a *App) setupRoutes() error {

@@ -53,6 +53,9 @@ For detailed information about the project, please refer to:
    - Request/response formats
    - Authentication details
 
+5. [Technology Stack](backend/docs/tech_stack.md)
+   - Overview of programming languages, frameworks, databases, and tools used in the backend
+
 ## Note for Developers and AI Tools
 
 The `backend/docs` directory serves as the primary source of documentation for both developers and AI development tools. Documentation is organized into logical sections:

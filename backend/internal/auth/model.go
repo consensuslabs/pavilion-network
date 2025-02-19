@@ -3,15 +3,18 @@ package auth
 import (
 	"time"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
 // User model definition with authentication fields
 type User struct {
-	ID            int64          `gorm:"primaryKey;autoIncrement:false;type:bigint;default:unique_rowid()" json:"id"`
-	Name          string         `json:"name"`
+	ID            uuid.UUID      `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
+	Username      string         `gorm:"unique;not null" json:"username"`
 	Email         string         `gorm:"unique;not null" json:"email"`
 	Password      string         `gorm:"not null" json:"-"` // Password hash, not exposed in JSON
+	Name          string         `json:"name"`
+	EmailVerified bool           `gorm:"default:false" json:"emailVerified"`
 	LastLoginAt   time.Time      `json:"lastLoginAt,omitempty"`
 	Active        bool           `gorm:"default:true" json:"active"`
 	CreatedAt     time.Time      `json:"createdAt"`
@@ -21,8 +24,8 @@ type User struct {
 
 // RefreshToken model for storing refresh tokens
 type RefreshToken struct {
-	ID        int64      `gorm:"primaryKey;autoIncrement:false;type:bigint;default:unique_rowid()" json:"id"`
-	UserID    int64      `json:"userId"`
+	ID        uuid.UUID  `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
+	UserID    uuid.UUID  `gorm:"type:uuid;not null" json:"userId"`
 	Token     string     `gorm:"unique;not null" json:"token"`
 	ExpiresAt time.Time  `json:"expiresAt"`
 	CreatedAt time.Time  `json:"createdAt"`

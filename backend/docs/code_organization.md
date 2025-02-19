@@ -70,6 +70,7 @@ backend/
 │   ├── main.go              # Migration runner
 │   └── 001_create_*.go      # Migration files
 │
+├── test/                     # Integration and unit tests
 ├── app.go                    # Application setup
 ├── main.go                   # Entry point
 └── routes.go                 # Route definitions

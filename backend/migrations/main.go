@@ -14,10 +14,6 @@ type Migrator interface {
 }
 
 func RunMigrations(db *gorm.DB, direction string) error {
-	// Ensure we're using the correct database
-	if err := db.Exec("USE pavilion_db").Error; err != nil {
-		return fmt.Errorf("failed to switch to pavilion_db: %v", err)
-	}
 
 	// Initialize migration config
 	migrationConfig := database.NewMigrationConfig(db)
