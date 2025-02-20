@@ -1,6 +1,7 @@
 package auth_test
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -10,6 +11,8 @@ import (
 )
 
 func TestRegisterAndLogin(t *testing.T) {
+	fmt.Printf("\n=== Starting TestRegisterAndLogin ===\n")
+
 	db := testhelper.SetupTestDB(t)
 
 	config := &auth.Config{
@@ -24,6 +27,8 @@ func TestRegisterAndLogin(t *testing.T) {
 		},
 	}
 
+	fmt.Printf("Test config initialized with secret: %s\n", config.JWT.Secret)
+
 	// Use real JWT service instead of dummy
 	jwtService := auth.NewJWTService(config)
 	refreshTokenRepo := auth.NewRefreshTokenRepository(db)
@@ -37,10 +42,14 @@ func TestRegisterAndLogin(t *testing.T) {
 		Name:     "Test User 1",
 	}
 
+	fmt.Printf("Attempting to register user: %s (%s)\n", regReq.Username, regReq.Email)
+
 	user, err := authService.Register(regReq)
 	if err != nil {
 		t.Fatalf("Register failed: %v", err)
 	}
+
+	fmt.Printf("User registered successfully with ID: %s\n", user.ID)
 
 	if user.Username != regReq.Username {
 		t.Errorf("expected username %s, got %s", regReq.Username, user.Username)
@@ -67,11 +76,18 @@ func TestRegisterAndLogin(t *testing.T) {
 		t.Fatalf("failed to update user: %v", err)
 	}
 
+	fmt.Printf("User email marked as verified\n")
+
 	// Test Login with username
+	fmt.Printf("Attempting login with username: %s\n", regReq.Username)
 	loginResp, err := authService.Login(regReq.Username, regReq.Password)
 	if err != nil {
 		t.Fatalf("Login failed: %v", err)
 	}
+
+	fmt.Printf("Login successful, received tokens - Access: %s, Refresh: %s\n",
+		loginResp.AccessToken[:10]+"...",
+		loginResp.RefreshToken[:10]+"...")
 
 	// Verify we got real JWT tokens, not dummy ones
 	if loginResp.AccessToken == "" {
@@ -83,16 +99,21 @@ func TestRegisterAndLogin(t *testing.T) {
 	}
 
 	// Test Login with email
+	fmt.Printf("Attempting login with email: %s\n", regReq.Email)
 	loginResp, err = authService.Login(regReq.Email, regReq.Password)
 	if err != nil {
 		t.Fatalf("Login failed with email: %v", err)
 	}
+
+	fmt.Printf("Login successful with email\n")
 
 	// Test login with invalid password
 	_, err = authService.Login(regReq.Username, "WrongPass")
 	if err == nil {
 		t.Errorf("expected error on invalid password, got nil")
 	}
+
+	fmt.Printf("=== TestRegisterAndLogin Completed ===\n")
 }
 
 func TestLogout(t *testing.T) {

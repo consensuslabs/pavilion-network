@@ -30,40 +30,53 @@ func NewService(db *gorm.DB, ts TokenService, rt RefreshTokenService, config *Co
 
 // Login handles user authentication
 func (s *Service) Login(identifier, password string) (*LoginResponse, error) {
+	fmt.Printf("Login attempt for identifier: %s\n", identifier)
+
 	var user User
 	// Lookup user by email or username
 	if err := s.db.Where("email = ? OR username = ?", identifier, identifier).First(&user).Error; err != nil {
+		fmt.Printf("User lookup failed: %v\n", err)
 		return nil, ErrInvalidCredentials
 	}
 
 	// Check if user's email is verified
 	if !user.EmailVerified {
+		fmt.Printf("Login attempt for unverified email: %s\n", user.Email)
 		return nil, ErrEmailNotVerified
 	}
 
 	if !checkPasswordHash(password, user.Password) {
+		fmt.Printf("Invalid password for user: %s\n", user.Email)
 		return nil, ErrInvalidCredentials
 	}
+
+	fmt.Printf("Generating tokens for user: %s (ID: %s)\n", user.Email, user.ID)
 
 	// Generate tokens
 	accessToken, err := s.tokenService.GenerateAccessToken(&user)
 	if err != nil {
+		fmt.Printf("Failed to generate access token: %v\n", err)
 		return nil, fmt.Errorf("failed to generate access token: %v", err)
 	}
 
 	refreshToken, err := s.tokenService.GenerateRefreshToken(&user)
 	if err != nil {
+		fmt.Printf("Failed to generate refresh token: %v\n", err)
 		return nil, fmt.Errorf("failed to generate refresh token: %v", err)
 	}
 
+	fmt.Printf("Generated refresh token for user %s: %s\n", user.ID, refreshToken)
+
 	// Store refresh token
 	if err := s.refreshTokens.Create(user.ID, refreshToken, time.Now().Add(s.config.JWT.RefreshTokenTTL)); err != nil {
+		fmt.Printf("Failed to store refresh token: %v\n", err)
 		return nil, fmt.Errorf("failed to store refresh token: %v", err)
 	}
 
 	// Update last login timestamp
 	user.LastLoginAt = time.Now()
 	if err := s.db.Save(&user).Error; err != nil {
+		fmt.Printf("Failed to update last login timestamp: %v\n", err)
 		return nil, err
 	}
 
@@ -74,6 +87,7 @@ func (s *Service) Login(identifier, password string) (*LoginResponse, error) {
 		TokenType:    "Bearer",
 		ExpiresIn:    int(s.config.JWT.AccessTokenTTL.Seconds()),
 	}
+	fmt.Printf("Login successful for user: %s\n", user.Email)
 	return response, nil
 }
 

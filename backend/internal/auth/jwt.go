@@ -46,6 +46,7 @@ func (s *JWTService) GenerateRefreshToken(user *User) (string, error) {
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(s.config.JWT.RefreshTokenTTL)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			NotBefore: jwt.NewNumericDate(time.Now()),
+			ID:        uuid.New().String(),
 		},
 	}
 

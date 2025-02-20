@@ -2,6 +2,7 @@ package auth
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -22,6 +23,19 @@ func NewRefreshTokenRepository(db *gorm.DB) *RefreshTokenRepository {
 
 // Create stores a new refresh token
 func (r *RefreshTokenRepository) Create(userID uuid.UUID, token string, expiresAt time.Time) error {
+	fmt.Printf("Attempting to create refresh token - UserID: %s, Token: %s, ExpiresAt: %v\n", userID, token, expiresAt)
+
+	// Check if token already exists
+	var count int64
+	if err := r.db.Model(&RefreshToken{}).Where("token = ?", token).Count(&count).Error; err != nil {
+		fmt.Printf("Error checking existing token: %v\n", err)
+		return err
+	}
+	if count > 0 {
+		fmt.Printf("WARNING: Token already exists in database!\n")
+		return fmt.Errorf("refresh token already exists")
+	}
+
 	refreshToken := RefreshToken{
 		UserID:    userID,
 		Token:     token,
@@ -29,7 +43,13 @@ func (r *RefreshTokenRepository) Create(userID uuid.UUID, token string, expiresA
 		CreatedAt: time.Now(),
 	}
 
-	return r.db.Create(&refreshToken).Error
+	err := r.db.Create(&refreshToken).Error
+	if err != nil {
+		fmt.Printf("Error creating refresh token: %v\n", err)
+	} else {
+		fmt.Printf("Successfully created refresh token for user %s\n", userID)
+	}
+	return err
 }
 
 // GetByToken retrieves a refresh token by its token string

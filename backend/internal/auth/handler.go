@@ -25,10 +25,15 @@ func NewHandler(service *Service, responseHandler ResponseHandler) *Handler {
 func (h *Handler) RegisterRoutes(router *gin.Engine) {
 	auth := router.Group("/auth")
 	{
+		// Public routes
 		auth.POST("/login", h.handleLogin)
 		auth.POST("/register", h.handleRegister)
 		auth.POST("/refresh", h.handleRefresh)
-		auth.POST("/logout", h.handleLogout)
+
+		// Protected routes (require authentication)
+		protected := auth.Group("")
+		protected.Use(AuthMiddleware(h.service, h.responseHandler))
+		protected.POST("/logout", h.handleLogout)
 	}
 }
 
