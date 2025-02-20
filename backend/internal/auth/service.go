@@ -2,24 +2,29 @@ package auth
 
 import (
 	"errors"
+	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/gorm"
-	"github.com/google/uuid"
 )
 
 // Service handles authentication-related business logic
 type Service struct {
-	db           *gorm.DB
-	tokenService TokenService
+	db            *gorm.DB
+	tokenService  TokenService
+	refreshTokens RefreshTokenService
+	config        *Config
 }
 
 // NewService creates a new auth service instance
-func NewService(db *gorm.DB, ts TokenService) *Service {
+func NewService(db *gorm.DB, ts TokenService, rt RefreshTokenService, config *Config) *Service {
 	return &Service{
-		db:           db,
-		tokenService: ts,
+		db:            db,
+		tokenService:  ts,
+		refreshTokens: rt,
+		config:        config,
 	}
 }
 
@@ -40,19 +45,25 @@ func (s *Service) Login(identifier, password string) (*LoginResponse, error) {
 		return nil, ErrInvalidCredentials
 	}
 
-	// Update last login timestamp
-	user.LastLoginAt = time.Now()
-	if err := s.db.Save(&user).Error; err != nil {
-		return nil, err
-	}
-
+	// Generate tokens
 	accessToken, err := s.tokenService.GenerateAccessToken(&user)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to generate access token: %v", err)
 	}
 
 	refreshToken, err := s.tokenService.GenerateRefreshToken(&user)
 	if err != nil {
+		return nil, fmt.Errorf("failed to generate refresh token: %v", err)
+	}
+
+	// Store refresh token
+	if err := s.refreshTokens.Create(user.ID, refreshToken, time.Now().Add(s.config.JWT.RefreshTokenTTL)); err != nil {
+		return nil, fmt.Errorf("failed to store refresh token: %v", err)
+	}
+
+	// Update last login timestamp
+	user.LastLoginAt = time.Now()
+	if err := s.db.Save(&user).Error; err != nil {
 		return nil, err
 	}
 
@@ -61,7 +72,7 @@ func (s *Service) Login(identifier, password string) (*LoginResponse, error) {
 		AccessToken:  accessToken,
 		RefreshToken: refreshToken,
 		TokenType:    "Bearer",
-		ExpiresIn:    3600,
+		ExpiresIn:    int(s.config.JWT.AccessTokenTTL.Seconds()),
 	}
 	return response, nil
 }
@@ -119,15 +130,81 @@ func (s *Service) Register(req RegisterRequest) (*User, error) {
 
 // Logout invalidates the provided refresh token and ends the session for the user.
 func (s *Service) Logout(userID uuid.UUID, refreshToken string) error {
-	return errors.New("not implemented")
+	// Validate the refresh token
+	claims, err := s.tokenService.ValidateRefreshToken(refreshToken)
+	if err != nil {
+		return fmt.Errorf("invalid refresh token: %v", err)
+	}
+
+	// Verify the token belongs to the user
+	tokenUserID, err := uuid.Parse(claims.UserID)
+	if err != nil {
+		return fmt.Errorf("invalid user ID in token: %v", err)
+	}
+
+	if tokenUserID != userID {
+		return errors.New("token does not belong to user")
+	}
+
+	// Revoke the refresh token
+	if err := s.refreshTokens.RevokeByToken(refreshToken); err != nil {
+		return fmt.Errorf("failed to revoke refresh token: %v", err)
+	}
+
+	return nil
 }
 
 // RefreshToken generates a new access token using the provided refresh token.
 func (s *Service) RefreshToken(refreshToken string) (*LoginResponse, error) {
-	return nil, errors.New("not implemented")
+	// Validate the refresh token
+	claims, err := s.tokenService.ValidateRefreshToken(refreshToken)
+	if err != nil {
+		return nil, fmt.Errorf("invalid refresh token: %v", err)
+	}
+
+	// Get user from claims
+	var user User
+	if err := s.db.Where("id = ?", claims.UserID).First(&user).Error; err != nil {
+		return nil, fmt.Errorf("user not found: %v", err)
+	}
+
+	// Verify refresh token exists and is valid
+	storedToken, err := s.refreshTokens.GetByToken(refreshToken)
+	if err != nil {
+		return nil, fmt.Errorf("refresh token not found or expired: %v", err)
+	}
+	if storedToken.RevokedAt != nil {
+		return nil, fmt.Errorf("refresh token has been revoked")
+	}
+
+	// Generate only new access token
+	accessToken, err := s.tokenService.GenerateAccessToken(&user)
+	if err != nil {
+		return nil, fmt.Errorf("failed to generate access token: %v", err)
+	}
+
+	return &LoginResponse{
+		User:         user,
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken, // Reuse the same refresh token
+		TokenType:    "Bearer",
+		ExpiresIn:    int(s.config.JWT.AccessTokenTTL.Seconds()),
+	}, nil
 }
 
 // ValidateToken validates the provided token and returns its claims if valid.
 func (s *Service) ValidateToken(token string) (*TokenClaims, error) {
-	return nil, errors.New("not implemented")
+	// First try to validate as access token
+	claims, err := s.tokenService.ValidateAccessToken(token)
+	if err == nil {
+		return claims, nil
+	}
+
+	// If not an access token, try as refresh token
+	claims, err = s.tokenService.ValidateRefreshToken(token)
+	if err != nil {
+		return nil, fmt.Errorf("invalid token: %v", err)
+	}
+
+	return claims, nil
 }

@@ -68,4 +68,10 @@ video:
     - ".mp4"
     - ".mov"
     - ".avi"
-    - ".webm" 
+    - ".webm"
+
+auth:
+  jwt:
+    secret: "test-secret-key"
+    accessTokenTTL: 15m
+    refreshTokenTTL: 168h  # 7 days 

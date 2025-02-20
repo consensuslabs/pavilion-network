@@ -3,6 +3,7 @@ package auth
 import (
 	"time"
 
+	"github.com/consensuslabs/pavilion-network/backend/internal/config"
 	"github.com/golang-jwt/jwt/v5"
 )
 
@@ -19,6 +20,21 @@ type Config struct {
 		MinDigits  int
 		MinSymbols int
 	}
+}
+
+// NewConfigFromAuthConfig creates an auth.Config from config.AuthConfig
+func NewConfigFromAuthConfig(cfg *config.AuthConfig) *Config {
+	authConfig := &Config{}
+	authConfig.JWT.Secret = cfg.JWT.Secret
+	authConfig.JWT.AccessTokenTTL = cfg.JWT.AccessTokenTTL
+	authConfig.JWT.RefreshTokenTTL = cfg.JWT.RefreshTokenTTL
+
+	authConfig.Password.MinLength = 8  // Default password requirements
+	authConfig.Password.MaxLength = 72 // bcrypt max length
+	authConfig.Password.MinDigits = 1
+	authConfig.Password.MinSymbols = 1
+
+	return authConfig
 }
 
 // App represents the application context needed by auth handlers
@@ -47,7 +63,7 @@ type LoginResponse struct {
 
 // TokenClaims represents the JWT claims
 type TokenClaims struct {
-	UserID int64  `json:"userId"`
+	UserID string `json:"userId"`
 	Email  string `json:"email"`
 	jwt.RegisteredClaims
 }

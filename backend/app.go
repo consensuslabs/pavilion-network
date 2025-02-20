@@ -30,33 +30,15 @@ type App struct {
 	cache         cache.Service
 	router        *gin.Engine
 	auth          *auth.Service
+	jwtService    auth.TokenService
+	refreshTokens auth.RefreshTokenService
 	logger        logger.Logger
 	ipfsService   storage.IPFSService
 	s3Service     storage.S3Service
 	videoHandler  *video.VideoHandler
 	healthHandler *health.Handler
 	httpHandler   httpHandler.ResponseHandler
-}
-
-// DummyTokenService is a simple implementation of auth.TokenService for development/testing purposes
-// Remove or replace with a proper implementation in production.
-
-type DummyTokenService struct{}
-
-func (d DummyTokenService) GenerateAccessToken(user *auth.User) (string, error) {
-	return "dummy_access_token", nil
-}
-
-func (d DummyTokenService) GenerateRefreshToken(user *auth.User) (string, error) {
-	return "dummy_refresh_token", nil
-}
-
-func (d DummyTokenService) ValidateAccessToken(token string) (*auth.TokenClaims, error) {
-	return &auth.TokenClaims{}, nil
-}
-
-func (d DummyTokenService) ValidateRefreshToken(token string) (*auth.TokenClaims, error) {
-	return &auth.TokenClaims{}, nil
+	authHandler   *auth.Handler
 }
 
 // NewApp creates a new application instance
@@ -116,7 +98,10 @@ func NewApp(ctx context.Context, cfg *config.Config) (*App, error) {
 	}
 
 	// Initialize auth service
-	authService := auth.NewService(db, DummyTokenService{})
+	authConfig := auth.NewConfigFromAuthConfig(&cfg.Auth)
+	jwtService := auth.NewJWTService(authConfig)
+	refreshTokenService := auth.NewRefreshTokenRepository(db)
+	authService := auth.NewService(db, jwtService, refreshTokenService, authConfig)
 
 	// Initialize router
 	router := gin.Default()
@@ -220,30 +205,51 @@ func (a *App) initP2P() error {
 }
 
 func (a *App) initServices() {
-	a.auth = auth.NewService(a.db, DummyTokenService{})
+	// Initialize JWT service
+	authConfig := auth.NewConfigFromAuthConfig(&a.Config.Auth)
+	a.jwtService = auth.NewJWTService(authConfig)
+
+	// Initialize refresh token service
+	a.refreshTokens = auth.NewRefreshTokenRepository(a.db)
+
+	// Initialize auth service
+	a.auth = auth.NewService(a.db, a.jwtService, a.refreshTokens, authConfig)
+
+	// Initialize auth handler
+	a.authHandler = auth.NewHandler(a.auth, a.httpHandler)
 }
 
 func (a *App) setupRoutes() error {
-	// Configure static file serving
-	if err := httpHandler.ServeStaticFiles(a.router, []httpHandler.StaticFileConfig{
-		{
-			URLPath:   "/public",
-			FilePath:  "../frontend/public",
-			IndexFile: "index.html",
-		},
-	}); err != nil {
-		return fmt.Errorf("failed to configure static files: %v", err)
+	// Add CORS middleware
+	a.router.Use(httpHandler.CORSMiddleware())
+
+	// Add request logging
+	a.router.Use(httpHandler.RequestLoggerMiddleware(a.logger))
+
+	// Add recovery middleware
+	a.router.Use(httpHandler.RecoveryMiddleware(a.httpHandler, a.logger))
+
+	// Register auth routes
+	a.authHandler.RegisterRoutes(a.router)
+
+	// Protected routes group
+	protected := a.router.Group("")
+	protected.Use(auth.AuthMiddleware(a.auth, a.httpHandler))
+	{
+		// Video routes that require authentication
+		protected.POST("/video/upload", a.videoHandler.HandleUpload)
+		protected.POST("/video/transcode", a.videoHandler.HandleTranscode)
 	}
 
-	// Health check
+	// Public routes
 	a.router.GET("/health", a.healthHandler.HandleHealthCheck)
-
-	// Video routes
-	a.router.POST("/video/upload", a.videoHandler.HandleUpload)
 	a.router.GET("/video/watch", a.videoHandler.HandleWatch)
 	a.router.GET("/video/list", a.videoHandler.HandleList)
 	a.router.GET("/video/status/:fileId", a.videoHandler.HandleStatus)
-	a.router.POST("/video/transcode", a.videoHandler.HandleTranscode)
+
+	// Static file serving
+	a.router.Static("/public", "../frontend/public")
+	a.router.Static("/uploads", a.Config.Storage.UploadDir)
 
 	return nil
 }

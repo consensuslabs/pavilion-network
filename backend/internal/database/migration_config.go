@@ -49,11 +49,11 @@ func (c *MigrationConfig) InitializeMigrationTable() error {
 		// Create table first
 		createTableSQL := `
 		CREATE TABLE IF NOT EXISTS schema_migrations (
-			id SERIAL PRIMARY KEY,
-			name STRING NOT NULL,
-			hash STRING NOT NULL,
-			applied_at TIMESTAMP NOT NULL,
-			batch_no INT NOT NULL
+		id SERIAL PRIMARY KEY,
+		name TEXT NOT NULL,
+		hash TEXT NOT NULL,
+		applied_at TIMESTAMP NOT NULL,
+		batch_no INT NOT NULL
 		)`
 		if err := c.db.Exec(createTableSQL).Error; err != nil {
 			return fmt.Errorf("failed to create schema_migrations table: %v", err)
@@ -115,8 +115,8 @@ func (c *MigrationConfig) ShouldRunMigration() bool {
 		return true
 	}
 
-	// In development, check AUTO_MIGRATE
-	if c.Environment == "development" {
+	// In development or test, check AUTO_MIGRATE
+	if c.Environment == "development" || c.Environment == "test" {
 		return c.AutoMigrate
 	}
 

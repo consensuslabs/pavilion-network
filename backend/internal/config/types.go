@@ -1,6 +1,8 @@
 package config
 
 import (
+	"time"
+
 	"github.com/consensuslabs/pavilion-network/backend/internal/logger"
 	"github.com/consensuslabs/pavilion-network/backend/internal/video"
 )
@@ -14,6 +16,16 @@ type Config struct {
 	Logging  logger.Config      `yaml:"logging"`
 	Ffmpeg   video.FfmpegConfig `yaml:"ffmpeg"`
 	Video    VideoConfig        `yaml:"video"`
+	Auth     AuthConfig         `yaml:"auth"`
+}
+
+// AuthConfig represents authentication configuration settings
+type AuthConfig struct {
+	JWT struct {
+		Secret          string        `mapstructure:"secret"`
+		AccessTokenTTL  time.Duration `mapstructure:"accessTokenTTL"`
+		RefreshTokenTTL time.Duration `mapstructure:"refreshTokenTTL"`
+	} `mapstructure:"jwt"`
 }
 
 // ServerConfig represents server configuration settings

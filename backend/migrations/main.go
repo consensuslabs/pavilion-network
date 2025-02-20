@@ -14,7 +14,6 @@ type Migrator interface {
 }
 
 func RunMigrations(db *gorm.DB, direction string) error {
-
 	// Initialize migration config
 	migrationConfig := database.NewMigrationConfig(db)
 
@@ -23,6 +22,11 @@ func RunMigrations(db *gorm.DB, direction string) error {
 	log.Printf("- Environment: %s", migrationConfig.Environment)
 	log.Printf("- Auto Migrate: %v", migrationConfig.AutoMigrate)
 	log.Printf("- Force Migration: %v", migrationConfig.ForceRun)
+
+	// Initialize migration table before any other operations
+	if err := migrationConfig.InitializeMigrationTable(); err != nil {
+		return fmt.Errorf("failed to initialize migration table: %v", err)
+	}
 
 	// Check if migrations should run
 	if !migrationConfig.ShouldRunMigration() {

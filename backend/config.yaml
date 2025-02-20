@@ -73,3 +73,9 @@ video:
     - ".mov"
     - ".avi"
     - ".webm"
+
+auth:
+  jwt:
+    secret: ${JWT_SECRET:-your-secret-key}  # Override in production
+    accessTokenTTL: 15m
+    refreshTokenTTL: 168h  # 7 days
