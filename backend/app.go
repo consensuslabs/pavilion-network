@@ -11,6 +11,7 @@ import (
 	"github.com/consensuslabs/pavilion-network/backend/internal/database"
 	"github.com/consensuslabs/pavilion-network/backend/internal/health"
 	httpHandler "github.com/consensuslabs/pavilion-network/backend/internal/http"
+	"github.com/consensuslabs/pavilion-network/backend/internal/http/middleware"
 	"github.com/consensuslabs/pavilion-network/backend/internal/logger"
 	"github.com/consensuslabs/pavilion-network/backend/internal/storage"
 	"github.com/consensuslabs/pavilion-network/backend/internal/storage/ipfs"
@@ -43,7 +44,35 @@ type App struct {
 
 // NewApp creates a new application instance
 func NewApp(ctx context.Context, cfg *config.Config) (*App, error) {
-	loggerService, err := logger.NewService(&cfg.Logging)
+	// Convert config.LoggingConfig to logger.Config
+	loggerConfig := &logger.Config{
+		Level:       logger.Level(cfg.Logging.Level),
+		Format:      cfg.Logging.Format,
+		Output:      cfg.Logging.Output,
+		Development: cfg.Logging.Development,
+		File: struct {
+			Enabled bool   `mapstructure:"enabled" yaml:"enabled"`
+			Path    string `mapstructure:"path" yaml:"path"`
+			Rotate  bool   `mapstructure:"rotate" yaml:"rotate"`
+			MaxSize string `mapstructure:"maxSize" yaml:"maxSize"`
+			MaxAge  string `mapstructure:"maxAge" yaml:"maxAge"`
+		}{
+			Enabled: cfg.Logging.File.Enabled,
+			Path:    cfg.Logging.File.Path,
+			Rotate:  cfg.Logging.File.Rotate,
+			MaxSize: cfg.Logging.File.MaxSize,
+			MaxAge:  cfg.Logging.File.MaxAge,
+		},
+		Sampling: struct {
+			Initial    int `mapstructure:"initial" yaml:"initial"`
+			Thereafter int `mapstructure:"thereafter" yaml:"thereafter"`
+		}{
+			Initial:    cfg.Logging.Sampling.Initial,
+			Thereafter: cfg.Logging.Sampling.Thereafter,
+		},
+	}
+
+	loggerService, err := logger.NewLogger(loggerConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize logger: %v", err)
 	}
@@ -223,8 +252,8 @@ func (a *App) setupRoutes() error {
 	// Add CORS middleware
 	a.router.Use(httpHandler.CORSMiddleware())
 
-	// Add request logging
-	a.router.Use(httpHandler.RequestLoggerMiddleware(a.logger))
+	// Add request logging middleware
+	a.router.Use(middleware.RequestLoggerMiddleware(a.logger))
 
 	// Add recovery middleware
 	a.router.Use(httpHandler.RecoveryMiddleware(a.httpHandler, a.logger))

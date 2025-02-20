@@ -7,7 +7,7 @@ This document outlines the plan to unify and improve logging across the Pavilion
 ## Current State
 
 ### Implemented Features
-- Zap logger implementation in `internal/logger`
+- Zap logger implementation in `backend/internal/logger`
 - Structured logging support
 - Multiple log levels (debug, info, warn, error)
 - JSON encoding for log output

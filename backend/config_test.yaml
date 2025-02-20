@@ -27,7 +27,19 @@ ipfs:
   gateway_url: "https://ipfs.io/ipfs/"
 
 logging:
-  level: "debug"
+  level: "debug"  # Set to debug for testing
+  format: "console" # Use console format for better test output readability
+  output: "stdout"
+  file:
+    enabled: false
+    path: "/var/log/pavilion"
+    rotate: false
+    maxSize: "100MB"
+    maxAge: "7d"
+  development: true  # Always true for test environment
+  sampling:
+    initial: 100
+    thereafter: 100
 
 ffmpeg:
   path: "/usr/local/bin/ffmpeg"

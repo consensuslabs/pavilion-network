@@ -5,8 +5,8 @@ type Service interface {
 	Load(path string) (*Config, error)
 }
 
-// Logger interface for logging operations
-type Logger interface {
+// ConfigLogger defines the logging interface used by the config package
+type ConfigLogger interface {
 	LogInfo(msg string, fields map[string]interface{})
 	LogError(err error, msg string) error
 }

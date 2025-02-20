@@ -1,95 +1,137 @@
 package logger
 
 import (
+	"context"
 	"fmt"
+	"time"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
 
-// Service wraps zap logger with our custom methods
-type Service struct {
-	*zap.Logger
+type zapLoggerService struct {
+	logger *zap.Logger
+	fields map[string]interface{}
 }
 
-// NewService creates a new logger instance
-func NewService(config *Config) (*Service, error) {
-	var level zapcore.Level
-	if config != nil {
-		switch config.Level {
-		case "debug":
-			level = zapcore.DebugLevel
-		case "info":
-			level = zapcore.InfoLevel
-		case "warn":
-			level = zapcore.WarnLevel
-		case "error":
-			level = zapcore.ErrorLevel
-		default:
-			level = zapcore.InfoLevel
-		}
+// NewLogger creates a new Logger instance
+func NewLogger(config *Config) (Logger, error) {
+	var zapConfig zap.Config
+
+	if config.Development {
+		zapConfig = zap.NewDevelopmentConfig()
+		zapConfig.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
 	} else {
-		level = zapcore.InfoLevel
+		zapConfig = zap.NewProductionConfig()
 	}
 
-	zapConfig := zap.Config{
-		Level:            zap.NewAtomicLevelAt(level),
-		Development:      false,
-		Encoding:         "json",
-		EncoderConfig:    zap.NewProductionEncoderConfig(),
-		OutputPaths:      []string{"stdout"},
-		ErrorOutputPaths: []string{"stderr"},
+	// Configure log level
+	level, err := zapcore.ParseLevel(string(config.Level))
+	if err != nil {
+		return nil, fmt.Errorf("invalid log level: %v", err)
+	}
+	zapConfig.Level = zap.NewAtomicLevelAt(level)
+
+	// Configure encoding
+	zapConfig.Encoding = config.Format
+
+	// Configure output paths
+	if config.File.Enabled {
+		zapConfig.OutputPaths = []string{config.File.Path}
+	} else {
+		zapConfig.OutputPaths = []string{config.Output}
 	}
 
-	logger, err := zapConfig.Build()
+	// Create the logger
+	zapLogger, err := zapConfig.Build(
+		zap.AddCallerSkip(1),
+		zap.AddStacktrace(zapcore.ErrorLevel),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create logger: %v", err)
 	}
 
-	return &Service{logger}, nil
+	return &zapLoggerService{
+		logger: zapLogger,
+		fields: make(map[string]interface{}),
+	}, nil
 }
 
-// LogError logs an error with context and returns an error that can be returned to the client
-func (s *Service) LogError(err error, context string) error {
-	s.With(zap.Error(err)).Error(context)
+func (l *zapLoggerService) LogInfo(msg string, fields map[string]interface{}) {
+	l.logger.Info(msg, l.convertFields(fields)...)
+}
+
+func (l *zapLoggerService) LogError(err error, msg string) error {
+	if err != nil {
+		l.logger.Error(msg, zap.Error(err))
+	}
 	return err
 }
 
-// LogErrorf logs a formatted error message with context and returns an error
-func (s *Service) LogErrorf(err error, format string, args ...interface{}) error {
-	msg := fmt.Sprintf(format, args...)
-	s.With(zap.Error(err)).Error(msg)
+func (l *zapLoggerService) LogErrorf(err error, format string, args ...interface{}) error {
+	if err != nil {
+		msg := fmt.Sprintf(format, args...)
+		l.logger.Error(msg, zap.Error(err))
+	}
 	return err
 }
 
-// LogFatal logs a fatal error and exits the application
-func (s *Service) LogFatal(err error, context string) {
-	s.With(zap.Error(err)).Fatal(context)
+func (l *zapLoggerService) LogFatal(err error, context string) {
+	l.logger.Fatal(context, zap.Error(err))
 }
 
-// LogInfo logs an informational message with optional fields
-func (s *Service) LogInfo(message string, fields map[string]interface{}) {
-	if fields != nil {
-		s.With(zap.Any("fields", fields)).Info(message)
-	} else {
-		s.Info(message)
+func (l *zapLoggerService) LogDebug(message string, fields map[string]interface{}) {
+	l.logger.Debug(message, l.convertFields(fields)...)
+}
+
+func (l *zapLoggerService) LogWarn(message string, fields map[string]interface{}) {
+	l.logger.Warn(message, l.convertFields(fields)...)
+}
+
+func (l *zapLoggerService) WithFields(fields map[string]interface{}) Logger {
+	newFields := make(map[string]interface{}, len(l.fields)+len(fields))
+	for k, v := range l.fields {
+		newFields[k] = v
+	}
+	for k, v := range fields {
+		newFields[k] = v
+	}
+	return &zapLoggerService{
+		logger: l.logger,
+		fields: newFields,
 	}
 }
 
-// LogDebug logs a debug message with optional fields
-func (s *Service) LogDebug(message string, fields map[string]interface{}) {
-	if fields != nil {
-		s.With(zap.Any("fields", fields)).Debug(message)
-	} else {
-		s.Debug(message)
-	}
+func (l *zapLoggerService) WithContext(ctx context.Context) Logger {
+	return l.WithFields(map[string]interface{}{
+		"timestamp": time.Now().UTC().Format(time.RFC3339),
+	})
 }
 
-// LogWarn logs a warning message with optional fields
-func (s *Service) LogWarn(message string, fields map[string]interface{}) {
-	if fields != nil {
-		s.With(zap.Any("fields", fields)).Warn(message)
-	} else {
-		s.Warn(message)
+func (l *zapLoggerService) WithRequestID(requestID string) Logger {
+	return l.WithFields(map[string]interface{}{
+		"requestID": requestID,
+	})
+}
+
+func (l *zapLoggerService) WithUserID(userID string) Logger {
+	return l.WithFields(map[string]interface{}{
+		"userID": userID,
+	})
+}
+
+func (l *zapLoggerService) convertFields(fields map[string]interface{}) []zap.Field {
+	zapFields := make([]zap.Field, 0, len(l.fields)+len(fields))
+
+	// Add base fields
+	for k, v := range l.fields {
+		zapFields = append(zapFields, zap.Any(k, v))
 	}
+
+	// Add additional fields
+	for k, v := range fields {
+		zapFields = append(zapFields, zap.Any(k, v))
+	}
+
+	return zapFields
 }

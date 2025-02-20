@@ -3,7 +3,6 @@ package config
 import (
 	"time"
 
-	"github.com/consensuslabs/pavilion-network/backend/internal/logger"
 	"github.com/consensuslabs/pavilion-network/backend/internal/video"
 )
 
@@ -13,7 +12,7 @@ type Config struct {
 	Database DatabaseConfig     `yaml:"database"`
 	Redis    RedisConfig        `yaml:"redis"`
 	Storage  StorageConfig      `yaml:"storage"`
-	Logging  logger.Config      `yaml:"logging"`
+	Logging  LoggingConfig      `yaml:"logging"`
 	Ffmpeg   video.FfmpegConfig `yaml:"ffmpeg"`
 	Video    VideoConfig        `yaml:"video"`
 	Auth     AuthConfig         `yaml:"auth"`
@@ -86,4 +85,25 @@ type S3Config struct {
 	UseSSL          bool   `mapstructure:"useSSL"`
 	Region          string `mapstructure:"region"`
 	Bucket          string `mapstructure:"bucket"`
+}
+
+// LoggingConfig holds logging configuration
+type LoggingConfig struct {
+	Level       string `mapstructure:"level" yaml:"level"`
+	Format      string `mapstructure:"format" yaml:"format"`
+	Output      string `mapstructure:"output" yaml:"output"`
+	Development bool   `mapstructure:"development" yaml:"development"`
+
+	File struct {
+		Enabled bool   `mapstructure:"enabled" yaml:"enabled"`
+		Path    string `mapstructure:"path" yaml:"path"`
+		Rotate  bool   `mapstructure:"rotate" yaml:"rotate"`
+		MaxSize string `mapstructure:"maxSize" yaml:"maxSize"`
+		MaxAge  string `mapstructure:"maxAge" yaml:"maxAge"`
+	} `mapstructure:"file" yaml:"file"`
+
+	Sampling struct {
+		Initial    int `mapstructure:"initial" yaml:"initial"`
+		Thereafter int `mapstructure:"thereafter" yaml:"thereafter"`
+	} `mapstructure:"sampling" yaml:"sampling"`
 }

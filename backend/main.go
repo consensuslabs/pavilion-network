@@ -34,8 +34,35 @@ import (
 func main() {
 	ctx := context.Background()
 
-	// Initialize logger for bootstrapping
-	loggerService, err := logger.NewService(&logger.Config{Level: "debug"})
+	// Initialize logger first
+	loggerConfig := &logger.Config{
+		Level:       logger.Level("info"),
+		Format:      "json",
+		Output:      "stdout",
+		Development: false,
+		File: struct {
+			Enabled bool   `mapstructure:"enabled" yaml:"enabled"`
+			Path    string `mapstructure:"path" yaml:"path"`
+			Rotate  bool   `mapstructure:"rotate" yaml:"rotate"`
+			MaxSize string `mapstructure:"maxSize" yaml:"maxSize"`
+			MaxAge  string `mapstructure:"maxAge" yaml:"maxAge"`
+		}{
+			Enabled: false,
+			Path:    "/var/log/pavilion",
+			Rotate:  true,
+			MaxSize: "100MB",
+			MaxAge:  "30d",
+		},
+		Sampling: struct {
+			Initial    int `mapstructure:"initial" yaml:"initial"`
+			Thereafter int `mapstructure:"thereafter" yaml:"thereafter"`
+		}{
+			Initial:    100,
+			Thereafter: 100,
+		},
+	}
+
+	loggerService, err := logger.NewLogger(loggerConfig)
 	if err != nil {
 		log.Fatalf("Failed to initialize logger: %v", err)
 	}

@@ -60,7 +60,32 @@ func setupTestRouter(t *testing.T) (*gin.Engine, *auth.Service, *gorm.DB) {
 	router.Use(gin.Recovery())
 
 	// Create response handler
-	logger, _ := logger.NewService(&logger.Config{Level: "debug"})
+	logger, _ := logger.NewLogger(&logger.Config{
+		Level:       logger.Level("debug"),
+		Format:      "console",
+		Output:      "stdout",
+		Development: true,
+		File: struct {
+			Enabled bool   `mapstructure:"enabled" yaml:"enabled"`
+			Path    string `mapstructure:"path" yaml:"path"`
+			Rotate  bool   `mapstructure:"rotate" yaml:"rotate"`
+			MaxSize string `mapstructure:"maxSize" yaml:"maxSize"`
+			MaxAge  string `mapstructure:"maxAge" yaml:"maxAge"`
+		}{
+			Enabled: false,
+			Path:    "/var/log/pavilion",
+			Rotate:  false,
+			MaxSize: "100MB",
+			MaxAge:  "7d",
+		},
+		Sampling: struct {
+			Initial    int `mapstructure:"initial" yaml:"initial"`
+			Thereafter int `mapstructure:"thereafter" yaml:"thereafter"`
+		}{
+			Initial:    100,
+			Thereafter: 100,
+		},
+	})
 	responseHandler := httpHandler.NewResponseHandler(logger)
 
 	// Create auth handler and register routes

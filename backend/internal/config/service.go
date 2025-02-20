@@ -10,11 +10,11 @@ import (
 
 // ConfigService implements the Service interface
 type ConfigService struct {
-	logger Logger
+	logger ConfigLogger
 }
 
 // NewConfigService creates a new configuration service
-func NewConfigService(logger Logger) *ConfigService {
+func NewConfigService(logger ConfigLogger) *ConfigService {
 	return &ConfigService{
 		logger: logger,
 	}
@@ -77,6 +77,16 @@ func (s *ConfigService) setDefaults() {
 	viper.SetDefault("video.maxDescLength", 5000)
 	viper.SetDefault("video.allowedFormats", []string{".mp4", ".mov", ".avi"})
 	viper.SetDefault("logging.level", "info")
+	viper.SetDefault("logging.format", "json")
+	viper.SetDefault("logging.output", "stdout")
+	viper.SetDefault("logging.development", false)
+	viper.SetDefault("logging.file.enabled", false)
+	viper.SetDefault("logging.file.path", "/var/log/pavilion")
+	viper.SetDefault("logging.file.rotate", true)
+	viper.SetDefault("logging.file.maxSize", "100MB")
+	viper.SetDefault("logging.file.maxAge", "30d")
+	viper.SetDefault("logging.sampling.initial", 100)
+	viper.SetDefault("logging.sampling.thereafter", 100)
 	viper.SetDefault("storage.ipfs.apiAddress", "/ip4/127.0.0.1/tcp/5001")
 	viper.SetDefault("storage.ipfs.gateway", "http://localhost:8080")
 }

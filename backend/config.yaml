@@ -31,7 +31,19 @@ ipfs:
   gateway_url: "https://ipfs.io/ipfs/"
 
 logging:
-  level: "debug"
+  level: "info"  # debug, info, warn, error, fatal
+  format: "json" # json or console
+  output: "stdout" # stdout or file path
+  file:
+    enabled: false
+    path: "/var/log/pavilion"
+    rotate: true
+    maxSize: "100MB"
+    maxAge: "30d"
+  development: ${ENV:-development}  # Will be true for development environment
+  sampling:
+    initial: 100
+    thereafter: 100
 
 ffmpeg:
   path: "/usr/local/bin/ffmpeg"
