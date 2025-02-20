@@ -166,17 +166,24 @@ t.Run("Revoked Tokens", func(t *testing.T) {...})
 
 ## Running Auth Tests
 
+**Important**: All tests must be run from the `backend` directory where the `go.mod` file is located.
+
 To run only authentication tests:
 
 ```bash
-ENV=test go test ./internal/auth -v
+ENV=test go test -v ./internal/auth/...
 ```
 
 To run a specific test:
 
 ```bash
-ENV=test go test ./internal/auth -v -run TestRegisterAndLogin
+ENV=test go test -v ./internal/auth/... -run TestRegisterAndLogin
 ```
+
+Note: Running tests from other directories may fail due to:
+- Missing configuration files (`config_test.yaml`, `.env.test`)
+- Incorrect module path resolution
+- Relative path issues in test helpers
 
 ## Troubleshooting
 
