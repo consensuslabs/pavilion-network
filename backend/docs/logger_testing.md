@@ -2,7 +2,59 @@
 
 ## Overview
 
-This document outlines the testing strategy and implementation details for the logging system in the Pavilion Network backend. The logging tests cover request logging, error handling, context propagation, and field management.
+This document outlines the testing strategy and implementation details for the logging system in the Pavilion Network backend. The logging system consists of multiple logger implementations to support different use cases and testing scenarios.
+
+## Logger Implementations
+
+### 1. Default Logger (`defaultLogger`)
+
+Located in `internal/database/default_logger.go`, this is a simple logger implementation for cases where a full logger is not available:
+
+- Used primarily in database migrations
+- Provides basic console output using Go's standard `log` package
+- Implements the core `Logger` interface
+- Requires no configuration
+- Useful for standalone operations and initial setup
+
+```go
+type defaultLogger struct{}
+
+func NewDefaultLogger() (Logger, error)
+func (l *defaultLogger) LogInfo(msg string, fields map[string]interface{})
+func (l *defaultLogger) LogError(err error, msg string, fields ...map[string]interface{}) error
+// ... other methods
+```
+
+### 2. Mock Logger (`mockLogger`)
+
+Located in `internal/database/mock_logger_test.go`, this implementation is specifically for testing:
+
+- Captures and stores log messages for verification
+- Thread-safe with mutex protection
+- Supports field merging and context propagation
+- Maintains separate message queues for different log levels
+
+```go
+type mockLogger struct {
+    mu            sync.RWMutex
+    infoMessages  []mockLogEntry
+    errorMessages []mockLogEntry
+    warnMessages  []mockLogEntry
+    debugMessages []mockLogEntry
+    fatalMessages []mockLogEntry
+    fields        map[string]interface{}
+}
+```
+
+### 3. Test Logger (`TestLogger`)
+
+Located in `testhelper/logger.go`, this is a more sophisticated testing logger:
+
+- Supports debug capabilities
+- Provides message querying and clearing
+- Implements context chaining
+- Thread-safe operations
+- Used in integration tests
 
 ## Test Environment Setup
 
@@ -20,215 +72,145 @@ The logger tests use a dedicated test environment with:
 1. `config_test.yaml`:
    ```yaml
    logging:
-     level: debug
-     format: json
-     output: stdout
-     development: true
+     level: error  # Default to error level for tests
+     format: console  # Default to console for better test output
+     output: stdout  # Always use stdout for tests
+     development: true  # Always true for test environment
      sampling:
-       initial: 100
+       initial: 100  # No sampling in tests
        thereafter: 100
+   ```
+
+2. `.env.test`:
+   ```env
+   LOG_LEVEL=error
+   LOG_FORMAT=console
    ```
 
 ## Test Cases
 
-### 1. Request Logger Middleware (`TestRequestLoggerMiddleware`)
+### 1. Default Logger Tests
 
-Tests the HTTP request logging middleware functionality:
-
+Test basic logging functionality:
 ```go
-func TestRequestLoggerMiddleware(t *testing.T) {
-    // Basic request logging
-    t.Run("Basic Request Logging", func(t *testing.T) {...})
-    
-    // Error status code logging
-    t.Run("Error Status Code Logging", func(t *testing.T) {...})
-    
-    // Warning status code logging
-    t.Run("Warning Status Code Logging", func(t *testing.T) {...})
-    
-    // Context logger injection
-    t.Run("Context Logger Injection", func(t *testing.T) {...})
-    
-    // User ID logging
-    t.Run("User ID Logging", func(t *testing.T) {...})
-    
-    // Latency tracking
-    t.Run("Latency Tracking", func(t *testing.T) {...})
+func TestDefaultLogger(t *testing.T) {
+    logger, _ := NewDefaultLogger()
+    logger.LogInfo("test message", nil)
+    logger.LogError(errors.New("test error"), "error message")
 }
 ```
 
-Key test scenarios:
-- HTTP request field capture (method, path, status)
-- Request ID generation and propagation
-- Response status code based logging levels
-- Request timing and latency tracking
-- User ID context propagation
-- Client IP and User Agent logging
+### 2. Mock Logger Tests
 
-### 2. Logger Context Management
-
-Tests the logger's context handling capabilities:
-- Request ID propagation
-- User ID propagation
-- Field inheritance
-- Context chaining
-
-### 3. Log Level Management
-
-Tests different logging levels:
-- Info level for normal requests
-- Warning level for 4xx errors
-- Error level for 5xx errors
-- Debug level for development
-- Fatal level handling
-
-## Test Utilities
-
-### Mock Logger
-
-The test suite includes a mock logger implementation:
-
+Test message capture and field handling:
 ```go
-type mockLogger struct {
-    infoMessages  []string
-    errorMessages []string
-    warnMessages  []string
-    fields        map[string]interface{}
-    contextLogger *mockLogger
+func TestMockLogger(t *testing.T) {
+    logger := newMockLogger()
+    logger.LogInfo("test info", map[string]interface{}{"key": "value"})
+    messages := logger.GetInfoMessages()
+    // Verify message content and fields
 }
-
-func newMockLogger() *mockLogger
-func (m *mockLogger) LogInfo(msg string, fields map[string]interface{})
-func (m *mockLogger) LogError(err error, msg string) error
-func (m *mockLogger) LogWarn(message string, fields map[string]interface{})
 ```
 
-### Test Router Setup
+### 3. GORM Logger Integration Tests
 
-Utility for setting up test HTTP routers:
-
+Test database operation logging:
 ```go
-func setupTestRouter(mockLogger *mockLogger) *gin.Engine
+func TestGormLogger(t *testing.T) {
+    logger := newMockLogger()
+    gormLogger := NewGormLogger(logger, 200*time.Millisecond)
+    // Test various database operations and verify logs
+}
 ```
 
 ## Best Practices
 
-1. **Log Message Verification**
-   - Verify correct message content
-   - Check log level appropriateness
-   - Validate structured field data
+1. **Logger Selection**
+   - Use `defaultLogger` for standalone operations
+   - Use `mockLogger` for unit tests
+   - Use `TestLogger` for integration tests
 
-2. **Context Management**
-   - Test context propagation
-   - Verify field inheritance
-   - Check context chain integrity
+2. **Test Coverage**
+   - Test all log levels (Info, Error, Warn, Debug, Fatal)
+   - Verify field merging and context propagation
+   - Test concurrent logging operations
+   - Validate structured logging format
 
-3. **Field Handling**
-   - Validate required fields presence
-   - Check field value accuracy
-   - Test field merging behavior
+3. **Field Validation**
+   - Check required fields presence
+   - Verify field inheritance in context chains
+   - Validate field merging behavior
 
-4. **Performance Considerations**
-   - Verify latency tracking
-   - Check sampling behavior
-   - Test high-volume logging
-
-## Common Test Scenarios
-
-### 1. HTTP Request Logging
-
-```go
-// Test successful request logging
-t.Run("Successful Request", func(t *testing.T) {...})
-
-// Test error request logging
-t.Run("Error Request", func(t *testing.T) {...})
-
-// Test request timing
-t.Run("Request Timing", func(t *testing.T) {...})
-```
-
-### 2. Context Propagation
-
-```go
-// Test request ID propagation
-t.Run("Request ID", func(t *testing.T) {...})
-
-// Test user ID propagation
-t.Run("User ID", func(t *testing.T) {...})
-```
-
-### 3. Field Management
-
-```go
-// Test field inheritance
-t.Run("Field Inheritance", func(t *testing.T) {...})
-
-// Test field merging
-t.Run("Field Merging", func(t *testing.T) {...})
-```
+4. **Error Handling**
+   - Test error propagation
+   - Verify error field capture
+   - Check error formatting
 
 ## Running Logger Tests
 
-To run only logger tests:
+To run specific logger tests:
 
 ```bash
-go test -v ./internal/http/middleware/...
+# Run all logger tests
+go test -v ./internal/database/... -run "TestGormLogger|TestDefaultLogger"
+
+# Run mock logger tests
+go test -v ./internal/database/... -run TestMockLogger
+
+# Run test logger tests
+go test -v ./testhelper/... -run TestTestLogger
 ```
 
-To run a specific test:
+## Common Test Patterns
 
-```bash
-go test -v ./internal/http/middleware/... -run TestRequestLoggerMiddleware
+### 1. Field Verification
+```go
+if fields["error"] != "test error" {
+    t.Errorf("Expected error field, got %v", fields["error"])
+}
 ```
+
+### 2. Message Capture
+```go
+messages := logger.GetInfoMessages()
+if len(messages) == 0 {
+    t.Error("Expected messages to be logged")
+}
+```
+
+### 3. Context Propagation
+```go
+logger := logger.WithContext(ctx)
+logger.LogInfo("test", nil)
+// Verify context fields are present
+```
+
+## Future Improvements
+
+1. Add performance benchmarks
+2. Implement log format validation
+3. Add concurrent logging tests
+4. Enhance error condition coverage
+5. Add integration with log aggregation systems
+6. Implement log rotation testing
+7. Add structured logging validation
+8. Enhance context propagation testing
 
 ## Troubleshooting
 
 Common issues and solutions:
 
-1. **Message Propagation Issues**
-   - Check context logger setup
-   - Verify message passing in mock
-   - Ensure proper logger chaining
+1. **Missing Log Messages**
+   - Check log level configuration
+   - Verify logger implementation
+   - Check mutex locking
 
-2. **Field Inheritance Problems**
-   - Verify field copying logic
-   - Check context logger fields
-   - Validate field merging
+2. **Field Inheritance Issues**
+   - Verify field merging logic
+   - Check context propagation
+   - Validate field maps
 
-3. **Context Management Issues**
-   - Check context logger creation
-   - Verify context propagation
-   - Ensure proper cleanup
-
-## Future Improvements
-
-Planned enhancements to logger testing:
-
-1. Add performance benchmarks for logging operations
-2. Implement stress testing for high-volume logging
-3. Add integration tests with log aggregation systems
-4. Enhance field validation testing
-5. Add concurrent logging tests
-6. Implement log format validation
-7. Add tests for log rotation and file output
-8. Enhance error condition coverage
-
-## Test Coverage
-
-Current test coverage includes:
-- HTTP request logging
-- Error and warning logging
-- Context propagation
-- Field management
-- Request timing
-- User identification
-
-Areas for additional coverage:
-- Log rotation
-- File output
-- Sampling behavior
-- Concurrent logging
-- Log format validation
-- Error recovery
-- Resource cleanup 
+3. **Concurrent Access Issues**
+   - Ensure proper mutex usage
+   - Check thread safety
+   - Verify message queue handling 

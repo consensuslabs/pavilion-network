@@ -50,10 +50,13 @@ func setupTestRouter(t *testing.T) (*gin.Engine, *auth.Service, *gorm.DB) {
 		},
 	}
 
+	// Create logger
+	testLogger := testhelper.NewTestLogger(true)
+
 	// Create services
 	jwtService := auth.NewJWTService(config)
-	refreshTokenRepo := auth.NewRefreshTokenRepository(db)
-	authService := auth.NewService(db, jwtService, refreshTokenRepo, config)
+	refreshTokenRepo := auth.NewRefreshTokenRepository(db, testLogger)
+	authService := auth.NewService(db, jwtService, refreshTokenRepo, config, testLogger)
 
 	// Create router
 	router := gin.New()

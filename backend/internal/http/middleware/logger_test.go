@@ -18,7 +18,7 @@ type mockLogger struct {
 	errorMessages []string
 	warnMessages  []string
 	fields        map[string]interface{}
-	contextLogger *mockLogger // Add this field to track the context logger
+	contextLogger *mockLogger
 }
 
 func newMockLogger() *mockLogger {
@@ -94,7 +94,7 @@ func (m *mockLogger) WithFields(fields map[string]interface{}) logger.Logger {
 			newLogger.fields[k] = v
 		}
 	}
-	m.contextLogger = newLogger // Track the new logger
+	m.contextLogger = newLogger
 	return newLogger
 }
 

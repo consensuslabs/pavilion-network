@@ -16,10 +16,11 @@ type MigrationConfig struct {
 	AutoMigrate bool
 	ForceRun    bool
 	db          *gorm.DB
+	Logger      Logger
 }
 
 // NewMigrationConfig creates a new migration configuration
-func NewMigrationConfig(db *gorm.DB) *MigrationConfig {
+func NewMigrationConfig(db *gorm.DB, logger Logger) *MigrationConfig {
 	env := os.Getenv("ENV")
 	if env == "" {
 		env = "development"
@@ -39,6 +40,7 @@ func NewMigrationConfig(db *gorm.DB) *MigrationConfig {
 		AutoMigrate: autoMigrate,
 		ForceRun:    os.Getenv("FORCE_MIGRATION") == "true",
 		db:          db,
+		Logger:      logger,
 	}
 }
 

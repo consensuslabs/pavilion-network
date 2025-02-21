@@ -27,18 +27,18 @@ ipfs:
   gateway_url: "https://ipfs.io/ipfs/"
 
 logging:
-  level: "debug"  # Set to debug for testing
-  format: "console" # Use console format for better test output readability
-  output: "stdout"
+  level: ${LOG_LEVEL:-error}  # Default to error level for tests to reduce noise
+  format: ${LOG_FORMAT:-console}  # Default to console for better test output readability
+  output: stdout  # Always use stdout for tests
   file:
-    enabled: false
+    enabled: false  # Never use file logging in tests
     path: "/var/log/pavilion"
     rotate: false
     maxSize: "100MB"
     maxAge: "7d"
   development: true  # Always true for test environment
   sampling:
-    initial: 100
+    initial: 100  # No sampling in tests
     thereafter: 100
 
 ffmpeg:

@@ -14,6 +14,7 @@ func TestRegisterAndLogin(t *testing.T) {
 	fmt.Printf("\n=== Starting TestRegisterAndLogin ===\n")
 
 	db := testhelper.SetupTestDB(t)
+	logger := testhelper.NewTestLogger(true)
 
 	config := &auth.Config{
 		JWT: struct {
@@ -31,8 +32,8 @@ func TestRegisterAndLogin(t *testing.T) {
 
 	// Use real JWT service instead of dummy
 	jwtService := auth.NewJWTService(config)
-	refreshTokenRepo := auth.NewRefreshTokenRepository(db)
-	authService := auth.NewService(db, jwtService, refreshTokenRepo, config)
+	refreshTokenRepo := auth.NewRefreshTokenRepository(db, logger)
+	authService := auth.NewService(db, jwtService, refreshTokenRepo, config, logger)
 
 	// Test Registration
 	regReq := auth.RegisterRequest{
@@ -118,6 +119,7 @@ func TestRegisterAndLogin(t *testing.T) {
 
 func TestLogout(t *testing.T) {
 	db := testhelper.SetupTestDB(t)
+	logger := testhelper.NewTestLogger(true)
 
 	config := &auth.Config{
 		JWT: struct {
@@ -133,8 +135,8 @@ func TestLogout(t *testing.T) {
 
 	// Use real JWT service instead of dummy
 	jwtService := auth.NewJWTService(config)
-	refreshTokenRepo := auth.NewRefreshTokenRepository(db)
-	authService := auth.NewService(db, jwtService, refreshTokenRepo, config)
+	refreshTokenRepo := auth.NewRefreshTokenRepository(db, logger)
+	authService := auth.NewService(db, jwtService, refreshTokenRepo, config, logger)
 
 	// Create a test user with unique credentials
 	regReq := auth.RegisterRequest{
@@ -181,6 +183,7 @@ func TestLogout(t *testing.T) {
 
 func TestRefreshToken(t *testing.T) {
 	db := testhelper.SetupTestDB(t)
+	logger := testhelper.NewTestLogger(true)
 
 	config := &auth.Config{
 		JWT: struct {
@@ -196,8 +199,8 @@ func TestRefreshToken(t *testing.T) {
 
 	// Use real JWT service instead of dummy
 	jwtService := auth.NewJWTService(config)
-	refreshTokenRepo := auth.NewRefreshTokenRepository(db)
-	authService := auth.NewService(db, jwtService, refreshTokenRepo, config)
+	refreshTokenRepo := auth.NewRefreshTokenRepository(db, logger)
+	authService := auth.NewService(db, jwtService, refreshTokenRepo, config, logger)
 
 	// Create a test user with unique credentials
 	regReq := auth.RegisterRequest{
@@ -300,6 +303,7 @@ func TestRefreshToken(t *testing.T) {
 
 func TestValidateToken(t *testing.T) {
 	db := testhelper.SetupTestDB(t)
+	logger := testhelper.NewTestLogger(true)
 
 	config := &auth.Config{
 		JWT: struct {
@@ -315,8 +319,8 @@ func TestValidateToken(t *testing.T) {
 
 	// Use real JWT service
 	jwtService := auth.NewJWTService(config)
-	refreshTokenRepo := auth.NewRefreshTokenRepository(db)
-	authService := auth.NewService(db, jwtService, refreshTokenRepo, config)
+	refreshTokenRepo := auth.NewRefreshTokenRepository(db, logger)
+	authService := auth.NewService(db, jwtService, refreshTokenRepo, config, logger)
 
 	// Create a test user with unique credentials
 	regReq := auth.RegisterRequest{

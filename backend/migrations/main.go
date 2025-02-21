@@ -2,7 +2,6 @@ package migrations
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/consensuslabs/pavilion-network/backend/internal/database"
 	"gorm.io/gorm"
@@ -14,14 +13,21 @@ type Migrator interface {
 }
 
 func RunMigrations(db *gorm.DB, direction string) error {
+	// Initialize migration config with a default logger
+	defaultLogger, err := database.NewDefaultLogger()
+	if err != nil {
+		return fmt.Errorf("failed to create default logger: %v", err)
+	}
+
 	// Initialize migration config
-	migrationConfig := database.NewMigrationConfig(db)
+	migrationConfig := database.NewMigrationConfig(db, defaultLogger)
 
 	// Log migration configuration
-	log.Printf("Migration Configuration:")
-	log.Printf("- Environment: %s", migrationConfig.Environment)
-	log.Printf("- Auto Migrate: %v", migrationConfig.AutoMigrate)
-	log.Printf("- Force Migration: %v", migrationConfig.ForceRun)
+	migrationConfig.Logger.LogInfo("Migration Configuration", map[string]interface{}{
+		"environment":     migrationConfig.Environment,
+		"auto_migrate":    migrationConfig.AutoMigrate,
+		"force_migration": migrationConfig.ForceRun,
+	})
 
 	// Initialize migration table before any other operations
 	if err := migrationConfig.InitializeMigrationTable(); err != nil {
@@ -31,11 +37,15 @@ func RunMigrations(db *gorm.DB, direction string) error {
 	// Check if migrations should run
 	if !migrationConfig.ShouldRunMigration() {
 		if migrationConfig.Environment == "development" {
-			log.Printf("Skipping migrations (AUTO_MIGRATE=%v, FORCE_MIGRATION=%v)",
-				migrationConfig.AutoMigrate, migrationConfig.ForceRun)
+			migrationConfig.Logger.LogInfo("Skipping migrations", map[string]interface{}{
+				"auto_migrate":    migrationConfig.AutoMigrate,
+				"force_migration": migrationConfig.ForceRun,
+			})
 		} else {
-			log.Printf("Skipping migrations in %s environment (FORCE_MIGRATION=%v)",
-				migrationConfig.Environment, migrationConfig.ForceRun)
+			migrationConfig.Logger.LogInfo("Skipping migrations in non-development environment", map[string]interface{}{
+				"environment":     migrationConfig.Environment,
+				"force_migration": migrationConfig.ForceRun,
+			})
 		}
 		return nil
 	}
@@ -56,11 +66,16 @@ func RunMigrations(db *gorm.DB, direction string) error {
 				return fmt.Errorf("failed to check migration status: %v", err)
 			}
 			if applied {
-				log.Printf("Migration %s already applied, skipping", migration.Name)
+				migrationConfig.Logger.LogInfo("Migration already applied", map[string]interface{}{
+					"migration": migration.Name,
+				})
 				continue
 			}
 
-			log.Printf("Running migration %d up: %s", i+1, migration.Name)
+			migrationConfig.Logger.LogInfo("Running migration up", map[string]interface{}{
+				"index": i + 1,
+				"name":  migration.Name,
+			})
 			if err := migration.Migrator.Up(); err != nil {
 				return fmt.Errorf("failed to run migration %d up: %v", i+1, err)
 			}
@@ -69,12 +84,17 @@ func RunMigrations(db *gorm.DB, direction string) error {
 			if err := migrationConfig.RecordMigration(migration.Name, fmt.Sprintf("Migration %s executed successfully", migration.Name)); err != nil {
 				return fmt.Errorf("failed to record migration %s: %v", migration.Name, err)
 			}
-			log.Printf("Successfully recorded migration: %s", migration.Name)
+			migrationConfig.Logger.LogInfo("Successfully recorded migration", map[string]interface{}{
+				"migration": migration.Name,
+			})
 		}
 	} else if direction == "down" {
 		// Run migrations in reverse order
 		for i := len(migrations) - 1; i >= 0; i-- {
-			log.Printf("Running migration %d down: %s", i+1, migrations[i].Name)
+			migrationConfig.Logger.LogInfo("Running migration down", map[string]interface{}{
+				"index": i + 1,
+				"name":  migrations[i].Name,
+			})
 			if err := migrations[i].Migrator.Down(); err != nil {
 				return fmt.Errorf("failed to run migration %d down: %v", i+1, err)
 			}

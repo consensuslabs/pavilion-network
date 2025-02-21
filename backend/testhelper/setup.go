@@ -74,12 +74,28 @@ func SetupTestDB(t *testing.T) *gorm.DB {
 		t.Fatalf("failed to load test config: %v", err)
 	}
 
-	// Insert logging statements to debug configuration.
-	fmt.Printf("Loaded Test Config: Environment=%s, Database: host=%s, port=%d, user=%s, dbname=%s, sslmode=%s\n", cfg.Environment, cfg.Database.Host, cfg.Database.Port, cfg.Database.User, cfg.Database.Name, cfg.Database.SSLMode)
-	fmt.Printf("Full Config: %+v\n", cfg)
+	logger := NewTestLogger(true)
+
+	// Log configuration using structured logging
+	logger.LogInfo("Loaded Test Config", map[string]interface{}{
+		"environment": cfg.Environment,
+		"database": map[string]interface{}{
+			"host":    cfg.Database.Host,
+			"port":    cfg.Database.Port,
+			"user":    cfg.Database.User,
+			"dbname":  cfg.Database.Name,
+			"sslmode": cfg.Database.SSLMode,
+		},
+	})
+
+	logger.LogDebug("Full Config", map[string]interface{}{
+		"config": cfg,
+	})
 
 	if testDB := os.Getenv("TEST_DB"); testDB != "" {
-		fmt.Printf("Overriding database name with TEST_DB: %s\n", testDB)
+		logger.LogInfo("Overriding database name", map[string]interface{}{
+			"test_db": testDB,
+		})
 		cfg.Database.Name = testDB
 	}
 	dsn := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
@@ -107,7 +123,9 @@ func SetupTestDB(t *testing.T) *gorm.DB {
 	if err := db.Raw("SELECT current_database()").Scan(&currentDB).Error; err != nil {
 		t.Fatalf("failed to get current database: %v", err)
 	}
-	fmt.Printf("After USE query, current database: %s\n", currentDB)
+	logger.LogInfo("Current database", map[string]interface{}{
+		"database": currentDB,
+	})
 
 	// Run migrations using our migration runner.
 	if err := migrations.RunMigrations(db, "up"); err != nil {

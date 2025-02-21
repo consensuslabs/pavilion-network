@@ -31,19 +31,19 @@ ipfs:
   gateway_url: "https://ipfs.io/ipfs/"
 
 logging:
-  level: "info"  # debug, info, warn, error, fatal
-  format: "json" # json or console
-  output: "stdout" # stdout or file path
+  level: ${LOG_LEVEL:-info}  # Override with LOG_LEVEL env var, default to info
+  format: ${LOG_FORMAT:-json}  # Override with LOG_FORMAT env var, default to json
+  output: ${LOG_OUTPUT:-stdout}  # Override with LOG_OUTPUT env var
   file:
-    enabled: false
-    path: "/var/log/pavilion"
-    rotate: true
-    maxSize: "100MB"
-    maxAge: "30d"
+    enabled: ${LOG_FILE_ENABLED:-false}  # Enable file logging via env var
+    path: ${LOG_FILE_PATH:-/var/log/pavilion}
+    rotate: ${LOG_FILE_ROTATE:-true}
+    maxSize: ${LOG_FILE_MAX_SIZE:-100MB}
+    maxAge: ${LOG_FILE_MAX_AGE:-30d}
   development: ${ENV:-development}  # Will be true for development environment
   sampling:
-    initial: 100
-    thereafter: 100
+    initial: ${LOG_SAMPLING_INITIAL:-100}
+    thereafter: ${LOG_SAMPLING_THEREAFTER:-100}
 
 ffmpeg:
   path: "/usr/local/bin/ffmpeg"
