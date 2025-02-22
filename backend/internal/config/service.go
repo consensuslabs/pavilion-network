@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
+	"github.com/joho/godotenv"
 	"github.com/spf13/viper"
 )
 
@@ -23,16 +25,64 @@ func NewConfigService(logger ConfigLogger) *ConfigService {
 // Load loads the configuration from the specified path
 func (s *ConfigService) Load(path string) (*Config, error) {
 	viper.AddConfigPath(path)
-	// Use test configuration file if ENV is set to test
-	if os.Getenv("ENV") == "test" {
+
+	// Determine environment and config file
+	env := os.Getenv("ENV")
+	s.logger.LogInfo("Loading configuration", map[string]interface{}{
+		"environment": env,
+		"path":        path,
+	})
+
+	if env == "test" {
 		viper.SetConfigName("config_test")
+		// Load test environment variables
+		if err := loadEnvFile(path, ".env.test"); err != nil {
+			s.logger.LogError(err, "Failed to load test environment variables")
+			return nil, fmt.Errorf("failed to load test environment variables: %v", err)
+		}
+		s.logger.LogInfo("Loaded test configuration file", map[string]interface{}{
+			"config_file": "config_test.yaml",
+			"env_file":    ".env.test",
+		})
 	} else {
 		viper.SetConfigName("config")
+		// Load regular environment variables
+		if err := loadEnvFile(path, ".env"); err != nil {
+			s.logger.LogError(err, "Failed to load environment variables")
+			return nil, fmt.Errorf("failed to load environment variables: %v", err)
+		}
+		s.logger.LogInfo("Loaded regular configuration file", map[string]interface{}{
+			"config_file": "config.yaml",
+			"env_file":    ".env",
+		})
 	}
 	viper.SetConfigType("yaml")
 
 	// Set default values
 	s.setDefaults()
+
+	// Configure environment variable handling
+	viper.AutomaticEnv()
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+	viper.AllowEmptyEnv(true)
+
+	// Enable environment variable substitution
+	viper.SetEnvPrefix("")
+
+	// Bind environment variables
+	viper.BindEnv("environment", "ENV") // Bind ENV to environment field
+	for _, key := range []string{
+		"LOG_LEVEL", "LOG_FORMAT", "LOG_OUTPUT",
+		"LOG_FILE_ENABLED", "LOG_FILE_PATH", "LOG_FILE_ROTATE",
+		"LOG_FILE_MAX_SIZE", "LOG_FILE_MAX_AGE",
+		"LOG_ENV_DEVELOPMENT",
+		"LOG_SAMPLING_INITIAL", "LOG_SAMPLING_THEREAFTER",
+		"DB_PASSWORD",
+		"S3_ACCESS_KEY_ID", "S3_SECRET_ACCESS_KEY",
+		"JWT_SECRET",
+	} {
+		viper.BindEnv(strings.ToLower(strings.Replace(key, "_", ".", -1)), key)
+	}
 
 	// Read the config file
 	if err := viper.ReadInConfig(); err != nil {
@@ -54,8 +104,22 @@ func (s *ConfigService) Load(path string) (*Config, error) {
 		return nil, fmt.Errorf("failed to resolve storage paths: %v", err)
 	}
 
-	s.logger.LogInfo("Configuration loaded successfully", nil)
+	s.logger.LogInfo("Configuration loaded successfully", map[string]interface{}{
+		"environment": env,
+		"config_file": viper.ConfigFileUsed(),
+	})
 	return &config, nil
+}
+
+// loadEnvFile loads environment variables from the specified file
+func loadEnvFile(path, filename string) error {
+	envFile := filepath.Join(path, filename)
+	if _, err := os.Stat(envFile); err == nil {
+		if err := godotenv.Load(envFile); err != nil {
+			return fmt.Errorf("error loading %s: %v", filename, err)
+		}
+	}
+	return nil
 }
 
 // setDefaults sets default values for configuration

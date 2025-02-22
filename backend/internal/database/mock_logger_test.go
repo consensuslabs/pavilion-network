@@ -38,7 +38,22 @@ func (m *mockLogger) LogInfo(msg string, fields map[string]interface{}) {
 }
 
 // LogError implements Logger interface
-func (m *mockLogger) LogError(err error, msg string, fields ...map[string]interface{}) error {
+func (m *mockLogger) LogError(err error, msg string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	// Create fields map with error
+	fields := map[string]interface{}{}
+	if err != nil {
+		fields["error"] = err.Error()
+	}
+
+	m.errorMessages = append(m.errorMessages, mockLogEntry{Message: msg, Fields: m.mergeFields(fields)})
+	return err
+}
+
+// LogErrorWithFields is a helper method that allows additional fields
+func (m *mockLogger) LogErrorWithFields(err error, msg string, fields map[string]interface{}) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -49,8 +64,8 @@ func (m *mockLogger) LogError(err error, msg string, fields ...map[string]interf
 	}
 
 	// Merge additional fields if provided
-	if len(fields) > 0 {
-		for k, v := range fields[0] {
+	if fields != nil {
+		for k, v := range fields {
 			mergedFields[k] = v
 		}
 	}
@@ -198,4 +213,18 @@ func (m *mockLogger) mergeFields(fields map[string]interface{}) map[string]inter
 	}
 
 	return merged
+}
+
+// WithRequestID implements Logger interface
+func (m *mockLogger) WithRequestID(requestID string) Logger {
+	return m.WithFields(map[string]interface{}{
+		"request_id": requestID,
+	})
+}
+
+// WithUserID implements Logger interface
+func (m *mockLogger) WithUserID(userID string) Logger {
+	return m.WithFields(map[string]interface{}{
+		"user_id": userID,
+	})
 }

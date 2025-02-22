@@ -1,21 +1,20 @@
-environment: "test"  # Testing environment
+environment: test # Will be overridden by ENV
 
 server:
   port: 8080
 
-
 database:
   host: "localhost"
-  dbname: "pavilion_test"
+  dbname: "pavilion_test"  # Test database
   port: 26257
   user: "root"
-  password: ${DB_PASSWORD:-}
+  password: ""  # Will be overridden by DB_PASSWORD
   sslmode: "disable"
   timezone: "UTC"
   pool:
-    maxOpen: 100
-    maxIdle: 10
-    connMaxLifetime: 1h  # Duration string format: "1h" for 1 hour, "30m" for 30 minutes, etc.
+    maxIdleConns: 10
+    maxOpenConns: 100
+    connMaxLifetime: 1h
 
 redis:
   addr: "localhost:6379"
@@ -23,19 +22,19 @@ redis:
   db: 0
 
 ipfs:
-  host: "localhost"
+  host: "localhost:5001"
   gateway_url: "https://ipfs.io/ipfs/"
 
 logging:
-  level: ${LOG_LEVEL:-error}  # Default to error level for tests to reduce noise
-  format: ${LOG_FORMAT:-console}  # Default to console for better test output readability
+  level: error  # Default to error level for tests
+  format: console  # Default to console for better test output
   output: stdout  # Always use stdout for tests
   file:
     enabled: false  # Never use file logging in tests
-    path: "/var/log/pavilion"
+    path: /var/log/pavilion
     rotate: false
-    maxSize: "100MB"
-    maxAge: "7d"
+    maxSize: 100MB
+    maxAge: 7d
   development: true  # Always true for test environment
   sampling:
     initial: 100  # No sampling in tests
@@ -62,8 +61,8 @@ storage:
     endpoint: "s3.amazonaws.com"
     bucket: "octopus-doganbros-storage"
     region: "eu-central-1"
-    accessKeyId: ""
-    secretAccessKey: ""
+    accessKeyId: ""  # Will be overridden by S3_ACCESS_KEY_ID
+    secretAccessKey: ""  # Will be overridden by S3_SECRET_ACCESS_KEY
     useSSL: true
     directories:
       videoPost: "video-posts/"
@@ -84,6 +83,6 @@ video:
 
 auth:
   jwt:
-    secret: "test-secret-key"
+    secret: test-secret-key  # Will be overridden by JWT_SECRET
     accessTokenTTL: 15m
-    refreshTokenTTL: 168h  # 7 days 
+    refreshTokenTTL: 168h 

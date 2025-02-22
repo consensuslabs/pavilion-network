@@ -129,8 +129,8 @@ func NewApp(ctx context.Context, cfg *config.Config) (*App, error) {
 	// Initialize auth service
 	authConfig := auth.NewConfigFromAuthConfig(&cfg.Auth)
 	jwtService := auth.NewJWTService(authConfig)
-	refreshTokenService := auth.NewRefreshTokenRepository(db)
-	authService := auth.NewService(db, jwtService, refreshTokenService, authConfig)
+	refreshTokenService := auth.NewRefreshTokenRepository(db, loggerService)
+	authService := auth.NewService(db, jwtService, refreshTokenService, authConfig, loggerService)
 
 	// Initialize router
 	router := gin.Default()
@@ -239,10 +239,10 @@ func (a *App) initServices() {
 	a.jwtService = auth.NewJWTService(authConfig)
 
 	// Initialize refresh token service
-	a.refreshTokens = auth.NewRefreshTokenRepository(a.db)
+	a.refreshTokens = auth.NewRefreshTokenRepository(a.db, a.logger)
 
 	// Initialize auth service
-	a.auth = auth.NewService(a.db, a.jwtService, a.refreshTokens, authConfig)
+	a.auth = auth.NewService(a.db, a.jwtService, a.refreshTokens, authConfig, a.logger)
 
 	// Initialize auth handler
 	a.authHandler = auth.NewHandler(a.auth, a.httpHandler)

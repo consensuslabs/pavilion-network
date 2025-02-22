@@ -1,8 +1,7 @@
 package database
 
 import (
-	"context"
-
+	"github.com/consensuslabs/pavilion-network/backend/internal/logger"
 	"gorm.io/gorm"
 )
 
@@ -13,12 +12,4 @@ type Service interface {
 }
 
 // Logger interface for logging operations
-type Logger interface {
-	LogInfo(msg string, fields map[string]interface{})
-	LogError(err error, msg string, fields ...map[string]interface{}) error
-	LogErrorf(err error, format string, args ...interface{}) error
-	LogWarn(message string, fields map[string]interface{})
-	LogDebug(message string, fields map[string]interface{})
-	LogFatal(err error, context string)
-	WithContext(ctx context.Context) Logger
-}
+type Logger = logger.Logger

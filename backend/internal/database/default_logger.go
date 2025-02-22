@@ -18,8 +18,8 @@ func (l *defaultLogger) LogInfo(msg string, fields map[string]interface{}) {
 	log.Printf("INFO: %s %v", msg, fields)
 }
 
-func (l *defaultLogger) LogError(err error, msg string, fields ...map[string]interface{}) error {
-	log.Printf("ERROR: %s: %v %v", msg, err, fields)
+func (l *defaultLogger) LogError(err error, msg string) error {
+	log.Printf("ERROR: %s: %v", msg, err)
 	return err
 }
 
@@ -42,5 +42,17 @@ func (l *defaultLogger) LogFatal(err error, context string) {
 }
 
 func (l *defaultLogger) WithContext(ctx context.Context) Logger {
+	return l
+}
+
+func (l *defaultLogger) WithFields(fields map[string]interface{}) Logger {
+	return l
+}
+
+func (l *defaultLogger) WithRequestID(requestID string) Logger {
+	return l
+}
+
+func (l *defaultLogger) WithUserID(userID string) Logger {
 	return l
 }

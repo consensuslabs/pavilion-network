@@ -18,3 +18,10 @@ type Logger interface {
 	WithRequestID(requestID string) Logger
 	WithUserID(userID string) Logger
 }
+
+// Ensure all other packages use this logger interface
+type ConfigLogger = Logger
+type DatabaseLogger = Logger
+type StorageLogger = Logger
+type HTTPLogger = Logger
+type VideoLogger = Logger

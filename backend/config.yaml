@@ -1,4 +1,4 @@
-environment: ${ENV:-development}  # Can be 'development', 'staging', or 'production'
+environment: development # Will be overridden by ENV
 
 server:
   port: 8080
@@ -8,13 +8,13 @@ database:
   dbname: "pavilion_db"
   port: 26257
   user: "root"
-  password: ${DB_PASSWORD:-}
+  password: ""  # Will be overridden by DB_PASSWORD
   sslmode: "disable"
   timezone: "UTC"
   pool:
     maxIdleConns: 10
     maxOpenConns: 100
-    connMaxLifetime: 1h  # Duration string format: "1h" for 1 hour, "30m" for 30 minutes, etc.
+    connMaxLifetime: 1h
 
   # Postgres
   # user: "youruser"
@@ -31,19 +31,19 @@ ipfs:
   gateway_url: "https://ipfs.io/ipfs/"
 
 logging:
-  level: ${LOG_LEVEL:-info}  # Override with LOG_LEVEL env var, default to info
-  format: ${LOG_FORMAT:-json}  # Override with LOG_FORMAT env var, default to json
-  output: ${LOG_OUTPUT:-stdout}  # Override with LOG_OUTPUT env var
+  level: info  # Will be overridden by LOG_LEVEL
+  format: json  # Will be overridden by LOG_FORMAT
+  output: stdout  # Will be overridden by LOG_OUTPUT
   file:
-    enabled: ${LOG_FILE_ENABLED:-false}  # Enable file logging via env var
-    path: ${LOG_FILE_PATH:-/var/log/pavilion}
-    rotate: ${LOG_FILE_ROTATE:-true}
-    maxSize: ${LOG_FILE_MAX_SIZE:-100MB}
-    maxAge: ${LOG_FILE_MAX_AGE:-30d}
-  development: ${ENV:-development}  # Will be true for development environment
+    enabled: false  # Will be overridden by LOG_FILE_ENABLED
+    path: /var/log/pavilion  # Will be overridden by LOG_FILE_PATH
+    rotate: false  # Will be overridden by LOG_FILE_ROTATE
+    maxSize: 100MB  # Will be overridden by LOG_FILE_MAX_SIZE
+    maxAge: 7d  # Will be overridden by LOG_FILE_MAX_AGE
+  development: true  # Will be overridden by LOG_ENV_DEVELOPMENT
   sampling:
-    initial: ${LOG_SAMPLING_INITIAL:-100}
-    thereafter: ${LOG_SAMPLING_THEREAFTER:-100}
+    initial: 100  # Will be overridden by LOG_SAMPLING_INITIAL
+    thereafter: 100  # Will be overridden by LOG_SAMPLING_THEREAFTER
 
 ffmpeg:
   path: "/usr/local/bin/ffmpeg"
@@ -66,8 +66,8 @@ storage:
     endpoint: "s3.amazonaws.com"
     bucket: "octopus-doganbros-storage"
     region: "eu-central-1"
-    accessKeyId: ""
-    secretAccessKey: ""
+    accessKeyId: ""  # Will be overridden by S3_ACCESS_KEY_ID
+    secretAccessKey: ""  # Will be overridden by S3_SECRET_ACCESS_KEY
     useSSL: true
     directories:
       videoPost: "video-posts/"
@@ -88,6 +88,6 @@ video:
 
 auth:
   jwt:
-    secret: ${JWT_SECRET:-your-secret-key}  # Override in production
+    secret: your-secret-key  # Will be overridden by JWT_SECRET
     accessTokenTTL: 15m
-    refreshTokenTTL: 168h  # 7 days
+    refreshTokenTTL: 168h

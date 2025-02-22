@@ -90,7 +90,7 @@ func (l *GormLogger) Trace(ctx context.Context, begin time.Time, fc func() (sql 
 		}
 
 		fields["error"] = err.Error()
-		l.logger.LogError(err, "SQL error", fields)
+		l.logger.LogError(err, "SQL error")
 		return
 	}
 

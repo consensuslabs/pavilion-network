@@ -8,14 +8,15 @@ import (
 
 // Config represents the application configuration
 type Config struct {
-	Server   ServerConfig       `yaml:"server"`
-	Database DatabaseConfig     `yaml:"database"`
-	Redis    RedisConfig        `yaml:"redis"`
-	Storage  StorageConfig      `yaml:"storage"`
-	Logging  LoggingConfig      `yaml:"logging"`
-	Ffmpeg   video.FfmpegConfig `yaml:"ffmpeg"`
-	Video    VideoConfig        `yaml:"video"`
-	Auth     AuthConfig         `yaml:"auth"`
+	Environment string             `mapstructure:"environment" yaml:"environment"`
+	Server      ServerConfig       `yaml:"server"`
+	Database    DatabaseConfig     `yaml:"database"`
+	Redis       RedisConfig        `yaml:"redis"`
+	Storage     StorageConfig      `yaml:"storage"`
+	Logging     LoggingConfig      `yaml:"logging"`
+	Ffmpeg      video.FfmpegConfig `yaml:"ffmpeg"`
+	Video       VideoConfig        `yaml:"video"`
+	Auth        AuthConfig         `yaml:"auth"`
 }
 
 // AuthConfig represents authentication configuration settings
