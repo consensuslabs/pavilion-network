@@ -18,7 +18,19 @@ func NewVideoHandler(app *App) *VideoHandler {
 	return &VideoHandler{app: app}
 }
 
-// HandleUpload handles video upload requests
+// @Summary Upload video
+// @Description Upload a new video file
+// @Tags video
+// @Accept multipart/form-data
+// @Produce json
+// @Security BearerAuth
+// @Param video formData file true "Video file to upload (.mp4, .mov, .avi, .webm)"
+// @Param title formData string true "Video title (3-100 characters)" minLength(3) maxLength(100)
+// @Param description formData string false "Video description (max 500 characters)" maxLength(500)
+// @Success 200 {object} http.APIResponse{data=UploadResponse} "Upload initiated successfully"
+// @Failure 400 {object} http.APIResponse{error=http.APIError} "Invalid request format or validation error"
+// @Failure 401 {object} http.APIResponse{error=http.APIError} "Unauthorized"
+// @Router /video/upload [post]
 func (h *VideoHandler) HandleUpload(c *gin.Context) {
 	requestID := c.GetString("request_id")
 
@@ -85,7 +97,15 @@ func (h *VideoHandler) HandleUpload(c *gin.Context) {
 	h.app.ResponseHandler.SuccessResponse(c, response, "Upload initiated successfully")
 }
 
-// HandleWatch handles the video watch endpoint
+// @Summary Watch video
+// @Description Stream a video by CID or file path
+// @Tags video
+// @Produce video/mp4,application/x-mpegURL
+// @Param cid query string false "IPFS Content ID"
+// @Param file query string false "Video file path"
+// @Success 200 {file} binary "Video stream"
+// @Failure 400 {object} http.APIResponse{error=http.APIError} "Missing parameters"
+// @Router /video/watch [get]
 func (h *VideoHandler) HandleWatch(c *gin.Context) {
 	cid := c.Query("cid")
 	file := c.Query("file")
@@ -104,7 +124,13 @@ func (h *VideoHandler) HandleWatch(c *gin.Context) {
 	h.app.ResponseHandler.ErrorResponse(c, http.StatusBadRequest, "ERR_NO_PARAM", "No 'cid' or 'file' parameter provided", nil)
 }
 
-// HandleList handles video list requests
+// @Summary List videos
+// @Description Get a list of all available videos
+// @Tags video
+// @Produce json
+// @Success 200 {object} http.APIResponse{data=[]StatusResponse} "Video list retrieved successfully"
+// @Failure 500 {object} http.APIResponse{error=http.APIError} "Internal server error"
+// @Router /video/list [get]
 func (h *VideoHandler) HandleList(c *gin.Context) {
 	uploads, err := h.app.Video.GetVideoList()
 	if err != nil {
@@ -120,7 +146,15 @@ func (h *VideoHandler) HandleList(c *gin.Context) {
 	h.app.ResponseHandler.SuccessResponse(c, response, "Video list retrieved successfully")
 }
 
-// HandleStatus handles video status requests
+// @Summary Get video status
+// @Description Get the current status of a video upload
+// @Tags video
+// @Produce json
+// @Param fileId path string true "Video file ID"
+// @Success 200 {object} http.APIResponse{data=StatusResponse} "Video status retrieved successfully"
+// @Failure 400 {object} http.APIResponse{error=http.APIError} "Invalid file ID"
+// @Failure 404 {object} http.APIResponse{error=http.APIError} "Video not found"
+// @Router /video/status/{fileId} [get]
 func (h *VideoHandler) HandleStatus(c *gin.Context) {
 	fileID := c.Param("fileId")
 	if fileID == "" {
@@ -138,11 +172,19 @@ func (h *VideoHandler) HandleStatus(c *gin.Context) {
 	h.app.ResponseHandler.SuccessResponse(c, response, "Video status retrieved successfully")
 }
 
-// HandleTranscode handles the video transcode endpoint
+// @Summary Transcode video
+// @Description Initiate video transcoding
+// @Tags video
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param request body TranscodeRequest true "Video CID to transcode"
+// @Success 200 {object} http.APIResponse{data=TranscodeResult} "Transcoding initiated successfully"
+// @Failure 400 {object} http.APIResponse{error=http.APIError} "Invalid request format"
+// @Failure 401 {object} http.APIResponse{error=http.APIError} "Unauthorized"
+// @Router /video/transcode [post]
 func (h *VideoHandler) HandleTranscode(c *gin.Context) {
-	var jsonInput struct {
-		CID string `json:"cid"`
-	}
+	var jsonInput TranscodeRequest
 	if err := c.ShouldBindJSON(&jsonInput); err != nil {
 		h.app.Logger.LogInfo("Invalid JSON input", map[string]interface{}{
 			"error": err.Error(),

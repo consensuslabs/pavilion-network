@@ -1,7 +1,7 @@
 {
     "swagger": "2.0",
     "info": {
-        "description": "API Server for Pavilion Network Application",
+        "description": "API Server for Pavilion Network Application - A decentralized video platform",
         "title": "Pavilion Network API",
         "termsOfService": "http://swagger.io/terms/",
         "contact": {
@@ -16,11 +16,1075 @@
         "version": "1.0"
     },
     "host": "localhost:8080",
-    "basePath": "/api/v1",
-    "paths": {},
+    "basePath": "/",
+    "paths": {
+        "/auth/login": {
+            "post": {
+                "description": "Authenticate user and return JWT tokens",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Login user",
+                "parameters": [
+                    {
+                        "description": "Login credentials",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/auth.LoginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Login successful",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/http.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/auth.LoginResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request format",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/http.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "$ref": "#/definitions/http.APIError"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Invalid credentials",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/http.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "$ref": "#/definitions/http.APIError"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/logout": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Invalidate refresh token and end user session",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Logout user",
+                "parameters": [
+                    {
+                        "description": "Refresh token to invalidate",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/auth.RefreshTokenRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Logout successful",
+                        "schema": {
+                            "$ref": "#/definitions/http.APIResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request format",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/http.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "$ref": "#/definitions/http.APIError"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized or invalid token",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/http.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "$ref": "#/definitions/http.APIError"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/refresh": {
+            "post": {
+                "description": "Get a new access token using a valid refresh token",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Refresh access token",
+                "parameters": [
+                    {
+                        "description": "Refresh token",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/auth.RefreshTokenRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Token refresh successful",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/http.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/auth.LoginResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request format",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/http.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "$ref": "#/definitions/http.APIError"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Invalid or expired refresh token",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/http.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "$ref": "#/definitions/http.APIError"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/register": {
+            "post": {
+                "description": "Register a new user account",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Register new user",
+                "parameters": [
+                    {
+                        "description": "Registration details",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/auth.RegisterRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Registration successful",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/http.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/auth.User"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request format or user already exists",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/http.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "$ref": "#/definitions/http.APIError"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/video/list": {
+            "get": {
+                "description": "Get a list of all available videos",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "video"
+                ],
+                "summary": "List videos",
+                "responses": {
+                    "200": {
+                        "description": "Video list retrieved successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/http.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/video.StatusResponse"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/http.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "$ref": "#/definitions/http.APIError"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/video/status/{fileId}": {
+            "get": {
+                "description": "Get the current status of a video upload",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "video"
+                ],
+                "summary": "Get video status",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Video file ID",
+                        "name": "fileId",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Video status retrieved successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/http.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/video.StatusResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid file ID",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/http.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "$ref": "#/definitions/http.APIError"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "Video not found",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/http.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "$ref": "#/definitions/http.APIError"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/video/transcode": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Initiate video transcoding",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "video"
+                ],
+                "summary": "Transcode video",
+                "parameters": [
+                    {
+                        "description": "Video CID to transcode",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/video.TranscodeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Transcoding initiated successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/http.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/video.TranscodeResult"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request format",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/http.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "$ref": "#/definitions/http.APIError"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/http.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "$ref": "#/definitions/http.APIError"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/video/upload": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Upload a new video file",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "video"
+                ],
+                "summary": "Upload video",
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "Video file to upload (.mp4, .mov, .avi, .webm)",
+                        "name": "video",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "maxLength": 100,
+                        "minLength": 3,
+                        "type": "string",
+                        "description": "Video title (3-100 characters)",
+                        "name": "title",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "maxLength": 500,
+                        "type": "string",
+                        "description": "Video description (max 500 characters)",
+                        "name": "description",
+                        "in": "formData"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Upload initiated successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/http.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/video.UploadResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request format or validation error",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/http.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "$ref": "#/definitions/http.APIError"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/http.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "$ref": "#/definitions/http.APIError"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/video/watch": {
+            "get": {
+                "description": "Stream a video by CID or file path",
+                "produces": [
+                    "video/mp4",
+                    "application/x-mpegURL"
+                ],
+                "tags": [
+                    "video"
+                ],
+                "summary": "Watch video",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "IPFS Content ID",
+                        "name": "cid",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Video file path",
+                        "name": "file",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Video stream",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "400": {
+                        "description": "Missing parameters",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/http.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "$ref": "#/definitions/http.APIError"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "auth.LoginRequest": {
+            "description": "Login request payload",
+            "type": "object",
+            "required": [
+                "email",
+                "password"
+            ],
+            "properties": {
+                "email": {
+                    "description": "User email address",
+                    "type": "string",
+                    "example": "user@example.com"
+                },
+                "password": {
+                    "description": "User password",
+                    "type": "string",
+                    "minLength": 8,
+                    "example": "Pass123!"
+                }
+            }
+        },
+        "auth.LoginResponse": {
+            "description": "Login response payload",
+            "type": "object",
+            "properties": {
+                "accessToken": {
+                    "description": "JWT access token",
+                    "type": "string",
+                    "example": "eyJhbGciOiJIUzI1NiIs..."
+                },
+                "expiresIn": {
+                    "description": "Token expiration time in seconds",
+                    "type": "integer",
+                    "example": 3600
+                },
+                "refreshToken": {
+                    "description": "JWT refresh token",
+                    "type": "string",
+                    "example": "eyJhbGciOiJIUzI1NiIs..."
+                },
+                "tokenType": {
+                    "description": "Token type (always \"Bearer\")",
+                    "type": "string",
+                    "example": "Bearer"
+                },
+                "user": {
+                    "description": "User information",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/auth.User"
+                        }
+                    ]
+                }
+            }
+        },
+        "auth.RefreshTokenRequest": {
+            "description": "Refresh token request payload",
+            "type": "object",
+            "required": [
+                "refreshToken"
+            ],
+            "properties": {
+                "refreshToken": {
+                    "description": "Valid refresh token",
+                    "type": "string",
+                    "example": "eyJhbGciOiJIUzI1NiIs..."
+                }
+            }
+        },
+        "auth.RegisterRequest": {
+            "description": "Registration request payload",
+            "type": "object",
+            "required": [
+                "email",
+                "password",
+                "username"
+            ],
+            "properties": {
+                "email": {
+                    "description": "User email address",
+                    "type": "string",
+                    "example": "user@example.com"
+                },
+                "name": {
+                    "description": "User's full name",
+                    "type": "string",
+                    "example": "John Doe"
+                },
+                "password": {
+                    "description": "User password (min 8 characters)",
+                    "type": "string",
+                    "minLength": 6,
+                    "example": "Pass123!"
+                },
+                "username": {
+                    "description": "Unique username",
+                    "type": "string",
+                    "example": "johndoe"
+                }
+            }
+        },
+        "auth.User": {
+            "description": "User model",
+            "type": "object",
+            "properties": {
+                "active": {
+                    "description": "Whether account is active",
+                    "type": "boolean",
+                    "example": true
+                },
+                "createdAt": {
+                    "description": "Account creation timestamp",
+                    "type": "string"
+                },
+                "email": {
+                    "description": "User email address",
+                    "type": "string",
+                    "example": "user@example.com"
+                },
+                "emailVerified": {
+                    "description": "Whether email is verified",
+                    "type": "boolean",
+                    "example": true
+                },
+                "id": {
+                    "description": "Unique user ID",
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "lastLoginAt": {
+                    "description": "Last login timestamp",
+                    "type": "string"
+                },
+                "name": {
+                    "description": "User's full name",
+                    "type": "string",
+                    "example": "John Doe"
+                },
+                "updatedAt": {
+                    "description": "Last update timestamp",
+                    "type": "string"
+                },
+                "username": {
+                    "description": "Unique username",
+                    "type": "string",
+                    "example": "johndoe"
+                }
+            }
+        },
+        "http.APIError": {
+            "description": "Error response structure",
+            "type": "object",
+            "properties": {
+                "code": {
+                    "description": "Error code identifying the type of error",
+                    "type": "string",
+                    "example": "VALIDATION_ERROR"
+                },
+                "field": {
+                    "description": "Optional field name for validation errors",
+                    "type": "string",
+                    "example": "email"
+                },
+                "message": {
+                    "description": "Human-readable error message",
+                    "type": "string",
+                    "example": "Invalid input parameters"
+                }
+            }
+        },
+        "http.APIResponse": {
+            "description": "Standard API response format",
+            "type": "object",
+            "properties": {
+                "data": {
+                    "description": "Optional data returned by the API"
+                },
+                "error": {
+                    "description": "Error information, if any",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/http.APIError"
+                        }
+                    ]
+                },
+                "message": {
+                    "description": "Optional message describing the response",
+                    "type": "string",
+                    "example": "Operation completed successfully"
+                },
+                "success": {
+                    "description": "Indicates if the request was successful",
+                    "type": "boolean",
+                    "example": true
+                }
+            }
+        },
+        "video.Progress": {
+            "type": "object",
+            "properties": {
+                "bytesUploaded": {
+                    "type": "integer"
+                },
+                "duration": {
+                    "type": "string"
+                },
+                "endTime": {
+                    "type": "string"
+                },
+                "percentage": {
+                    "type": "number"
+                },
+                "startTime": {
+                    "type": "string"
+                }
+            }
+        },
+        "video.StatusResponse": {
+            "type": "object",
+            "properties": {
+                "completedAt": {
+                    "type": "string"
+                },
+                "currentPhase": {
+                    "type": "string"
+                },
+                "errorMessage": {
+                    "type": "string"
+                },
+                "estimatedDuration": {
+                    "type": "string"
+                },
+                "fileId": {
+                    "type": "string"
+                },
+                "ipfsProgress": {
+                    "$ref": "#/definitions/video.Progress"
+                },
+                "s3Progress": {
+                    "$ref": "#/definitions/video.Progress"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "totalProgress": {
+                    "type": "number"
+                },
+                "totalSize": {
+                    "type": "integer"
+                }
+            }
+        },
+        "video.Transcode": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "fileCid": {
+                    "type": "string"
+                },
+                "filePath": {
+                    "type": "string"
+                },
+                "format": {
+                    "description": "\"hls\" or \"mp4\"",
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "resolution": {
+                    "description": "e.g., \"720\", \"480\", \"360\"",
+                    "type": "string"
+                },
+                "storageType": {
+                    "description": "\"ipfs\" or \"s3\"",
+                    "type": "string"
+                },
+                "type": {
+                    "description": "\"manifest\" or \"video\"",
+                    "type": "string"
+                },
+                "videoId": {
+                    "type": "integer"
+                }
+            }
+        },
+        "video.TranscodeRequest": {
+            "type": "object",
+            "required": [
+                "cid"
+            ],
+            "properties": {
+                "cid": {
+                    "type": "string",
+                    "example": "QmX..."
+                }
+            }
+        },
+        "video.TranscodeResult": {
+            "type": "object",
+            "properties": {
+                "transcodeSegments": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/video.TranscodeSegment"
+                    }
+                },
+                "transcodes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/video.Transcode"
+                    }
+                }
+            }
+        },
+        "video.TranscodeSegment": {
+            "type": "object",
+            "properties": {
+                "createdAt": {
+                    "type": "string"
+                },
+                "duration": {
+                    "type": "number"
+                },
+                "fileCid": {
+                    "type": "string"
+                },
+                "filePath": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "sequence": {
+                    "type": "integer"
+                },
+                "storageType": {
+                    "description": "\"ipfs\" or \"s3\"",
+                    "type": "string"
+                },
+                "transcodeId": {
+                    "type": "integer"
+                }
+            }
+        },
+        "video.UploadResponse": {
+            "type": "object",
+            "properties": {
+                "description": {
+                    "type": "string"
+                },
+                "fileId": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        }
+    },
     "securityDefinitions": {
         "BasicAuth": {
             "type": "basic"
+        },
+        "BearerAuth": {
+            "description": "JWT token for authentication",
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
         }
-    }
+    },
+    "tags": [
+        {
+            "description": "Authentication endpoints",
+            "name": "auth"
+        },
+        {
+            "description": "Video management endpoints",
+            "name": "video"
+        },
+        {
+            "description": "Health check endpoints",
+            "name": "health"
+        }
+    ]
 }

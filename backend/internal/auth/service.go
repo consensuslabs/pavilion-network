@@ -122,11 +122,17 @@ func checkPasswordHash(password, hash string) bool {
 	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password)) == nil
 }
 
+// RegisterRequest represents the registration request payload
+// @Description Registration request payload
 type RegisterRequest struct {
-	Username string `json:"username" binding:"required"`
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required,min=6"`
-	Name     string `json:"name"`
+	// Unique username
+	Username string `json:"username" binding:"required" example:"johndoe"`
+	// User email address
+	Email string `json:"email" binding:"required,email" example:"user@example.com"`
+	// User password (min 8 characters)
+	Password string `json:"password" binding:"required,min=6" example:"Pass123!"`
+	// User's full name
+	Name string `json:"name" example:"John Doe"`
 }
 
 func (s *Service) Register(req RegisterRequest) (*User, error) {

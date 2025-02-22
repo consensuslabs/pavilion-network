@@ -1,7 +1,7 @@
 package auth
 
 import (
-	"net/http"
+	stdhttp "net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -37,7 +37,16 @@ func (h *Handler) RegisterRoutes(router *gin.Engine) {
 	}
 }
 
-// handleLogin handles the login endpoint
+// @Summary Login user
+// @Description Authenticate user and return JWT tokens
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param request body LoginRequest true "Login credentials"
+// @Success 200 {object} http.APIResponse{data=LoginResponse} "Login successful"
+// @Failure 400 {object} http.APIResponse{error=http.APIError} "Invalid request format"
+// @Failure 401 {object} http.APIResponse{error=http.APIError} "Invalid credentials"
+// @Router /auth/login [post]
 func (h *Handler) handleLogin(c *gin.Context) {
 	var req LoginRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -47,14 +56,22 @@ func (h *Handler) handleLogin(c *gin.Context) {
 
 	response, err := h.service.Login(req.Email, req.Password)
 	if err != nil {
-		h.responseHandler.ErrorResponse(c, http.StatusUnauthorized, "AUTH_ERROR", err.Error(), err)
+		h.responseHandler.ErrorResponse(c, stdhttp.StatusUnauthorized, "AUTH_ERROR", err.Error(), err)
 		return
 	}
 
 	h.responseHandler.SuccessResponse(c, response, "Login successful")
 }
 
-// handleRegister handles the registration endpoint
+// @Summary Register new user
+// @Description Register a new user account
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param request body RegisterRequest true "Registration details"
+// @Success 200 {object} http.APIResponse{data=User} "Registration successful"
+// @Failure 400 {object} http.APIResponse{error=http.APIError} "Invalid request format or user already exists"
+// @Router /auth/register [post]
 func (h *Handler) handleRegister(c *gin.Context) {
 	var req RegisterRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -64,14 +81,23 @@ func (h *Handler) handleRegister(c *gin.Context) {
 
 	user, err := h.service.Register(req)
 	if err != nil {
-		h.responseHandler.ErrorResponse(c, http.StatusBadRequest, "REGISTRATION_ERROR", err.Error(), err)
+		h.responseHandler.ErrorResponse(c, stdhttp.StatusBadRequest, "REGISTRATION_ERROR", err.Error(), err)
 		return
 	}
 
 	h.responseHandler.SuccessResponse(c, user, "Registration successful")
 }
 
-// handleRefresh handles the token refresh endpoint
+// @Summary Refresh access token
+// @Description Get a new access token using a valid refresh token
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Param request body RefreshTokenRequest true "Refresh token"
+// @Success 200 {object} http.APIResponse{data=LoginResponse} "Token refresh successful"
+// @Failure 400 {object} http.APIResponse{error=http.APIError} "Invalid request format"
+// @Failure 401 {object} http.APIResponse{error=http.APIError} "Invalid or expired refresh token"
+// @Router /auth/refresh [post]
 func (h *Handler) handleRefresh(c *gin.Context) {
 	var req struct {
 		RefreshToken string `json:"refreshToken" binding:"required"`
@@ -83,14 +109,24 @@ func (h *Handler) handleRefresh(c *gin.Context) {
 
 	response, err := h.service.RefreshToken(req.RefreshToken)
 	if err != nil {
-		h.responseHandler.ErrorResponse(c, http.StatusUnauthorized, "REFRESH_ERROR", err.Error(), err)
+		h.responseHandler.ErrorResponse(c, stdhttp.StatusUnauthorized, "REFRESH_ERROR", err.Error(), err)
 		return
 	}
 
 	h.responseHandler.SuccessResponse(c, response, "Token refresh successful")
 }
 
-// handleLogout handles the logout endpoint
+// @Summary Logout user
+// @Description Invalidate refresh token and end user session
+// @Tags auth
+// @Accept json
+// @Produce json
+// @Security BearerAuth
+// @Param request body RefreshTokenRequest true "Refresh token to invalidate"
+// @Success 200 {object} http.APIResponse "Logout successful"
+// @Failure 400 {object} http.APIResponse{error=http.APIError} "Invalid request format"
+// @Failure 401 {object} http.APIResponse{error=http.APIError} "Unauthorized or invalid token"
+// @Router /auth/logout [post]
 func (h *Handler) handleLogout(c *gin.Context) {
 	var req struct {
 		RefreshToken string `json:"refreshToken" binding:"required"`
@@ -109,12 +145,12 @@ func (h *Handler) handleLogout(c *gin.Context) {
 
 	userID, err := uuid.Parse(userIDStr.(string))
 	if err != nil {
-		h.responseHandler.ErrorResponse(c, http.StatusInternalServerError, "INTERNAL_ERROR", "Invalid user ID format", err)
+		h.responseHandler.ErrorResponse(c, stdhttp.StatusInternalServerError, "INTERNAL_ERROR", "Invalid user ID format", err)
 		return
 	}
 
 	if err := h.service.Logout(userID, req.RefreshToken); err != nil {
-		h.responseHandler.ErrorResponse(c, http.StatusUnauthorized, "LOGOUT_ERROR", err.Error(), err)
+		h.responseHandler.ErrorResponse(c, stdhttp.StatusUnauthorized, "LOGOUT_ERROR", err.Error(), err)
 		return
 	}
 

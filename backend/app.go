@@ -19,6 +19,8 @@ import (
 	"github.com/consensuslabs/pavilion-network/backend/internal/video"
 	"github.com/consensuslabs/pavilion-network/backend/migrations"
 	"github.com/gin-gonic/gin"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 	"gorm.io/gorm"
 )
 
@@ -168,6 +170,9 @@ func NewApp(ctx context.Context, cfg *config.Config) (*App, error) {
 	// Initialize video handler
 	videoHandler := video.NewVideoHandler(videoApp)
 
+	// Initialize auth handler
+	authHandler := auth.NewHandler(authService, responseHandler)
+
 	app := &App{
 		ctx:           ctx,
 		Config:        cfg,
@@ -182,6 +187,7 @@ func NewApp(ctx context.Context, cfg *config.Config) (*App, error) {
 		videoHandler:  videoHandler,
 		healthHandler: healthHandler,
 		httpHandler:   responseHandler,
+		authHandler:   authHandler,
 	}
 
 	return app, nil
@@ -257,6 +263,9 @@ func (a *App) setupRoutes() error {
 
 	// Add recovery middleware
 	a.router.Use(httpHandler.RecoveryMiddleware(a.httpHandler, a.logger))
+
+	// Swagger documentation
+	a.router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	// Register auth routes
 	a.authHandler.RegisterRoutes(a.router)

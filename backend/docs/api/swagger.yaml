@@ -1,19 +1,668 @@
-basePath: /api/v1
+basePath: /
+definitions:
+  auth.LoginRequest:
+    description: Login request payload
+    properties:
+      email:
+        description: User email address
+        example: user@example.com
+        type: string
+      password:
+        description: User password
+        example: Pass123!
+        minLength: 8
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  auth.LoginResponse:
+    description: Login response payload
+    properties:
+      accessToken:
+        description: JWT access token
+        example: eyJhbGciOiJIUzI1NiIs...
+        type: string
+      expiresIn:
+        description: Token expiration time in seconds
+        example: 3600
+        type: integer
+      refreshToken:
+        description: JWT refresh token
+        example: eyJhbGciOiJIUzI1NiIs...
+        type: string
+      tokenType:
+        description: Token type (always "Bearer")
+        example: Bearer
+        type: string
+      user:
+        allOf:
+        - $ref: '#/definitions/auth.User'
+        description: User information
+    type: object
+  auth.RefreshTokenRequest:
+    description: Refresh token request payload
+    properties:
+      refreshToken:
+        description: Valid refresh token
+        example: eyJhbGciOiJIUzI1NiIs...
+        type: string
+    required:
+    - refreshToken
+    type: object
+  auth.RegisterRequest:
+    description: Registration request payload
+    properties:
+      email:
+        description: User email address
+        example: user@example.com
+        type: string
+      name:
+        description: User's full name
+        example: John Doe
+        type: string
+      password:
+        description: User password (min 8 characters)
+        example: Pass123!
+        minLength: 6
+        type: string
+      username:
+        description: Unique username
+        example: johndoe
+        type: string
+    required:
+    - email
+    - password
+    - username
+    type: object
+  auth.User:
+    description: User model
+    properties:
+      active:
+        description: Whether account is active
+        example: true
+        type: boolean
+      createdAt:
+        description: Account creation timestamp
+        type: string
+      email:
+        description: User email address
+        example: user@example.com
+        type: string
+      emailVerified:
+        description: Whether email is verified
+        example: true
+        type: boolean
+      id:
+        description: Unique user ID
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      lastLoginAt:
+        description: Last login timestamp
+        type: string
+      name:
+        description: User's full name
+        example: John Doe
+        type: string
+      updatedAt:
+        description: Last update timestamp
+        type: string
+      username:
+        description: Unique username
+        example: johndoe
+        type: string
+    type: object
+  http.APIError:
+    description: Error response structure
+    properties:
+      code:
+        description: Error code identifying the type of error
+        example: VALIDATION_ERROR
+        type: string
+      field:
+        description: Optional field name for validation errors
+        example: email
+        type: string
+      message:
+        description: Human-readable error message
+        example: Invalid input parameters
+        type: string
+    type: object
+  http.APIResponse:
+    description: Standard API response format
+    properties:
+      data:
+        description: Optional data returned by the API
+      error:
+        allOf:
+        - $ref: '#/definitions/http.APIError'
+        description: Error information, if any
+      message:
+        description: Optional message describing the response
+        example: Operation completed successfully
+        type: string
+      success:
+        description: Indicates if the request was successful
+        example: true
+        type: boolean
+    type: object
+  video.Progress:
+    properties:
+      bytesUploaded:
+        type: integer
+      duration:
+        type: string
+      endTime:
+        type: string
+      percentage:
+        type: number
+      startTime:
+        type: string
+    type: object
+  video.StatusResponse:
+    properties:
+      completedAt:
+        type: string
+      currentPhase:
+        type: string
+      errorMessage:
+        type: string
+      estimatedDuration:
+        type: string
+      fileId:
+        type: string
+      ipfsProgress:
+        $ref: '#/definitions/video.Progress'
+      s3Progress:
+        $ref: '#/definitions/video.Progress'
+      status:
+        type: string
+      title:
+        type: string
+      totalProgress:
+        type: number
+      totalSize:
+        type: integer
+    type: object
+  video.Transcode:
+    properties:
+      createdAt:
+        type: string
+      fileCid:
+        type: string
+      filePath:
+        type: string
+      format:
+        description: '"hls" or "mp4"'
+        type: string
+      id:
+        type: integer
+      resolution:
+        description: e.g., "720", "480", "360"
+        type: string
+      storageType:
+        description: '"ipfs" or "s3"'
+        type: string
+      type:
+        description: '"manifest" or "video"'
+        type: string
+      videoId:
+        type: integer
+    type: object
+  video.TranscodeRequest:
+    properties:
+      cid:
+        example: QmX...
+        type: string
+    required:
+    - cid
+    type: object
+  video.TranscodeResult:
+    properties:
+      transcodeSegments:
+        items:
+          $ref: '#/definitions/video.TranscodeSegment'
+        type: array
+      transcodes:
+        items:
+          $ref: '#/definitions/video.Transcode'
+        type: array
+    type: object
+  video.TranscodeSegment:
+    properties:
+      createdAt:
+        type: string
+      duration:
+        type: number
+      fileCid:
+        type: string
+      filePath:
+        type: string
+      id:
+        type: integer
+      sequence:
+        type: integer
+      storageType:
+        description: '"ipfs" or "s3"'
+        type: string
+      transcodeId:
+        type: integer
+    type: object
+  video.UploadResponse:
+    properties:
+      description:
+        type: string
+      fileId:
+        type: string
+      status:
+        type: string
+      title:
+        type: string
+    type: object
 host: localhost:8080
 info:
   contact:
     email: support@swagger.io
     name: API Support
     url: http://www.swagger.io/support
-  description: API Server for Pavilion Network Application
+  description: API Server for Pavilion Network Application - A decentralized video
+    platform
   license:
     name: Apache 2.0
     url: http://www.apache.org/licenses/LICENSE-2.0.html
   termsOfService: http://swagger.io/terms/
   title: Pavilion Network API
   version: "1.0"
-paths: {}
+paths:
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Authenticate user and return JWT tokens
+      parameters:
+      - description: Login credentials
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Login successful
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/auth.LoginResponse'
+              type: object
+        "400":
+          description: Invalid request format
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/http.APIError'
+              type: object
+        "401":
+          description: Invalid credentials
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/http.APIError'
+              type: object
+      summary: Login user
+      tags:
+      - auth
+  /auth/logout:
+    post:
+      consumes:
+      - application/json
+      description: Invalidate refresh token and end user session
+      parameters:
+      - description: Refresh token to invalidate
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.RefreshTokenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Logout successful
+          schema:
+            $ref: '#/definitions/http.APIResponse'
+        "400":
+          description: Invalid request format
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/http.APIError'
+              type: object
+        "401":
+          description: Unauthorized or invalid token
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/http.APIError'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Logout user
+      tags:
+      - auth
+  /auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Get a new access token using a valid refresh token
+      parameters:
+      - description: Refresh token
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.RefreshTokenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Token refresh successful
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/auth.LoginResponse'
+              type: object
+        "400":
+          description: Invalid request format
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/http.APIError'
+              type: object
+        "401":
+          description: Invalid or expired refresh token
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/http.APIError'
+              type: object
+      summary: Refresh access token
+      tags:
+      - auth
+  /auth/register:
+    post:
+      consumes:
+      - application/json
+      description: Register a new user account
+      parameters:
+      - description: Registration details
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/auth.RegisterRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Registration successful
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/auth.User'
+              type: object
+        "400":
+          description: Invalid request format or user already exists
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/http.APIError'
+              type: object
+      summary: Register new user
+      tags:
+      - auth
+  /video/list:
+    get:
+      description: Get a list of all available videos
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Video list retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/video.StatusResponse'
+                  type: array
+              type: object
+        "500":
+          description: Internal server error
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/http.APIError'
+              type: object
+      summary: List videos
+      tags:
+      - video
+  /video/status/{fileId}:
+    get:
+      description: Get the current status of a video upload
+      parameters:
+      - description: Video file ID
+        in: path
+        name: fileId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Video status retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/video.StatusResponse'
+              type: object
+        "400":
+          description: Invalid file ID
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/http.APIError'
+              type: object
+        "404":
+          description: Video not found
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/http.APIError'
+              type: object
+      summary: Get video status
+      tags:
+      - video
+  /video/transcode:
+    post:
+      consumes:
+      - application/json
+      description: Initiate video transcoding
+      parameters:
+      - description: Video CID to transcode
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/video.TranscodeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Transcoding initiated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/video.TranscodeResult'
+              type: object
+        "400":
+          description: Invalid request format
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/http.APIError'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/http.APIError'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Transcode video
+      tags:
+      - video
+  /video/upload:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Upload a new video file
+      parameters:
+      - description: Video file to upload (.mp4, .mov, .avi, .webm)
+        in: formData
+        name: video
+        required: true
+        type: file
+      - description: Video title (3-100 characters)
+        in: formData
+        maxLength: 100
+        minLength: 3
+        name: title
+        required: true
+        type: string
+      - description: Video description (max 500 characters)
+        in: formData
+        maxLength: 500
+        name: description
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Upload initiated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/video.UploadResponse'
+              type: object
+        "400":
+          description: Invalid request format or validation error
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/http.APIError'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/http.APIError'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Upload video
+      tags:
+      - video
+  /video/watch:
+    get:
+      description: Stream a video by CID or file path
+      parameters:
+      - description: IPFS Content ID
+        in: query
+        name: cid
+        type: string
+      - description: Video file path
+        in: query
+        name: file
+        type: string
+      produces:
+      - video/mp4
+      - application/x-mpegURL
+      responses:
+        "200":
+          description: Video stream
+          schema:
+            type: file
+        "400":
+          description: Missing parameters
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/http.APIError'
+              type: object
+      summary: Watch video
+      tags:
+      - video
 securityDefinitions:
   BasicAuth:
     type: basic
+  BearerAuth:
+    description: JWT token for authentication
+    in: header
+    name: Authorization
+    type: apiKey
 swagger: "2.0"
+tags:
+- description: Authentication endpoints
+  name: auth
+- description: Video management endpoints
+  name: video
+- description: Health check endpoints
+  name: health

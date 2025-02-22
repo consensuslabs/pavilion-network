@@ -134,3 +134,8 @@ type TranscodeResult struct {
 	Transcodes        []Transcode
 	TranscodeSegments []TranscodeSegment
 }
+
+// TranscodeRequest represents the request payload for video transcoding
+type TranscodeRequest struct {
+	CID string `json:"cid" binding:"required" example:"QmX..."`
+}

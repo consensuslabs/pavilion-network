@@ -8,17 +8,29 @@ import (
 )
 
 // User model definition with authentication fields
+// @Description User model
 type User struct {
-	ID            uuid.UUID      `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
-	Username      string         `gorm:"unique;not null" json:"username"`
-	Email         string         `gorm:"unique;not null" json:"email"`
-	Password      string         `gorm:"not null" json:"-"` // Password hash, not exposed in JSON
-	Name          string         `json:"name"`
-	EmailVerified bool           `gorm:"default:false" json:"emailVerified"`
-	LastLoginAt   time.Time      `json:"lastLoginAt,omitempty"`
-	Active        bool           `gorm:"default:true" json:"active"`
-	CreatedAt     time.Time      `json:"createdAt"`
-	UpdatedAt     time.Time      `json:"updatedAt"`
+	// Unique user ID
+	ID uuid.UUID `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id" example:"550e8400-e29b-41d4-a716-446655440000"`
+	// Unique username
+	Username string `gorm:"unique;not null" json:"username" example:"johndoe"`
+	// User email address
+	Email string `gorm:"unique;not null" json:"email" example:"user@example.com"`
+	// Password hash (not exposed in JSON)
+	Password string `gorm:"not null" json:"-"`
+	// User's full name
+	Name string `json:"name" example:"John Doe"`
+	// Whether email is verified
+	EmailVerified bool `gorm:"default:false" json:"emailVerified" example:"true"`
+	// Last login timestamp
+	LastLoginAt time.Time `json:"lastLoginAt,omitempty"`
+	// Whether account is active
+	Active bool `gorm:"default:true" json:"active" example:"true"`
+	// Account creation timestamp
+	CreatedAt time.Time `json:"createdAt"`
+	// Last update timestamp
+	UpdatedAt time.Time `json:"updatedAt"`
+	// Refresh tokens (not exposed in JSON)
 	RefreshTokens []RefreshToken `gorm:"foreignKey:UserID" json:"-"`
 }
 

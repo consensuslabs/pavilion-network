@@ -47,23 +47,42 @@ type App struct {
 }
 
 // LoginRequest represents the login request payload
+// @Description Login request payload
 type LoginRequest struct {
-	Email    string `json:"email" binding:"required,email"`
-	Password string `json:"password" binding:"required,min=8"`
+	// User email address
+	Email string `json:"email" binding:"required,email" example:"user@example.com"`
+	// User password
+	Password string `json:"password" binding:"required,min=8" example:"Pass123!"`
+}
+
+// RefreshTokenRequest represents the refresh token request payload
+// @Description Refresh token request payload
+type RefreshTokenRequest struct {
+	// Valid refresh token
+	RefreshToken string `json:"refreshToken" binding:"required" example:"eyJhbGciOiJIUzI1NiIs..."`
 }
 
 // LoginResponse represents the login response
+// @Description Login response payload
 type LoginResponse struct {
-	User         User   `json:"user"`
-	AccessToken  string `json:"accessToken"`
-	RefreshToken string `json:"refreshToken"`
-	TokenType    string `json:"tokenType"`
-	ExpiresIn    int    `json:"expiresIn"`
+	// User information
+	User User `json:"user"`
+	// JWT access token
+	AccessToken string `json:"accessToken" example:"eyJhbGciOiJIUzI1NiIs..."`
+	// JWT refresh token
+	RefreshToken string `json:"refreshToken" example:"eyJhbGciOiJIUzI1NiIs..."`
+	// Token type (always "Bearer")
+	TokenType string `json:"tokenType" example:"Bearer"`
+	// Token expiration time in seconds
+	ExpiresIn int `json:"expiresIn" example:"3600"`
 }
 
 // TokenClaims represents the JWT claims
+// @Description JWT claims structure
 type TokenClaims struct {
-	UserID string `json:"userId"`
-	Email  string `json:"email"`
+	// User ID
+	UserID string `json:"userId" example:"550e8400-e29b-41d4-a716-446655440000"`
+	// User email
+	Email string `json:"email" example:"user@example.com"`
 	jwt.RegisteredClaims
 }

@@ -11,13 +11,11 @@ import (
 	_ "github.com/consensuslabs/pavilion-network/backend/docs/api"
 	"github.com/consensuslabs/pavilion-network/backend/internal/config"
 	"github.com/consensuslabs/pavilion-network/backend/internal/logger"
-	swaggerFiles "github.com/swaggo/files"
-	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 // @title           Pavilion Network API
 // @version         1.0
-// @description     API Server for Pavilion Network Application
+// @description     API Server for Pavilion Network Application - A decentralized video platform
 // @termsOfService  http://swagger.io/terms/
 
 // @contact.name   API Support
@@ -28,7 +26,21 @@ import (
 // @license.url   http://www.apache.org/licenses/LICENSE-2.0.html
 
 // @host      localhost:8080
-// @BasePath  /api/v1
+// @BasePath  /
+
+// @securityDefinitions.apikey BearerAuth
+// @in header
+// @name Authorization
+// @description JWT token for authentication
+
+// @tag.name auth
+// @tag.description Authentication endpoints
+
+// @tag.name video
+// @tag.description Video management endpoints
+
+// @tag.name health
+// @tag.description Health check endpoints
 
 // @securityDefinitions.basic  BasicAuth
 func main() {
@@ -92,9 +104,6 @@ func main() {
 	if err != nil {
 		loggerService.LogFatal(err, "Failed to initialize application")
 	}
-
-	// Add Swagger documentation route
-	app.router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 	// Start the application
 	if err := app.Run(); err != nil {
