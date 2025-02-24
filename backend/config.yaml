@@ -46,8 +46,8 @@ logging:
     thereafter: 100  # Will be overridden by LOG_SAMPLING_THEREAFTER
 
 ffmpeg:
-  path: "/usr/local/bin/ffmpeg"
-  probePath: "/usr/local/bin/ffprobe"
+  path: "/opt/homebrew/bin/ffmpeg"
+  probePath: "/opt/homebrew/bin/ffprobe"
   videoCodec: "libx264"
   audioCodec: "copy"
   preset: "fast"

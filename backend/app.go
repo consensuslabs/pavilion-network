@@ -390,15 +390,6 @@ func (a *App) Shutdown() error {
 		}
 	}
 
-	// Wait for context timeout or completion
-	<-ctx.Done()
-	if err := ctx.Err(); err != nil && err != context.Canceled {
-		a.logger.LogWarn("Shutdown timed out", map[string]interface{}{
-			"error": err.Error(),
-		})
-		return err
-	}
-
 	a.logger.LogInfo("Application shutdown complete", nil)
 	return nil
 }

@@ -116,23 +116,29 @@ func main() {
 	case sig := <-sigChan:
 		fmt.Printf("\nReceived signal %v, initiating graceful shutdown...\n", sig)
 
+		// Cancel the root context to stop the server
+		cancel()
+
 		// Create a timeout context for shutdown
-		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
+		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer shutdownCancel()
 
-		// Trigger graceful shutdown
-		if err := app.Shutdown(); err != nil {
-			fmt.Printf("Error during shutdown: %v\n", err)
+		// Create a channel to signal shutdown completion
+		done := make(chan struct{})
+		go func() {
+			if err := app.Shutdown(); err != nil {
+				fmt.Printf("Error during shutdown: %v\n", err)
+			}
+			close(done)
+		}()
+
+		// Wait for either shutdown completion or timeout
+		select {
+		case <-done:
+			fmt.Println("Server shutdown complete")
+		case <-shutdownCtx.Done():
+			fmt.Printf("Shutdown timeout after %v\n", 5*time.Second)
 			os.Exit(1)
 		}
-
-		// Wait for shutdown context
-		<-shutdownCtx.Done()
-		if err := shutdownCtx.Err(); err != nil && err != context.Canceled {
-			fmt.Printf("Shutdown timeout: %v\n", err)
-			os.Exit(1)
-		}
-
-		fmt.Println("Server shutdown complete")
 	}
 }

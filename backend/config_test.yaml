@@ -41,8 +41,8 @@ logging:
     thereafter: 100
 
 ffmpeg:
-  path: "/usr/local/bin/ffmpeg"
-  probePath: "/usr/local/bin/ffprobe"
+  path: "/opt/homebrew/bin/ffprobe"
+  probePath: "/opt/homebrew/bin/ffprobe"
   videoCodec: "libx264"
   audioCodec: "copy"
   preset: "fast"
