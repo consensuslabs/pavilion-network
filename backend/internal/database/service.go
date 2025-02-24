@@ -2,6 +2,7 @@ package database
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/consensuslabs/pavilion-network/backend/internal/auth"
@@ -105,11 +106,17 @@ func (s *DatabaseService) Connect() (*gorm.DB, error) {
 
 	// Create enum type using a transaction to handle CockroachDB's transaction retry logic
 	err = db.Transaction(func(tx *gorm.DB) error {
-		return tx.Exec(`CREATE TYPE IF NOT EXISTS upload_status AS ENUM ('pending', 'uploading', 'completed', 'failed')`).Error
+		// Create upload_status enum
+		if err := tx.Exec(`CREATE TYPE IF NOT EXISTS upload_status AS ENUM ('pending', 'uploading', 'completed', 'failed')`).Error; err != nil {
+			if !strings.Contains(err.Error(), "already exists") {
+				return fmt.Errorf("failed to create upload_status enum: %v", err)
+			}
+		}
+		return nil
 	})
 	if err != nil {
-		s.logger.LogError(err, "Failed to create upload_status enum")
-		return nil, fmt.Errorf("failed to create upload_status enum: %v", err)
+		s.logger.LogError(err, "Failed to create enums")
+		return nil, fmt.Errorf("failed to create enums: %v", err)
 	}
 
 	// Initialize migration tracking table
@@ -139,7 +146,14 @@ func (s *DatabaseService) Connect() (*gorm.DB, error) {
 	// Only run auto-migration in development or when explicitly enabled
 	if s.migrationConfig.ShouldAutoMigrate() {
 		s.logger.LogInfo("Running auto-migration", nil)
-		if err = db.AutoMigrate(&auth.User{}, &auth.RefreshToken{}, &video.Video{}, &video.Transcode{}, &video.TranscodeSegment{}); err != nil {
+		if err = db.AutoMigrate(
+			&auth.User{},
+			&auth.RefreshToken{},
+			&video.Video{},
+			&video.VideoUpload{},
+			&video.Transcode{},
+			&video.TranscodeSegment{},
+		); err != nil {
 			s.logger.LogError(err, "Auto-migration failed")
 			return nil, fmt.Errorf("auto migration failed: %v", err)
 		}

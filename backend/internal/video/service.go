@@ -1,435 +1,383 @@
 package video
 
 import (
-	"crypto/sha256"
+	"context"
 	"fmt"
 	"io"
 	"mime/multipart"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"time"
 
+	videostorage "github.com/consensuslabs/pavilion-network/backend/internal/storage/video"
+	"github.com/consensuslabs/pavilion-network/backend/internal/video/ffmpeg"
+	"github.com/consensuslabs/pavilion-network/backend/internal/video/tempfile"
 	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
-// Service implements the VideoService interface
-type Service struct {
-	db     *gorm.DB
-	ipfs   IPFSService
-	s3     S3Service
-	config *Config
-	logger Logger
+// VideoServiceImpl implements the VideoService interface
+type VideoServiceImpl struct {
+	db          *gorm.DB
+	ipfs        IPFSService
+	storage     videostorage.Service
+	ffmpeg      *ffmpeg.Service
+	tempManager tempfile.TempFileManager
+	logger      Logger
 }
 
-// ProgressReader wraps an io.Reader to track read progress
-type ProgressReader struct {
-	reader     io.Reader
-	total      int64
-	read       int64
-	onProgress func(bytesRead, totalBytes int64)
-}
-
-func NewProgressReader(reader io.Reader, total int64, onProgress func(bytesRead, totalBytes int64)) *ProgressReader {
-	return &ProgressReader{
-		reader:     reader,
-		total:      total,
-		onProgress: onProgress,
+// NewVideoService creates a new video service instance
+func NewVideoService(
+	db *gorm.DB,
+	ipfs IPFSService,
+	storage videostorage.Service,
+	ffmpeg *ffmpeg.Service,
+	tempManager tempfile.TempFileManager,
+	logger Logger,
+) VideoService {
+	return &VideoServiceImpl{
+		db:          db,
+		ipfs:        ipfs,
+		storage:     storage,
+		ffmpeg:      ffmpeg,
+		tempManager: tempManager,
+		logger:      logger,
 	}
 }
 
-func (pr *ProgressReader) Read(p []byte) (int, error) {
-	n, err := pr.reader.Read(p)
-	pr.read += int64(n)
-	if pr.onProgress != nil {
-		pr.onProgress(pr.read, pr.total)
-	}
-	return n, err
-}
+// InitializeUpload creates a new video upload record
+func (s *VideoServiceImpl) InitializeUpload(title, description string, size int64) (*VideoUpload, error) {
+	videoID := uuid.New()
+	fileID := uuid.New().String()
 
-// NewService creates a new video service instance
-func NewService(db *gorm.DB, ipfs IPFSService, s3 S3Service, config *Config) *Service {
-	// Verify database connection
-	var count int64
-	if err := db.Table("video_uploads").Count(&count).Error; err != nil {
-		fmt.Printf("Error verifying database connection: %v\n", err)
-	} else {
-		fmt.Printf("Database connection verified. Found %d existing uploads.\n", count)
+	// Create the video record
+	video := &Video{
+		ID:          videoID,
+		FileID:      fileID,
+		Title:       title,
+		Description: description,
+		StoragePath: fmt.Sprintf("videos/%s/original.mp4", videoID),
+		FileSize:    size,
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
 	}
 
-	return &Service{
-		db:     db,
-		ipfs:   ipfs,
-		s3:     s3,
-		config: config,
-	}
-}
-
-// InitializeUpload creates the initial upload record
-func (s *Service) InitializeUpload(title, description string, fileSize int64) (*VideoUpload, error) {
-	// Generate a temporary file ID
-	hasher := sha256.New()
-	hasher.Write([]byte(fmt.Sprintf("%s-%s-%d-%d", title, description, fileSize, time.Now().UnixNano())))
-	tempFileId := fmt.Sprintf("%x", hasher.Sum(nil))
-	fmt.Printf("Generated tempFileId: %s\n", tempFileId)
-
-	// Create initial upload record
-	now := time.Now()
+	// Create the upload record
 	upload := &VideoUpload{
-		TempFileId:    tempFileId,
-		Title:         title,
-		Description:   description,
-		FileSize:      fileSize,
-		UploadStatus:  StatusPending,
-		CurrentPhase:  "IPFS",
-		IPFSStartTime: &now,
-		CreatedAt:     now,
-		UpdatedAt:     now,
+		VideoID:   videoID,
+		StartTime: time.Now(),
+		Status:    UploadStatusPending,
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
 	}
 
-	// Save initial upload record
-	if err := s.db.Create(upload).Error; err != nil {
-		fmt.Printf("Error creating upload record: %v\n", err)
-		return nil, fmt.Errorf("failed to create upload record: %v", err)
-	}
-	fmt.Printf("Created initial upload record with ID: %d\n", upload.ID)
+	// Start a transaction
+	err := s.db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(video).Error; err != nil {
+			return fmt.Errorf("failed to create video record: %w", err)
+		}
+		if err := tx.Create(upload).Error; err != nil {
+			return fmt.Errorf("failed to create upload record: %w", err)
+		}
+		return nil
+	})
 
+	if err != nil {
+		return nil, err
+	}
+
+	upload.Video = video
 	return upload, nil
 }
 
-// ProcessUpload handles the actual upload process
-func (s *Service) ProcessUpload(upload *VideoUpload, file interface{}, header interface{}) error {
-	videoFile, ok := file.(multipart.File)
-	if !ok {
-		return fmt.Errorf("invalid file type")
+// ProcessUpload handles the video upload process
+func (s *VideoServiceImpl) ProcessUpload(upload *VideoUpload, file multipart.File, header *multipart.FileHeader) error {
+	ctx := context.Background()
+
+	// Update status to uploading
+	upload.Status = UploadStatusUploading
+	if err := s.db.Model(upload).Update("status", UploadStatusUploading).Error; err != nil {
+		return fmt.Errorf("failed to update upload status: %w", err)
 	}
 
-	fileHeader, ok := header.(*multipart.FileHeader)
-	if !ok {
-		return fmt.Errorf("invalid file header type")
+	// Create temporary directory for processing
+	tempDir, err := s.tempManager.CreateTempDir()
+	if err != nil {
+		return fmt.Errorf("failed to create temp directory: %w", err)
+	}
+	defer s.tempManager.CleanupDir(tempDir)
+
+	// Save original file
+	originalPath := filepath.Join(tempDir, "original.mp4")
+	tempFile, err := os.Create(originalPath)
+	if err != nil {
+		return fmt.Errorf("failed to create temp file: %w", err)
+	}
+	defer tempFile.Close()
+
+	if _, err := file.Seek(0, 0); err != nil {
+		return fmt.Errorf("failed to seek file: %w", err)
 	}
 
-	// Create progress reader for IPFS upload
-	ipfsProgress := func(bytesRead, totalBytes int64) {
-		upload.IPFSBytesUploaded = bytesRead
-		upload.UploadStatus = StatusIPFSUploading
-		if err := s.db.Save(upload).Error; err != nil {
-			fmt.Printf("Error saving IPFS progress: %v\n", err)
+	if _, err := io.Copy(tempFile, file); err != nil {
+		return fmt.Errorf("failed to save temp file: %w", err)
+	}
+
+	// Get video metadata
+	metadata, err := s.ffmpeg.GetMetadata(ctx, originalPath)
+	if err != nil {
+		s.logger.LogError("Failed to get video metadata", map[string]interface{}{
+			"error": err.Error(),
+			"path":  originalPath,
+		})
+		return fmt.Errorf("failed to get video metadata: %w", err)
+	}
+
+	// Upload original to S3
+	if _, err := file.Seek(0, 0); err != nil {
+		return fmt.Errorf("failed to seek file: %w", err)
+	}
+
+	_, err = s.storage.UploadVideo(ctx, upload.VideoID, "original", file)
+	if err != nil {
+		upload.Status = UploadStatusFailed
+		s.db.Model(upload).Updates(map[string]interface{}{
+			"status":     UploadStatusFailed,
+			"end_time":   time.Now(),
+			"updated_at": time.Now(),
+		})
+		return fmt.Errorf("failed to upload to S3: %w", err)
+	}
+
+	// Upload original to IPFS
+	if _, err := file.Seek(0, 0); err != nil {
+		return fmt.Errorf("failed to seek file: %w", err)
+	}
+
+	cid, err := s.ipfs.UploadFileStream(file)
+	if err != nil {
+		s.logger.LogError("Failed to upload to IPFS", map[string]interface{}{
+			"error": err.Error(),
+			"path":  originalPath,
+		})
+		// Continue processing even if IPFS upload fails
+	}
+
+	// Create transcode record for original format
+	originalTranscode := &Transcode{
+		VideoID:   upload.VideoID,
+		Format:    "mp4",
+		CreatedAt: time.Now(),
+		UpdatedAt: time.Now(),
+	}
+
+	// Create segment for original file
+	originalSegment := &TranscodeSegment{
+		StoragePath: upload.Video.StoragePath,
+		IPFSCID:     cid,
+		Duration:    int(metadata.Duration),
+		CreatedAt:   time.Now(),
+		UpdatedAt:   time.Now(),
+	}
+
+	// Process transcoding for different resolutions
+	transcodeResults := make([]*Transcode, 0)
+
+	for _, resolution := range []string{"720p", "480p", "360p"} {
+		transcode := &Transcode{
+			VideoID:   upload.VideoID,
+			Format:    "mp4",
+			CreatedAt: time.Now(),
+			UpdatedAt: time.Now(),
 		}
-		fmt.Printf("IPFS Progress: %d/%d bytes\n", bytesRead, totalBytes)
-	}
-	ipfsReader := NewProgressReader(videoFile, fileHeader.Size, ipfsProgress)
 
-	// Upload to IPFS
-	ipfsCID, err := s.ipfs.UploadFileStream(ipfsReader)
+		outputPath := filepath.Join(tempDir, fmt.Sprintf("%s.mp4", resolution))
+		if err := s.ffmpeg.Transcode(ctx, originalPath, outputPath, resolution); err != nil {
+			s.logger.LogError("Failed to transcode video", map[string]interface{}{
+				"error":      err.Error(),
+				"resolution": resolution,
+				"input":      originalPath,
+				"output":     outputPath,
+			})
+			continue // Skip this resolution but continue with others
+		}
+
+		// Upload transcoded file to S3
+		transcodedFile, err := os.Open(outputPath)
+		if err != nil {
+			s.logger.LogError("Failed to open transcoded file", map[string]interface{}{
+				"error": err.Error(),
+				"path":  outputPath,
+			})
+			continue
+		}
+
+		_, err = s.storage.UploadVideo(ctx, upload.VideoID, resolution, transcodedFile)
+		transcodedFile.Close()
+		if err != nil {
+			s.logger.LogError("Failed to upload transcoded file to S3", map[string]interface{}{
+				"error":      err.Error(),
+				"resolution": resolution,
+			})
+			continue
+		}
+
+		// Upload transcoded file to IPFS
+		transcodedFile, err = os.Open(outputPath)
+		if err != nil {
+			s.logger.LogError("Failed to open transcoded file for IPFS", map[string]interface{}{
+				"error": err.Error(),
+				"path":  outputPath,
+			})
+			continue
+		}
+
+		transcodedCID, err := s.ipfs.UploadFileStream(transcodedFile)
+		transcodedFile.Close()
+		if err != nil {
+			s.logger.LogError("Failed to upload transcoded file to IPFS", map[string]interface{}{
+				"error":      err.Error(),
+				"resolution": resolution,
+			})
+			// Continue without IPFS CID
+		}
+
+		// Get transcoded file metadata
+		transcodedMetadata, err := s.ffmpeg.GetMetadata(ctx, outputPath)
+		if err != nil {
+			s.logger.LogError("Failed to get transcoded video metadata", map[string]interface{}{
+				"error":      err.Error(),
+				"resolution": resolution,
+				"path":       outputPath,
+			})
+			continue
+		}
+
+		segment := &TranscodeSegment{
+			StoragePath: fmt.Sprintf("videos/%s/%s.mp4", upload.VideoID, resolution),
+			IPFSCID:     transcodedCID,
+			Duration:    int(transcodedMetadata.Duration),
+			CreatedAt:   time.Now(),
+			UpdatedAt:   time.Now(),
+		}
+
+		transcode.Segments = []TranscodeSegment{*segment}
+		transcodeResults = append(transcodeResults, transcode)
+	}
+
+	// Start a transaction to update all records
+	err = s.db.Transaction(func(tx *gorm.DB) error {
+		// Update video with IPFS CID
+		if err := tx.Model(upload.Video).Updates(map[string]interface{}{
+			"ipfs_cid":   cid,
+			"updated_at": time.Now(),
+		}).Error; err != nil {
+			return fmt.Errorf("failed to update video record: %w", err)
+		}
+
+		// Create original transcode and segment
+		if err := tx.Create(originalTranscode).Error; err != nil {
+			return fmt.Errorf("failed to create original transcode record: %w", err)
+		}
+
+		originalSegment.TranscodeID = originalTranscode.ID
+		if err := tx.Create(originalSegment).Error; err != nil {
+			return fmt.Errorf("failed to create original segment record: %w", err)
+		}
+
+		// Create transcodes and segments for each resolution
+		for _, transcode := range transcodeResults {
+			if err := tx.Create(transcode).Error; err != nil {
+				return fmt.Errorf("failed to create transcode record: %w", err)
+			}
+
+			segment := transcode.Segments[0]
+			segment.TranscodeID = transcode.ID
+			if err := tx.Create(&segment).Error; err != nil {
+				return fmt.Errorf("failed to create segment record: %w", err)
+			}
+		}
+
+		// Update upload status to completed
+		return tx.Model(upload).Updates(map[string]interface{}{
+			"status":     UploadStatusCompleted,
+			"end_time":   time.Now(),
+			"updated_at": time.Now(),
+		}).Error
+	})
+
 	if err != nil {
-		upload.UploadStatus = StatusIPFSFailed
-		upload.ErrorMessage = fmt.Sprintf("IPFS upload failed: %v", err)
-		upload.UpdatedAt = time.Now()
-		s.db.Save(upload)
-		return fmt.Errorf("failed to upload to IPFS: %v", err)
+		return fmt.Errorf("failed to update records: %w", err)
 	}
-
-	// Update IPFS completion status
-	now := time.Now()
-	upload.IPFSEndTime = &now
-	upload.IPFSCID = ipfsCID
-	upload.UploadStatus = StatusIPFSCompleted
-	upload.UpdatedAt = now
-	s.db.Save(upload)
-
-	// Seek the file back to the beginning for S3 upload
-	if _, err := videoFile.Seek(0, io.SeekStart); err != nil {
-		upload.UploadStatus = StatusFailed
-		upload.ErrorMessage = fmt.Sprintf("Failed to prepare for S3 upload: %v", err)
-		upload.UpdatedAt = time.Now()
-		s.db.Save(upload)
-		return fmt.Errorf("failed to seek file to beginning: %v", err)
-	}
-
-	// Update status for S3 phase
-	now = time.Now()
-	upload.CurrentPhase = "S3"
-	upload.S3StartTime = &now
-	upload.UploadStatus = StatusS3Uploading
-	upload.UpdatedAt = now
-	s.db.Save(upload)
-
-	// Create progress reader for S3 upload
-	s3Progress := func(bytesRead, totalBytes int64) {
-		upload.S3BytesUploaded = bytesRead
-		upload.UpdatedAt = time.Now()
-		s.db.Save(upload)
-		fmt.Printf("S3 Progress: %d/%d bytes\n", bytesRead, totalBytes)
-	}
-	s3Reader := NewProgressReader(videoFile, fileHeader.Size, s3Progress)
-
-	// Upload to S3
-	fileExt := filepath.Ext(fileHeader.Filename)
-	fileKey := ipfsCID + fileExt
-	s3URL, err := s.s3.UploadFileStream(s3Reader, fileKey)
-	if err != nil {
-		upload.UploadStatus = StatusS3Failed
-		upload.ErrorMessage = fmt.Sprintf("S3 upload failed: %v", err)
-		upload.UpdatedAt = time.Now()
-		s.db.Save(upload)
-		return fmt.Errorf("failed to upload to S3: %v", err)
-	}
-
-	// Update final status
-	now = time.Now()
-	upload.S3EndTime = &now
-	upload.S3URL = s3URL
-	upload.UploadStatus = StatusCompleted
-	upload.UpdatedAt = now
-	s.db.Save(upload)
-
-	// Create record in the videos table
-	video := &Video{
-		FileId:       upload.TempFileId,
-		Title:        upload.Title,
-		Description:  upload.Description,
-		IPFSCID:      upload.IPFSCID,
-		FilePath:     s3URL,
-		UploadStatus: "completed",
-		FileSize:     upload.FileSize,
-		CreatedAt:    now,
-		UpdatedAt:    now,
-	}
-
-	if err := s.db.Create(video).Error; err != nil {
-		fmt.Printf("Error creating video record: %v\n", err)
-		return fmt.Errorf("failed to create video record: %v", err)
-	}
-	fmt.Printf("Created video record with ID: %d\n", video.ID)
 
 	return nil
 }
 
-// GetVideoStatus returns the status of a video upload
-func (s *Service) GetVideoStatus(fileID string) (*VideoUpload, error) {
-	var upload VideoUpload
-	if err := s.db.Where("temp_file_id = ?", fileID).First(&upload).Error; err != nil {
-		return nil, err
+// GetVideo retrieves a video by ID
+func (s *VideoServiceImpl) GetVideo(videoID uuid.UUID) (*Video, error) {
+	var video Video
+	if err := s.db.Preload("Upload").Preload("Transcodes").Preload("Transcodes.Segments").First(&video, videoID).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("failed to get video: %w", err)
 	}
-	return &upload, nil
+	return &video, nil
 }
 
-// GetVideoList returns a list of completed video uploads
-func (s *Service) GetVideoList() ([]VideoUpload, error) {
-	var uploads []VideoUpload
-	err := s.db.Where("upload_status = ?", StatusCompleted).Order("created_at desc").Find(&uploads).Error
-	return uploads, err
-}
+// ListVideos retrieves a list of videos with pagination
+func (s *VideoServiceImpl) ListVideos(page, limit int) ([]Video, error) {
+	var videos []Video
+	offset := (page - 1) * limit
 
-// cleanupFailedUpload handles cleanup of failed uploads
-func (s *Service) cleanupFailedUpload(upload *VideoUpload) {
-	now := time.Now()
-	upload.UploadStatus = StatusFailed
-	upload.UpdatedAt = now
-
-	if upload.CurrentPhase == "IPFS" {
-		upload.IPFSEndTime = &now
-	} else if upload.CurrentPhase == "S3" {
-		upload.S3EndTime = &now
+	if err := s.db.Preload("Upload").Preload("Transcodes").Preload("Transcodes.Segments").
+		Offset(offset).Limit(limit).Find(&videos).Error; err != nil {
+		return nil, fmt.Errorf("failed to list videos: %w", err)
 	}
 
-	s.db.Save(upload)
+	return videos, nil
 }
 
-// ProcessTranscode handles the complete transcoding process for a video
-func (s *Service) ProcessTranscode(cid string) (*TranscodeResult, error) {
-	// Download video from IPFS once
-	localFilePath, err := s.ipfs.DownloadFile(cid)
+// DeleteVideo deletes a video by ID
+func (s *VideoServiceImpl) DeleteVideo(videoID uuid.UUID) error {
+	ctx := context.Background()
+
+	// Get video details first
+	video, err := s.GetVideo(videoID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to download video from IPFS: %v", err)
+		return fmt.Errorf("failed to get video details: %w", err)
+	}
+	if video == nil {
+		return fmt.Errorf("video not found: %s", videoID)
 	}
 
-	// Ensure cleanup of local file when we're done
-	defer func() {
-		if err := os.Remove(localFilePath); err != nil {
-			s.logger.LogInfo("Failed to cleanup local file", map[string]interface{}{
-				"path":  localFilePath,
-				"error": err.Error(),
-			})
-		}
-	}()
-
-	result := &TranscodeResult{
-		Transcodes:        make([]Transcode, 0),
-		TranscodeSegments: make([]TranscodeSegment, 0),
+	// Delete files from S3
+	if err := s.storage.DeleteVideo(ctx, videoID); err != nil {
+		s.logger.LogError("Failed to delete video files from S3", map[string]interface{}{
+			"error":   err.Error(),
+			"videoID": videoID,
+		})
+		// Continue with database deletion even if S3 deletion fails
 	}
 
-	// Process all formats and resolutions
-	resolutions := []string{"720", "480", "360"}
-	storageTypes := []string{"ipfs", "s3"}
-
-	// Process HLS format
-	for _, resolution := range resolutions {
-		for _, storageType := range storageTypes {
-			hlsResult, err := s.processHLSFormat(localFilePath, resolution, storageType)
-			if err != nil {
-				return nil, fmt.Errorf("failed to process HLS for %sp (%s): %v", resolution, storageType, err)
-			}
-			result.Transcodes = append(result.Transcodes, hlsResult.Transcode)
-			result.TranscodeSegments = append(result.TranscodeSegments, hlsResult.Segments...)
-		}
+	// Delete from database (will cascade to related records)
+	if err := s.db.Delete(&Video{}, videoID).Error; err != nil {
+		return fmt.Errorf("failed to delete video: %w", err)
 	}
 
-	// Process MP4 format
-	for _, resolution := range resolutions {
-		for _, storageType := range storageTypes {
-			mp4Result, err := s.processMP4Format(localFilePath, resolution, storageType)
-			if err != nil {
-				return nil, fmt.Errorf("failed to process MP4 for %sp (%s): %v", resolution, storageType, err)
-			}
-			result.Transcodes = append(result.Transcodes, mp4Result)
-		}
-	}
-
-	return result, nil
+	return nil
 }
 
-func (s *Service) processHLSFormat(inputPath, resolution, storageType string) (*HLSResult, error) {
-	// Create temporary directory for HLS output
-	outputDir := fmt.Sprintf("temp_hls_%s_%s_%s",
-		filepath.Base(inputPath),
-		resolution,
-		uuid.New().String())
-
-	if err := os.MkdirAll(outputDir, 0755); err != nil {
-		return nil, fmt.Errorf("failed to create output directory: %v", err)
-	}
-	defer os.RemoveAll(outputDir)
-
-	// Prepare ffmpeg command for HLS
-	outputPath := filepath.Join(outputDir, "playlist.m3u8")
-	cmd := exec.Command(
-		s.config.Ffmpeg.Path,
-		"-i", inputPath,
-		"-vf", fmt.Sprintf("scale=-2:%s", resolution),
-		"-c:v", s.config.Ffmpeg.VideoCodec,
-		"-c:a", s.config.Ffmpeg.AudioCodec,
-		"-f", "hls",
-		"-hls_time", fmt.Sprintf("%d", s.config.Ffmpeg.HLSTime),
-		"-hls_playlist_type", s.config.Ffmpeg.HLSPlaylistType,
-		"-hls_segment_filename", filepath.Join(outputDir, "segment_%03d.ts"),
-		outputPath,
-	)
-
-	if err := cmd.Run(); err != nil {
-		return nil, fmt.Errorf("ffmpeg command failed: %v", err)
+// UpdateVideo updates a video's metadata
+func (s *VideoServiceImpl) UpdateVideo(videoID uuid.UUID, title, description string) error {
+	updates := map[string]interface{}{
+		"title":       title,
+		"description": description,
+		"updated_at":  time.Now(),
 	}
 
-	// Create transcode record for playlist
-	playlistTranscode := Transcode{
-		Format:      "hls",
-		Resolution:  resolution,
-		StorageType: storageType,
-		Type:        "manifest",
-		CreatedAt:   time.Now(),
+	if err := s.db.Model(&Video{}).Where("id = ?", videoID).Updates(updates).Error; err != nil {
+		return fmt.Errorf("failed to update video: %w", err)
 	}
-
-	// Upload and save playlist file
-	if storageType == "ipfs" {
-		cid, err := s.ipfs.UploadFile(outputPath)
-		if err != nil {
-			return nil, fmt.Errorf("failed to upload playlist to IPFS: %v", err)
-		}
-		playlistTranscode.FileCID = cid
-	} else {
-		s3Key := fmt.Sprintf("transcodes/hls/%s/playlist.m3u8", resolution)
-		s3URL, err := s.s3.UploadFile(outputPath, s3Key)
-		if err != nil {
-			return nil, fmt.Errorf("failed to upload playlist to S3: %v", err)
-		}
-		playlistTranscode.FilePath = s3URL
-	}
-
-	// Process segments
-	var segments []TranscodeSegment
-	segmentFiles, err := filepath.Glob(filepath.Join(outputDir, "segment_*.ts"))
-	if err != nil {
-		return nil, fmt.Errorf("failed to list segment files: %v", err)
-	}
-
-	for i, segmentPath := range segmentFiles {
-		segment := TranscodeSegment{
-			Sequence:    i + 1,
-			StorageType: storageType,
-			CreatedAt:   time.Now(),
-		}
-
-		if storageType == "ipfs" {
-			cid, err := s.ipfs.UploadFile(segmentPath)
-			if err != nil {
-				return nil, fmt.Errorf("failed to upload segment to IPFS: %v", err)
-			}
-			segment.FileCID = cid
-		} else {
-			s3Key := fmt.Sprintf("transcodes/hls/%s/segment_%03d.ts", resolution, i+1)
-			s3URL, err := s.s3.UploadFile(segmentPath, s3Key)
-			if err != nil {
-				return nil, fmt.Errorf("failed to upload segment to S3: %v", err)
-			}
-			segment.FilePath = s3URL
-		}
-
-		segments = append(segments, segment)
-	}
-
-	return &HLSResult{
-		Transcode: playlistTranscode,
-		Segments:  segments,
-	}, nil
-}
-
-func (s *Service) processMP4Format(inputPath, resolution, storageType string) (Transcode, error) {
-	// Create output filename
-	outputPath := fmt.Sprintf("temp_mp4_%s_%s_%s.mp4",
-		filepath.Base(inputPath),
-		resolution,
-		uuid.New().String())
-
-	// Prepare ffmpeg command for MP4
-	cmd := exec.Command(
-		s.config.Ffmpeg.Path,
-		"-i", inputPath,
-		"-vf", fmt.Sprintf("scale=-2:%s", resolution),
-		"-c:v", s.config.Ffmpeg.VideoCodec,
-		"-c:a", s.config.Ffmpeg.AudioCodec,
-		"-preset", s.config.Ffmpeg.Preset,
-		outputPath,
-	)
-
-	if err := cmd.Run(); err != nil {
-		return Transcode{}, fmt.Errorf("ffmpeg command failed: %v", err)
-	}
-	defer os.Remove(outputPath)
-
-	transcode := Transcode{
-		Format:      "mp4",
-		Resolution:  resolution,
-		StorageType: storageType,
-		Type:        "video",
-		CreatedAt:   time.Now(),
-	}
-
-	if storageType == "ipfs" {
-		cid, err := s.ipfs.UploadFile(outputPath)
-		if err != nil {
-			return Transcode{}, fmt.Errorf("failed to upload MP4 to IPFS: %v", err)
-		}
-		transcode.FileCID = cid
-	} else {
-		s3Key := fmt.Sprintf("transcodes/mp4/%s/video.mp4", resolution)
-		s3URL, err := s.s3.UploadFile(outputPath, s3Key)
-		if err != nil {
-			return Transcode{}, fmt.Errorf("failed to upload MP4 to S3: %v", err)
-		}
-		transcode.FilePath = s3URL
-	}
-
-	return transcode, nil
+	return nil
 }

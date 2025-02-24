@@ -2,41 +2,36 @@ package video
 
 import (
 	"io"
+	"mime/multipart"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
 
-// VideoService interface for video operations
+// VideoService defines the interface for video operations
 type VideoService interface {
-	InitializeUpload(title, description string, fileSize int64) (*VideoUpload, error)
-	ProcessUpload(upload *VideoUpload, file interface{}, header interface{}) error
-	GetVideoList() ([]VideoUpload, error)
-	GetVideoStatus(fileID string) (*VideoUpload, error)
-	ProcessTranscode(cid string) (*TranscodeResult, error)
+	InitializeUpload(title, description string, size int64) (*VideoUpload, error)
+	ProcessUpload(upload *VideoUpload, file multipart.File, header *multipart.FileHeader) error
+	GetVideo(videoID uuid.UUID) (*Video, error)
+	ListVideos(page, limit int) ([]Video, error)
+	DeleteVideo(videoID uuid.UUID) error
+	UpdateVideo(videoID uuid.UUID, title, description string) error
 }
 
-// IPFSService interface for IPFS operations
+// IPFSService defines the interface for IPFS operations
 type IPFSService interface {
-	GetGatewayURL(cid string) string
-	UploadFileStream(reader io.Reader) (string, error)
-	UploadFile(filePath string) (string, error)
+	UploadFileStream(file io.Reader) (string, error)
 	DownloadFile(cid string) (string, error)
 }
 
-// S3Service interface for S3 operations
-type S3Service interface {
-	UploadFileStream(reader io.Reader, key string) (string, error)
-	UploadFile(filePath string, key string) (string, error)
-}
-
-// ResponseHandler interface for HTTP responses
+// ResponseHandler defines the interface for HTTP response handling
 type ResponseHandler interface {
 	SuccessResponse(c *gin.Context, data interface{}, message string)
-	ErrorResponse(c *gin.Context, status int, code, message string, err error)
+	ErrorResponse(c *gin.Context, statusCode int, code string, message string, err error)
 }
 
-// Logger interface for logging operations
+// Logger defines the interface for logging operations
 type Logger interface {
-	LogInfo(msg string, fields map[string]interface{})
-	LogError(err error, msg string) error
+	LogInfo(message string, fields map[string]interface{})
+	LogError(message string, fields map[string]interface{})
 }

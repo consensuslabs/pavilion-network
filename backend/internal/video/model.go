@@ -3,114 +3,130 @@ package video
 import (
 	"time"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
-// Video represents a completed video
+// Video represents a video entity in the database
 type Video struct {
-	ID           int64        `gorm:"primaryKey;autoIncrement:false;type:bigint;default:unique_rowid()" json:"id"`
-	FileId       string       `gorm:"unique" json:"fileId"`
-	Title        string       `json:"title"`
-	Description  string       `json:"description"`
-	FilePath     string       `json:"filePath"`
-	IPFSCID      string       `gorm:"column:ipfs_cid" json:"ipfsCid"`
-	Checksum     string       `json:"checksum"`
-	UploadStatus UploadStatus `gorm:"type:string;default:'pending'" json:"uploadStatus"`
-	FileSize     int64        `json:"fileSize"`
-	CreatedAt    time.Time    `json:"createdAt"`
-	UpdatedAt    time.Time    `json:"updatedAt"`
-	Transcodes   []Transcode  `gorm:"foreignKey:VideoID" json:"transcodes"`
+	ID          uuid.UUID    `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
+	FileID      string       `gorm:"unique;not null" json:"file_id"`
+	Title       string       `gorm:"not null" json:"title"`
+	Description string       `json:"description"`
+	StoragePath string       `gorm:"not null" json:"storage_path"`
+	IPFSCID     string       `gorm:"column:ipfs_cid" json:"ipfs_cid"`
+	Checksum    string       `gorm:"size:64" json:"checksum"`
+	FileSize    int64        `gorm:"not null" json:"file_size"`
+	CreatedAt   time.Time    `gorm:"not null;default:now()" json:"created_at"`
+	UpdatedAt   time.Time    `gorm:"not null;default:now()" json:"updated_at"`
+	Upload      *VideoUpload `gorm:"foreignKey:VideoID" json:"upload,omitempty"`
+	Transcodes  []Transcode  `gorm:"foreignKey:VideoID" json:"transcodes,omitempty"`
 }
 
-// VideoUpload represents a video upload in progress
+// VideoUpload represents the upload process tracking
 type VideoUpload struct {
-	ID                uint         `json:"id" gorm:"primaryKey"`
-	TempFileId        string       `json:"tempFileId" gorm:"index;not null"`
-	Title             string       `json:"title" gorm:"not null"`
-	Description       string       `json:"description"`
-	FileSize          int64        `json:"fileSize" gorm:"not null"`
-	IPFSBytesUploaded int64        `json:"ipfsBytesUploaded" gorm:"column:ipfs_bytes_uploaded;default:0"`
-	S3BytesUploaded   int64        `json:"s3BytesUploaded" gorm:"column:s3_bytes_uploaded;default:0"`
-	UploadStatus      UploadStatus `json:"status" gorm:"not null;type:string"`
-	CurrentPhase      string       `json:"phase" gorm:"not null"`
-	IPFSCID           string       `json:"ipfsCid" gorm:"column:ipfs_cid"`
-	S3URL             string       `json:"s3Url"`
-	ErrorMessage      string       `json:"error,omitempty"`
-	IPFSStartTime     *time.Time   `json:"ipfsStartTime"`
-	IPFSEndTime       *time.Time   `json:"ipfsEndTime"`
-	S3StartTime       *time.Time   `json:"s3StartTime"`
-	S3EndTime         *time.Time   `json:"s3EndTime"`
-	CreatedAt         time.Time    `json:"createdAt" gorm:"not null"`
-	UpdatedAt         time.Time    `json:"updatedAt" gorm:"not null"`
+	ID        uuid.UUID    `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
+	VideoID   uuid.UUID    `gorm:"type:uuid;not null;unique" json:"video_id"`
+	StartTime time.Time    `gorm:"not null" json:"start_time"`
+	EndTime   *time.Time   `json:"end_time,omitempty"`
+	Status    UploadStatus `gorm:"type:upload_status;not null" json:"status"`
+	CreatedAt time.Time    `gorm:"not null;default:now()" json:"created_at"`
+	UpdatedAt time.Time    `gorm:"not null;default:now()" json:"updated_at"`
+	Video     *Video       `gorm:"foreignKey:VideoID" json:"-"`
 }
 
 // Transcode represents a transcoded version of a video
 type Transcode struct {
-	ID          int64     `gorm:"primaryKey;autoIncrement:false;type:bigint;default:unique_rowid()" json:"id"`
-	VideoID     int64     `json:"videoId"`
-	FilePath    string    `json:"filePath"`
-	FileCID     string    `gorm:"column:file_cid" json:"fileCid"`
-	Format      string    `json:"format"`      // "hls" or "mp4"
-	Resolution  string    `json:"resolution"`  // e.g., "720", "480", "360"
-	StorageType string    `json:"storageType"` // "ipfs" or "s3"
-	Type        string    `json:"type"`        // "manifest" or "video"
-	CreatedAt   time.Time `json:"createdAt"`
+	ID        uuid.UUID          `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
+	VideoID   uuid.UUID          `gorm:"type:uuid;not null" json:"video_id"`
+	Format    string             `gorm:"type:text;not null;check:format IN ('mp4', 'hls')" json:"format"`
+	CreatedAt time.Time          `gorm:"not null;default:now()" json:"created_at"`
+	UpdatedAt time.Time          `gorm:"not null;default:now()" json:"updated_at"`
+	Video     *Video             `gorm:"foreignKey:VideoID" json:"-"`
+	Segments  []TranscodeSegment `gorm:"foreignKey:TranscodeID" json:"segments,omitempty"`
 }
 
-// TranscodeSegment represents a segment of a transcoded HLS video
+// TranscodeSegment represents a segment of a transcoded video
 type TranscodeSegment struct {
-	ID          int64     `gorm:"primaryKey;autoIncrement:false;type:bigint;default:unique_rowid()" json:"id"`
-	TranscodeID int64     `json:"transcodeId"`
-	FilePath    string    `json:"filePath"`
-	FileCID     string    `gorm:"column:file_cid" json:"fileCid"`
-	StorageType string    `json:"storageType"` // "ipfs" or "s3"
-	Sequence    int       `json:"sequence"`
-	Duration    float64   `json:"duration"`
-	CreatedAt   time.Time `json:"createdAt"`
+	ID          uuid.UUID  `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
+	TranscodeID uuid.UUID  `gorm:"type:uuid;not null" json:"transcode_id"`
+	StoragePath string     `gorm:"not null" json:"storage_path"`
+	IPFSCID     string     `gorm:"column:ipfs_cid" json:"ipfs_cid"`
+	Duration    int        `json:"duration"`
+	CreatedAt   time.Time  `gorm:"not null;default:now()" json:"created_at"`
+	UpdatedAt   time.Time  `gorm:"not null;default:now()" json:"updated_at"`
+	Transcode   *Transcode `gorm:"foreignKey:TranscodeID" json:"-"`
 }
 
-// BeforeCreate hook to validate UploadStatus before saving
+// BeforeCreate hook for Video
 func (v *Video) BeforeCreate(tx *gorm.DB) error {
-	if v.UploadStatus == "" {
-		v.UploadStatus = StatusPending
+	if v.ID == uuid.Nil {
+		v.ID = uuid.New()
 	}
 	return nil
 }
 
-// GetUploadProgress calculates the total upload progress as a percentage
-func (v *VideoUpload) GetUploadProgress() float64 {
-	if v.UploadStatus == StatusCompleted {
-		return 100.0
+// ToVideoInfo converts Video to VideoInfo response type
+func (v *Video) ToVideoInfo() VideoInfo {
+	var status string
+	if v.Upload != nil {
+		status = string(v.Upload.Status)
 	}
-
-	if v.FileSize == 0 {
-		return 0.0
+	return VideoInfo{
+		ID:          v.ID.String(),
+		Title:       v.Title,
+		Description: v.Description,
+		Status:      status,
+		CreatedAt:   v.CreatedAt,
 	}
-
-	var progress float64
-	if v.CurrentPhase == "IPFS" {
-		// IPFS progress represents first 50%
-		progress = float64(v.IPFSBytesUploaded) / float64(v.FileSize) * 50.0
-	} else if v.CurrentPhase == "S3" {
-		// S3 progress represents remaining 50%
-		progress = 50.0 + (float64(v.S3BytesUploaded) / float64(v.FileSize) * 50.0)
-	}
-
-	return progress
 }
 
-// GetIPFSDuration returns the duration of IPFS upload
-func (v *VideoUpload) GetIPFSDuration() time.Duration {
-	if v.IPFSStartTime != nil && v.IPFSEndTime != nil {
-		return v.IPFSEndTime.Sub(*v.IPFSStartTime)
+// ToVideoDetailsResponse converts Video to VideoDetailsResponse
+func (v *Video) ToVideoDetailsResponse() VideoDetailsResponse {
+	transcodes := make([]TranscodeInfo, 0, len(v.Transcodes))
+	for _, t := range v.Transcodes {
+		segments := make([]TranscodeSegmentInfo, 0, len(t.Segments))
+		for _, s := range t.Segments {
+			segments = append(segments, TranscodeSegmentInfo{
+				ID:          s.ID.String(),
+				StoragePath: s.StoragePath,
+				IPFSCID:     s.IPFSCID,
+				Duration:    s.Duration,
+			})
+		}
+		transcodes = append(transcodes, TranscodeInfo{
+			ID:        t.ID.String(),
+			Format:    t.Format,
+			Segments:  segments,
+			CreatedAt: t.CreatedAt,
+		})
 	}
-	return 0
+
+	var status string
+	if v.Upload != nil {
+		status = string(v.Upload.Status)
+	}
+
+	return VideoDetailsResponse{
+		ID:          v.ID.String(),
+		FileID:      v.FileID,
+		Title:       v.Title,
+		Description: v.Description,
+		StoragePath: v.StoragePath,
+		IPFSCID:     v.IPFSCID,
+		Status:      status,
+		FileSize:    v.FileSize,
+		CreatedAt:   v.CreatedAt,
+		UpdatedAt:   v.UpdatedAt,
+		Transcodes:  transcodes,
+	}
 }
 
-// GetS3Duration returns the duration of S3 upload
-func (v *VideoUpload) GetS3Duration() time.Duration {
-	if v.S3StartTime != nil && v.S3EndTime != nil {
-		return v.S3EndTime.Sub(*v.S3StartTime)
+// ToAPIResponse converts Video to a generic APIResponse
+func (v *Video) ToAPIResponse(message string) APIResponse {
+	return APIResponse{
+		Message: message,
+		Status:  "success",
+		Data:    v.ToVideoInfo(),
 	}
-	return 0
 }

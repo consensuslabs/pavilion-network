@@ -249,16 +249,31 @@ definitions:
         type: integer
     type: object
   video.UploadResponse:
+    description: Response for successful video upload
     properties:
-      description:
+      video_id:
+        type: integer
+        format: int64
+        description: Unique identifier for the uploaded video
+        example: 1687654321
+      file_path:
         type: string
-      fileId:
+        description: Path where the video is stored
+        example: "videos/1687654321/original.mp4"
+      ipfs_cid:
         type: string
+        description: IPFS Content Identifier for the video
+        example: "QmX..."
       status:
         type: string
-      title:
-        type: string
-    type: object
+        description: Current status of the upload
+        enum: [pending, uploading, completed, failed]
+        example: "completed"
+      transcodes:
+        type: array
+        description: List of transcoded versions
+        items:
+          $ref: '#/definitions/video.Transcode'
 host: localhost:8080
 info:
   contact:
@@ -562,62 +577,58 @@ paths:
       - video
   /video/upload:
     post:
+      tags:
+        - video
+      summary: Upload a new video
+      description: Upload a video file with metadata. The file will be processed and transcoded.
       consumes:
-      - multipart/form-data
-      description: Upload a new video file
-      parameters:
-      - description: Video file to upload (.mp4, .mov, .avi, .webm)
-        in: formData
-        name: video
-        required: true
-        type: file
-      - description: Video title (3-100 characters)
-        in: formData
-        maxLength: 100
-        minLength: 3
-        name: title
-        required: true
-        type: string
-      - description: Video description (max 500 characters)
-        in: formData
-        maxLength: 500
-        name: description
-        type: string
+        - multipart/form-data
       produces:
-      - application/json
+        - application/json
+      parameters:
+        - in: formData
+          name: video
+          type: file
+          required: true
+          description: Video file to upload (.mp4, .mov)
+        - in: formData
+          name: title
+          type: string
+          required: true
+          minLength: 3
+          maxLength: 100
+          description: Video title
+          example: "My Awesome Video"
+        - in: formData
+          name: description
+          type: string
+          required: false
+          maxLength: 1000
+          description: Video description
+          example: "This is a description of my awesome video"
+      security:
+        - BearerAuth: []
       responses:
-        "200":
-          description: Upload initiated successfully
+        '200':
+          description: Video uploaded successfully
           schema:
             allOf:
-            - $ref: '#/definitions/http.APIResponse'
-            - properties:
-                data:
-                  $ref: '#/definitions/video.UploadResponse'
-              type: object
-        "400":
-          description: Invalid request format or validation error
+              - $ref: '#/definitions/http.APIResponse'
+              - properties:
+                  data:
+                    $ref: '#/definitions/video.UploadResponse'
+        '400':
+          description: Invalid request or validation error
           schema:
-            allOf:
-            - $ref: '#/definitions/http.APIResponse'
-            - properties:
-                error:
-                  $ref: '#/definitions/http.APIError'
-              type: object
-        "401":
+            $ref: '#/definitions/http.APIResponse'
+        '401':
           description: Unauthorized
           schema:
-            allOf:
-            - $ref: '#/definitions/http.APIResponse'
-            - properties:
-                error:
-                  $ref: '#/definitions/http.APIError'
-              type: object
-      security:
-      - BearerAuth: []
-      summary: Upload video
-      tags:
-      - video
+            $ref: '#/definitions/http.APIResponse'
+        '500':
+          description: Server error
+          schema:
+            $ref: '#/definitions/http.APIResponse'
   /video/watch:
     get:
       description: Stream a video by CID or file path
@@ -654,10 +665,10 @@ securityDefinitions:
   BasicAuth:
     type: basic
   BearerAuth:
-    description: JWT token for authentication
-    in: header
-    name: Authorization
     type: apiKey
+    name: Authorization
+    in: header
+    description: 'Bearer {token}'
 swagger: "2.0"
 tags:
 - description: Authentication endpoints

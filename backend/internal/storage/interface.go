@@ -1,28 +1,30 @@
 package storage
 
 import (
+	"context"
 	"io"
 
+	videostorage "github.com/consensuslabs/pavilion-network/backend/internal/storage/video"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 )
-
-// StorageService defines the interface for storage operations
-type StorageService interface {
-	UploadFile(filePath, key string) (string, error)
-	UploadFileStream(reader io.Reader, key string) (string, error)
-	Close() error
-}
 
 // IPFSService defines IPFS-specific operations
 type IPFSService interface {
-	StorageService
+	videostorage.Service
 	GetGatewayURL(cid string) string
 	DownloadFile(cid string) (string, error)
 }
 
 // S3Service defines S3-specific operations
 type S3Service interface {
-	StorageService
+	videostorage.Service
+	// UploadVideo uploads a video file to S3 with the standardized path structure
+	UploadVideo(ctx context.Context, videoID uuid.UUID, resolution string, reader io.Reader) (string, error)
+	// GetVideoURL returns the URL for a video in S3
+	GetVideoURL(ctx context.Context, key string) (string, error)
+	// DeleteVideo deletes a video and its transcoded versions from S3
+	DeleteVideo(ctx context.Context, videoID uuid.UUID) error
 }
 
 // Logger interface for logging operations

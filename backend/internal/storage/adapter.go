@@ -1,9 +1,11 @@
 package storage
 
 import (
+	"context"
 	"io"
 
 	"github.com/consensuslabs/pavilion-network/backend/internal/video"
+	"github.com/google/uuid"
 )
 
 // VideoIPFSAdapter adapts our storage IPFS service to video package's interface
@@ -16,21 +18,11 @@ func NewVideoIPFSAdapter(service IPFSService) video.IPFSService {
 	return &VideoIPFSAdapter{service: service}
 }
 
-// GetGatewayURL returns the IPFS gateway URL for a given CID
-func (a *VideoIPFSAdapter) GetGatewayURL(cid string) string {
-	return a.service.GetGatewayURL(cid)
-}
-
 // UploadFileStream uploads a file stream to IPFS
 func (a *VideoIPFSAdapter) UploadFileStream(reader io.Reader) (string, error) {
-	// We don't need the key parameter for IPFS uploads
-	return a.service.UploadFileStream(reader, "")
-}
-
-// UploadFile uploads a file to IPFS
-func (a *VideoIPFSAdapter) UploadFile(filePath string) (string, error) {
-	// We don't need the key parameter for IPFS uploads
-	return a.service.UploadFile(filePath, "")
+	// For IPFS uploads, we don't need the video ID or resolution
+	// We'll just use placeholder values since we're not pinning in MVP
+	return a.service.UploadVideo(context.Background(), uuid.Nil, "original", reader)
 }
 
 // DownloadFile downloads a file from IPFS

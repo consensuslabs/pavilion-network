@@ -7,11 +7,21 @@ import (
 	"gorm.io/gorm"
 )
 
-type Migrator interface {
-	Up() error
-	Down() error
+// MigrationRunner handles database migrations
+type MigrationRunner struct {
+	db     *gorm.DB
+	config *database.MigrationConfig
 }
 
+// NewMigrationRunner creates a new migration runner
+func NewMigrationRunner(db *gorm.DB, config *database.MigrationConfig) *MigrationRunner {
+	return &MigrationRunner{
+		db:     db,
+		config: config,
+	}
+}
+
+// RunMigrations runs all migrations in the specified direction
 func RunMigrations(db *gorm.DB, direction string) error {
 	// Initialize migration config with a default logger
 	defaultLogger, err := database.NewDefaultLogger()
@@ -50,59 +60,7 @@ func RunMigrations(db *gorm.DB, direction string) error {
 		return nil
 	}
 
-	migrations := []struct {
-		Name     string
-		Migrator Migrator
-	}{
-		{"001_create_video_uploads.go", NewMigration(db)},
-		{"002_create_videos.go", NewVideoMigration(db)},
-	}
-
-	if direction == "up" {
-		for i, migration := range migrations {
-			// Check if migration has already been applied
-			applied, err := migrationConfig.HasMigrationBeenApplied(migration.Name)
-			if err != nil {
-				return fmt.Errorf("failed to check migration status: %v", err)
-			}
-			if applied {
-				migrationConfig.Logger.LogInfo("Migration already applied", map[string]interface{}{
-					"migration": migration.Name,
-				})
-				continue
-			}
-
-			migrationConfig.Logger.LogInfo("Running migration up", map[string]interface{}{
-				"index": i + 1,
-				"name":  migration.Name,
-			})
-			if err := migration.Migrator.Up(); err != nil {
-				return fmt.Errorf("failed to run migration %d up: %v", i+1, err)
-			}
-
-			// Record successful migration
-			if err := migrationConfig.RecordMigration(migration.Name, fmt.Sprintf("Migration %s executed successfully", migration.Name)); err != nil {
-				return fmt.Errorf("failed to record migration %s: %v", migration.Name, err)
-			}
-			migrationConfig.Logger.LogInfo("Successfully recorded migration", map[string]interface{}{
-				"migration": migration.Name,
-			})
-		}
-	} else if direction == "down" {
-		// Run migrations in reverse order
-		for i := len(migrations) - 1; i >= 0; i-- {
-			migrationConfig.Logger.LogInfo("Running migration down", map[string]interface{}{
-				"index": i + 1,
-				"name":  migrations[i].Name,
-			})
-			if err := migrations[i].Migrator.Down(); err != nil {
-				return fmt.Errorf("failed to run migration %d down: %v", i+1, err)
-			}
-			// Note: We don't remove records for down migrations to maintain history
-		}
-	} else {
-		return fmt.Errorf("invalid migration direction: %s", direction)
-	}
-
+	// For now, we rely on auto-migration in development/testing
+	// Add versioned migrations here when needed for production
 	return nil
 }

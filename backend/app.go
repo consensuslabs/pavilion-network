@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/consensuslabs/pavilion-network/backend/internal/auth"
@@ -11,12 +12,14 @@ import (
 	"github.com/consensuslabs/pavilion-network/backend/internal/database"
 	"github.com/consensuslabs/pavilion-network/backend/internal/health"
 	httpHandler "github.com/consensuslabs/pavilion-network/backend/internal/http"
-	"github.com/consensuslabs/pavilion-network/backend/internal/http/middleware"
 	"github.com/consensuslabs/pavilion-network/backend/internal/logger"
 	"github.com/consensuslabs/pavilion-network/backend/internal/storage"
 	"github.com/consensuslabs/pavilion-network/backend/internal/storage/ipfs"
 	"github.com/consensuslabs/pavilion-network/backend/internal/storage/s3"
+	videostorage "github.com/consensuslabs/pavilion-network/backend/internal/storage/video"
 	"github.com/consensuslabs/pavilion-network/backend/internal/video"
+	"github.com/consensuslabs/pavilion-network/backend/internal/video/ffmpeg"
+	"github.com/consensuslabs/pavilion-network/backend/internal/video/tempfile"
 	"github.com/consensuslabs/pavilion-network/backend/migrations"
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
@@ -115,7 +118,7 @@ func NewApp(ctx context.Context, cfg *config.Config) (*App, error) {
 	ipfsAdapter := storage.NewVideoIPFSAdapter(ipfsService)
 
 	// Initialize S3 service
-	s3Config := &storage.S3Config{
+	s3Config := &videostorage.Config{
 		Endpoint:        cfg.Storage.S3.Endpoint,
 		AccessKeyID:     cfg.Storage.S3.AccessKeyID,
 		SecretAccessKey: cfg.Storage.S3.SecretAccessKey,
@@ -128,47 +131,78 @@ func NewApp(ctx context.Context, cfg *config.Config) (*App, error) {
 		return nil, fmt.Errorf("failed to initialize S3 service: %v", err)
 	}
 
-	// Initialize auth service
-	authConfig := auth.NewConfigFromAuthConfig(&cfg.Auth)
-	jwtService := auth.NewJWTService(authConfig)
-	refreshTokenService := auth.NewRefreshTokenRepository(db, loggerService)
-	authService := auth.NewService(db, jwtService, refreshTokenService, authConfig, loggerService)
+	// Initialize temporary file manager
+	tempConfig := &tempfile.Config{
+		BaseDir:     "/tmp/videos",
+		Permissions: 0755,
+	}
+	tempManager, err := tempfile.NewManager(tempConfig, loggerService)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize temporary file manager: %v", err)
+	}
 
-	// Initialize router
-	router := gin.Default()
+	// Initialize FFmpeg service
+	ffmpegConfig := &ffmpeg.Config{
+		Path:        cfg.Ffmpeg.Path,
+		ProbePath:   cfg.Ffmpeg.ProbePath,
+		VideoCodec:  cfg.Ffmpeg.VideoCodec,
+		AudioCodec:  cfg.Ffmpeg.AudioCodec,
+		Preset:      cfg.Ffmpeg.Preset,
+		OutputPath:  cfg.Ffmpeg.OutputPath,
+		Resolutions: cfg.Ffmpeg.Resolutions,
+	}
+	ffmpegService := ffmpeg.NewService(ffmpegConfig, loggerService)
 
-	// Initialize health handler
-	healthHandler := health.NewHandler(responseHandler)
+	// Initialize video service
+	videoService := video.NewVideoService(
+		db,
+		ipfsAdapter,
+		s3Service,
+		ffmpegService,
+		tempManager,
+		video.NewLoggerAdapter(loggerService),
+	)
 
 	// Initialize video app context
 	videoApp := &video.App{
 		Config: &video.Config{
-			Storage: struct{ UploadDir string }{
-				UploadDir: cfg.Storage.UploadDir,
-			},
 			Video: struct {
-				MaxSize        int64
-				MinTitleLength int
-				MaxTitleLength int
-				MaxDescLength  int
-				AllowedFormats []string
+				MaxFileSize    int64    `yaml:"max_file_size"`
+				MinTitleLength int      `yaml:"min_title_length"`
+				MaxTitleLength int      `yaml:"max_title_length"`
+				MaxDescLength  int      `yaml:"max_desc_length"`
+				AllowedFormats []string `yaml:"allowed_formats"`
 			}{
-				MaxSize:        cfg.Video.MaxSize,
+				MaxFileSize:    cfg.Video.MaxSize,
 				MinTitleLength: cfg.Video.MinTitleLength,
 				MaxTitleLength: cfg.Video.MaxTitleLength,
 				MaxDescLength:  cfg.Video.MaxDescLength,
 				AllowedFormats: cfg.Video.AllowedFormats,
 			},
-			TempDir: cfg.Storage.TempDir,
-			Ffmpeg:  cfg.Ffmpeg,
+			FFmpeg: video.FfmpegConfig{
+				Path:        cfg.Ffmpeg.Path,
+				ProbePath:   cfg.Ffmpeg.ProbePath,
+				VideoCodec:  cfg.Ffmpeg.VideoCodec,
+				AudioCodec:  cfg.Ffmpeg.AudioCodec,
+				Preset:      cfg.Ffmpeg.Preset,
+				OutputPath:  cfg.Ffmpeg.OutputPath,
+				Resolutions: cfg.Ffmpeg.Resolutions,
+			},
 		},
-		Logger:          loggerService,
+		Logger:          video.NewLoggerAdapter(loggerService),
 		IPFS:            ipfsAdapter,
 		ResponseHandler: responseHandler,
+		Video:           videoService,
 	}
 
 	// Initialize video handler
 	videoHandler := video.NewVideoHandler(videoApp)
+
+	// Initialize auth service
+	authConfig := auth.NewConfigFromAuthConfig(&cfg.Auth)
+	jwtService := auth.NewJWTService(authConfig)
+	refreshTokenService := auth.NewRefreshTokenRepository(db, loggerService)
+	authService := auth.NewService(db, jwtService, refreshTokenService, authConfig, loggerService)
 
 	// Initialize auth handler
 	authHandler := auth.NewHandler(authService, responseHandler)
@@ -179,13 +213,13 @@ func NewApp(ctx context.Context, cfg *config.Config) (*App, error) {
 		db:            db,
 		dbService:     dbService,
 		cache:         cacheService,
-		router:        router,
+		router:        gin.Default(),
 		auth:          authService,
 		logger:        loggerService,
 		ipfsService:   ipfsService,
 		s3Service:     s3Service,
 		videoHandler:  videoHandler,
-		healthHandler: healthHandler,
+		healthHandler: health.NewHandler(responseHandler),
 		httpHandler:   responseHandler,
 		authHandler:   authHandler,
 	}
@@ -259,35 +293,16 @@ func (a *App) setupRoutes() error {
 	a.router.Use(httpHandler.CORSMiddleware())
 
 	// Add request logging middleware
-	a.router.Use(middleware.RequestLoggerMiddleware(a.logger))
+	a.router.Use(httpHandler.RequestLoggerMiddleware(a.logger))
 
 	// Add recovery middleware
 	a.router.Use(httpHandler.RecoveryMiddleware(a.httpHandler, a.logger))
 
-	// Swagger documentation
+	// Set up routes
+	SetupRoutes(a.router, a)
+
+	// Set up Swagger documentation
 	a.router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-
-	// Register auth routes
-	a.authHandler.RegisterRoutes(a.router)
-
-	// Protected routes group
-	protected := a.router.Group("")
-	protected.Use(auth.AuthMiddleware(a.auth, a.httpHandler))
-	{
-		// Video routes that require authentication
-		protected.POST("/video/upload", a.videoHandler.HandleUpload)
-		protected.POST("/video/transcode", a.videoHandler.HandleTranscode)
-	}
-
-	// Public routes
-	a.router.GET("/health", a.healthHandler.HandleHealthCheck)
-	a.router.GET("/video/watch", a.videoHandler.HandleWatch)
-	a.router.GET("/video/list", a.videoHandler.HandleList)
-	a.router.GET("/video/status/:fileId", a.videoHandler.HandleStatus)
-
-	// Static file serving
-	a.router.Static("/public", "../frontend/public")
-	a.router.Static("/uploads", a.Config.Storage.UploadDir)
 
 	return nil
 }
@@ -301,9 +316,25 @@ func (a *App) Run() error {
 
 	port := a.Config.Server.Port
 	a.logger.LogInfo(fmt.Sprintf("Starting server on port %d", port), nil)
-	if err := a.router.Run(fmt.Sprintf(":%d", port)); err != nil {
-		return a.logger.LogError(err, "server failed to start")
+
+	// Create an http.Server instance
+	srv := &http.Server{
+		Addr:    fmt.Sprintf(":%d", port),
+		Handler: a.router,
 	}
+
+	// Start the server in a goroutine
+	go func() {
+		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			a.logger.LogError(err, "server failed to start")
+		}
+	}()
+
+	// Store the server in the app context for shutdown
+	a.ctx = context.WithValue(a.ctx, "server", srv)
+
+	// Block until context is canceled
+	<-a.ctx.Done()
 	return nil
 }
 
@@ -314,6 +345,16 @@ func (a *App) Shutdown() error {
 	// Create a timeout context for shutdown
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
+
+	// Get the server from context
+	if srv, ok := a.ctx.Value("server").(*http.Server); ok {
+		// First shutdown the HTTP server
+		if err := srv.Shutdown(ctx); err != nil {
+			a.logger.LogError(err, "Error shutting down HTTP server")
+			return err
+		}
+		a.logger.LogInfo("HTTP server shutdown complete", nil)
+	}
 
 	// Close cache connections
 	if a.cache != nil {

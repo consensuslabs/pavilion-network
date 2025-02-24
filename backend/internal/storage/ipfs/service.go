@@ -1,6 +1,7 @@
 package ipfs
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -26,28 +27,24 @@ func NewService(cfg *storage.IPFSConfig, logger storage.Logger) *Service {
 	}
 }
 
-// UploadFile uploads a file to IPFS and returns its CID
-func (s *Service) UploadFile(filePath, _ string) (string, error) {
-	file, err := os.Open(filePath)
-	if err != nil {
-		return "", fmt.Errorf("failed to open file: %v", err)
-	}
-	defer file.Close()
-
-	cid, err := s.shell.Add(file)
+// UploadVideo uploads a video file to IPFS and returns its CID
+func (s *Service) UploadVideo(_ context.Context, _ uuid.UUID, _ string, reader io.Reader) (string, error) {
+	cid, err := s.shell.Add(reader)
 	if err != nil {
 		return "", fmt.Errorf("failed to upload to IPFS: %v", err)
 	}
 	return cid, nil
 }
 
-// UploadFileStream uploads a file stream to IPFS and returns its CID
-func (s *Service) UploadFileStream(file io.Reader, _ string) (string, error) {
-	cid, err := s.shell.Add(file)
-	if err != nil {
-		return "", fmt.Errorf("failed to upload to IPFS: %v", err)
-	}
-	return cid, nil
+// GetVideoURL returns the IPFS gateway URL for a given CID
+func (s *Service) GetVideoURL(_ context.Context, cid string) (string, error) {
+	return s.gatewayURL + cid, nil
+}
+
+// DeleteVideo is a no-op for IPFS as we don't pin files in MVP
+func (s *Service) DeleteVideo(_ context.Context, _ uuid.UUID) error {
+	// No-op for MVP as we don't pin files
+	return nil
 }
 
 // DownloadFile downloads a file from IPFS using its CID

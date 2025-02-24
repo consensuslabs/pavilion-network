@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	_ "github.com/consensuslabs/pavilion-network/backend/docs/api"
 	"github.com/consensuslabs/pavilion-network/backend/internal/config"
@@ -44,7 +45,9 @@ import (
 
 // @securityDefinitions.basic  BasicAuth
 func main() {
-	ctx := context.Background()
+	// Create a root context with cancellation
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	// Initialize logger first
 	loggerConfig := &logger.Config{
@@ -86,36 +89,50 @@ func main() {
 		loggerService.LogFatal(err, "Failed to load configuration")
 	}
 
-	// Create a context that will be canceled on interrupt
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
+	// Create and initialize the application
+	app, err := NewApp(ctx, cfg)
+	if err != nil {
+		fmt.Printf("Failed to initialize application: %v\n", err)
+		os.Exit(1)
+	}
 
 	// Set up signal handling
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+
+	// Start the server in a goroutine
+	errChan := make(chan error, 1)
 	go func() {
-		<-sigChan
-		log.Println("Received shutdown signal")
-		cancel()
+		if err := app.Run(); err != nil {
+			errChan <- err
+		}
 	}()
 
-	// Create and run application
-	app, err := NewApp(ctx, cfg)
-	if err != nil {
-		loggerService.LogFatal(err, "Failed to initialize application")
-	}
-
-	// Start the application
-	if err := app.Run(); err != nil {
-		log.Printf("Application error: %v", err)
-	}
-
-	// Wait for context cancellation
-	<-ctx.Done()
-
-	// Perform graceful shutdown
-	if err := app.Shutdown(); err != nil {
-		fmt.Printf("Error during shutdown: %v\n", err)
+	// Wait for either error or shutdown signal
+	select {
+	case err := <-errChan:
+		fmt.Printf("Server error: %v\n", err)
 		os.Exit(1)
+	case sig := <-sigChan:
+		fmt.Printf("\nReceived signal %v, initiating graceful shutdown...\n", sig)
+
+		// Create a timeout context for shutdown
+		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer shutdownCancel()
+
+		// Trigger graceful shutdown
+		if err := app.Shutdown(); err != nil {
+			fmt.Printf("Error during shutdown: %v\n", err)
+			os.Exit(1)
+		}
+
+		// Wait for shutdown context
+		<-shutdownCtx.Done()
+		if err := shutdownCtx.Err(); err != nil && err != context.Canceled {
+			fmt.Printf("Shutdown timeout: %v\n", err)
+			os.Exit(1)
+		}
+
+		fmt.Println("Server shutdown complete")
 	}
 }

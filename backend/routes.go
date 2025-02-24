@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/consensuslabs/pavilion-network/backend/internal/auth"
 	"github.com/gin-gonic/gin"
 )
 
@@ -13,11 +14,14 @@ func SetupRoutes(router *gin.Engine, app *App) {
 	// Health check
 	router.GET("/health", app.healthHandler.HandleHealthCheck)
 
-	// Video routes
-	videoHandler := app.videoHandler
-	router.POST("/video/upload", videoHandler.HandleUpload)
-	router.GET("/video/watch", videoHandler.HandleWatch)
-	router.GET("/video/list", videoHandler.HandleList)
-	router.GET("/video/status/:fileId", videoHandler.HandleStatus)
-	router.POST("/video/transcode", videoHandler.HandleTranscode)
+	// Register auth routes
+	app.authHandler.RegisterRoutes(router)
+
+	// Protected routes group
+	protected := router.Group("")
+	protected.Use(auth.AuthMiddleware(app.auth, app.httpHandler))
+	{
+		// Video routes that require authentication
+		protected.POST("/video/upload", app.videoHandler.HandleUpload)
+	}
 }

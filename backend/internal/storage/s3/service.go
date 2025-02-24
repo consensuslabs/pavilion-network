@@ -4,77 +4,156 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
+	"strings"
 
-	"github.com/consensuslabs/pavilion-network/backend/internal/storage"
-	"github.com/minio/minio-go/v7"
-	miniocreds "github.com/minio/minio-go/v7/pkg/credentials"
+	"github.com/aws/aws-sdk-go-v2/aws"
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/credentials"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
+	"github.com/consensuslabs/pavilion-network/backend/internal/logger"
+	videostorage "github.com/consensuslabs/pavilion-network/backend/internal/storage/video"
+	"github.com/google/uuid"
 )
 
-// Service implements the S3Service interface
-type Service struct {
-	client *minio.Client
-	bucket string
-	logger storage.Logger
+type S3Service struct {
+	client *s3.Client
+	config *videostorage.Config
+	logger logger.Logger
 }
 
-// NewService creates a new S3 service instance
-func NewService(cfg *storage.S3Config, logger storage.Logger) (*Service, error) {
-	client, err := minio.New(cfg.Endpoint, &minio.Options{
-		Creds:  miniocreds.NewStaticV4(cfg.AccessKeyID, cfg.SecretAccessKey, ""),
-		Secure: cfg.UseSSL,
-		Region: cfg.Region,
-	})
+func NewService(cfg *videostorage.Config, logger logger.Logger) (*S3Service, error) {
+	// Create AWS credentials
+	creds := credentials.NewStaticCredentialsProvider(
+		cfg.AccessKeyID,
+		cfg.SecretAccessKey,
+		"",
+	)
+
+	// Load AWS configuration
+	awsCfg, err := config.LoadDefaultConfig(context.Background(),
+		config.WithCredentialsProvider(creds),
+		config.WithRegion(cfg.Region),
+	)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create S3 client: %v", err)
+		return nil, fmt.Errorf("unable to load AWS config: %w", err)
 	}
 
-	return &Service{
+	// Create S3 client
+	client := s3.NewFromConfig(awsCfg, func(o *s3.Options) {
+		if cfg.Endpoint != "" {
+			o.BaseEndpoint = aws.String(cfg.Endpoint)
+		}
+		o.UsePathStyle = true
+	})
+
+	return &S3Service{
 		client: client,
-		bucket: cfg.Bucket,
+		config: cfg,
 		logger: logger,
 	}, nil
 }
 
-// UploadFile uploads a file to S3
-func (s *Service) UploadFile(filePath, fileKey string) (string, error) {
-	file, err := os.Open(filePath)
-	if err != nil {
-		return "", fmt.Errorf("failed to open file: %v", err)
-	}
-	defer file.Close()
-
-	// Get file info for size
-	fileInfo, err := file.Stat()
-	if err != nil {
-		return "", fmt.Errorf("failed to get file info: %v", err)
+// UploadVideo uploads a video file to S3 with the standardized path structure
+func (s *S3Service) UploadVideo(ctx context.Context, videoID uuid.UUID, resolution string, reader io.Reader) (string, error) {
+	// Validate resolution
+	if !videostorage.ValidateResolution(resolution) {
+		return "", fmt.Errorf("invalid resolution: %s", resolution)
 	}
 
-	// Upload the file to S3
-	ctx := context.Background()
-	result, err := s.client.PutObject(ctx, s.bucket, fileKey, file, fileInfo.Size(), minio.PutObjectOptions{})
+	// Construct the standardized path: videos/{video_id}/[original|720p|480p|360p].mp4
+	key := fmt.Sprintf("videos/%s/%s.mp4", videoID, resolution)
+
+	// Upload the file
+	_, err := s.client.PutObject(ctx, &s3.PutObjectInput{
+		Bucket: aws.String(s.config.Bucket),
+		Key:    aws.String(key),
+		Body:   reader,
+	})
 	if err != nil {
-		return "", fmt.Errorf("failed to upload file to S3: %v", err)
+		s.logger.LogError(err, fmt.Sprintf("Failed to upload video to S3: video_id=%s, resolution=%s, bucket=%s, key=%s",
+			videoID, resolution, s.config.Bucket, key))
+		return "", fmt.Errorf("failed to upload video to S3: %w", err)
 	}
 
-	return result.Location, nil
+	s.logger.LogInfo("Successfully uploaded video to S3", map[string]interface{}{
+		"video_id":   videoID,
+		"resolution": resolution,
+		"bucket":     s.config.Bucket,
+		"key":        key,
+	})
+
+	return key, nil
 }
 
-// UploadFileStream uploads a file stream to S3
-func (s *Service) UploadFileStream(file io.Reader, fileKey string) (string, error) {
-	// Upload the file to S3
-	ctx := context.Background()
-	result, err := s.client.PutObject(ctx, s.bucket, fileKey, file, -1, minio.PutObjectOptions{})
-	if err != nil {
-		return "", fmt.Errorf("failed to upload file to S3: %v", err)
+// GetVideoURL returns the URL for a video in S3
+func (s *S3Service) GetVideoURL(ctx context.Context, key string) (string, error) {
+	// Validate the key format
+	if !strings.HasPrefix(key, "videos/") {
+		return "", fmt.Errorf("invalid video key format: %s", key)
 	}
 
-	return result.Location, nil
+	// Create presigned URL
+	presignClient := s3.NewPresignClient(s.client)
+	presignedURL, err := presignClient.PresignGetObject(ctx, &s3.GetObjectInput{
+		Bucket: aws.String(s.config.Bucket),
+		Key:    aws.String(key),
+	})
+	if err != nil {
+		s.logger.LogError(err, fmt.Sprintf("Failed to generate presigned URL: bucket=%s, key=%s",
+			s.config.Bucket, key))
+		return "", fmt.Errorf("failed to generate presigned URL: %w", err)
+	}
+
+	return presignedURL.URL, nil
 }
 
-// Close closes any open S3 connections and resources
-func (s *Service) Close() error {
-	// Currently, the S3 service doesn't maintain any long-lived connections
-	// This is a placeholder for future connection cleanup if needed
+// DeleteVideo deletes a video and its transcoded versions from S3
+func (s *S3Service) DeleteVideo(ctx context.Context, videoID uuid.UUID) error {
+	// List all objects with the video ID prefix
+	prefix := fmt.Sprintf("videos/%s/", videoID)
+
+	paginator := s3.NewListObjectsV2Paginator(s.client, &s3.ListObjectsV2Input{
+		Bucket: aws.String(s.config.Bucket),
+		Prefix: aws.String(prefix),
+	})
+
+	var deleteErr error
+	for paginator.HasMorePages() {
+		page, err := paginator.NextPage(ctx)
+		if err != nil {
+			s.logger.LogError(err, fmt.Sprintf("Failed to list objects for deletion: video_id=%s, prefix=%s",
+				videoID, prefix))
+			return fmt.Errorf("failed to list objects for deletion: %w", err)
+		}
+
+		// Delete objects in this page
+		for _, obj := range page.Contents {
+			_, err := s.client.DeleteObject(ctx, &s3.DeleteObjectInput{
+				Bucket: aws.String(s.config.Bucket),
+				Key:    obj.Key,
+			})
+			if err != nil {
+				s.logger.LogError(err, fmt.Sprintf("Failed to delete object: video_id=%s, key=%s",
+					videoID, *obj.Key))
+				deleteErr = err
+			}
+		}
+	}
+
+	if deleteErr != nil {
+		return fmt.Errorf("failed to delete some video files: %w", deleteErr)
+	}
+
+	s.logger.LogInfo("Successfully deleted video files from S3", map[string]interface{}{
+		"video_id": videoID,
+		"prefix":   prefix,
+	})
+
+	return nil
+}
+
+// Close implements the storage.Service interface
+func (s *S3Service) Close() error {
+	// No need to close the S3 client
 	return nil
 }
