@@ -22,6 +22,18 @@ type S3Service struct {
 }
 
 func NewService(cfg *videostorage.Config, logger logger.Logger) (*S3Service, error) {
+	// Debug log for S3 configuration
+	logger.LogInfo("S3 Service Configuration", map[string]interface{}{
+		"endpoint":        cfg.Endpoint,
+		"region":          cfg.Region,
+		"bucket":          cfg.Bucket,
+		"useSSL":          cfg.UseSSL,
+		"accessKeyID":     cfg.AccessKeyID,
+		"secretAccessKey": cfg.SecretAccessKey != "", // Don't log the actual secret
+		"accessKeyLength": len(cfg.AccessKeyID),
+		"secretKeyLength": len(cfg.SecretAccessKey),
+	})
+
 	// Create AWS credentials
 	creds := credentials.NewStaticCredentialsProvider(
 		cfg.AccessKeyID,
@@ -40,9 +52,6 @@ func NewService(cfg *videostorage.Config, logger logger.Logger) (*S3Service, err
 
 	// Create S3 client
 	client := s3.NewFromConfig(awsCfg, func(o *s3.Options) {
-		if cfg.Endpoint != "" {
-			o.BaseEndpoint = aws.String(cfg.Endpoint)
-		}
 		o.UsePathStyle = true
 	})
 

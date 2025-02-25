@@ -36,7 +36,10 @@ func NewLogger(config *Config) (Logger, error) {
 	zapConfig.Encoding = config.Format
 
 	// Configure output paths
-	if config.File.Enabled {
+	if config.Output == "both" && config.File.Enabled {
+		// Send logs to both stdout and file
+		zapConfig.OutputPaths = []string{"stdout", config.File.Path}
+	} else if config.File.Enabled {
 		zapConfig.OutputPaths = []string{config.File.Path}
 	} else {
 		zapConfig.OutputPaths = []string{config.Output}

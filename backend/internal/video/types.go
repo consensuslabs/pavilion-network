@@ -102,10 +102,11 @@ type VideoDetailsResponse struct {
 
 // TranscodeInfo represents transcode information in responses
 type TranscodeInfo struct {
-	ID        string                 `json:"id"`
-	Format    string                 `json:"format"`
-	Segments  []TranscodeSegmentInfo `json:"segments,omitempty"`
-	CreatedAt time.Time              `json:"created_at"`
+	ID         string                 `json:"id"`
+	Format     string                 `json:"format"`
+	Resolution string                 `json:"resolution"`
+	Segments   []TranscodeSegmentInfo `json:"segments,omitempty"`
+	CreatedAt  time.Time              `json:"created_at"`
 }
 
 // TranscodeSegmentInfo represents transcode segment information in responses

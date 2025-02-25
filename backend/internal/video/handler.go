@@ -115,6 +115,8 @@ func (h *VideoHandler) HandleUpload(c *gin.Context) {
 	// Add transcodes to response
 	for _, t := range video.Transcodes {
 		segments := make([]TranscodeSegmentInfo, 0, len(t.Segments))
+		resolution := "original" // Default resolution
+
 		for _, s := range t.Segments {
 			segments = append(segments, TranscodeSegmentInfo{
 				ID:          s.ID.String(),
@@ -122,12 +124,28 @@ func (h *VideoHandler) HandleUpload(c *gin.Context) {
 				IPFSCID:     s.IPFSCID,
 				Duration:    s.Duration,
 			})
+
+			// Extract resolution from storage path (e.g., videos/{video_id}/720p.mp4)
+			if s.StoragePath != "" {
+				parts := strings.Split(s.StoragePath, "/")
+				if len(parts) > 0 {
+					lastPart := parts[len(parts)-1]
+					if strings.HasSuffix(lastPart, ".mp4") {
+						res := strings.TrimSuffix(lastPart, ".mp4")
+						if res == "720p" || res == "480p" || res == "360p" {
+							resolution = res
+						}
+					}
+				}
+			}
 		}
+
 		response.Transcodes = append(response.Transcodes, TranscodeInfo{
-			ID:        t.ID.String(),
-			Format:    t.Format,
-			Segments:  segments,
-			CreatedAt: t.CreatedAt,
+			ID:         t.ID.String(),
+			Format:     t.Format,
+			Resolution: resolution,
+			Segments:   segments,
+			CreatedAt:  t.CreatedAt,
 		})
 	}
 

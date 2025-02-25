@@ -116,12 +116,83 @@ func (s *Service) Transcode(ctx context.Context, inputPath, outputPath, resoluti
 		return fmt.Errorf("failed to create output directory: %w", err)
 	}
 
-	// Build FFmpeg command
+	// Get input video metadata to determine original dimensions
+	metadata, err := s.GetMetadata(ctx, inputPath)
+	if err != nil {
+		s.logger.LogError(err, fmt.Sprintf("Failed to get video metadata: path=%s", inputPath))
+		return fmt.Errorf("failed to get video metadata: %w", err)
+	}
+
+	// Convert resolution string to actual dimensions
+	var width, height int
+	switch resolution {
+	case "720p":
+		width, height = 1280, 720
+	case "480p":
+		width, height = 854, 480
+	case "360p":
+		width, height = 640, 360
+	case "original":
+		// Use original dimensions
+		width, height = metadata.Width, metadata.Height
+	default:
+		return fmt.Errorf("unsupported resolution: %s", resolution)
+	}
+
+	// Skip upscaling if the target resolution is higher than the original
+	if width > metadata.Width || height > metadata.Height {
+		s.logger.LogInfo("Skipping upscaling", map[string]interface{}{
+			"original_width":  metadata.Width,
+			"original_height": metadata.Height,
+			"target_width":    width,
+			"target_height":   height,
+			"resolution":      resolution,
+		})
+		// Use original dimensions but maintain aspect ratio
+		if metadata.Width > metadata.Height {
+			// Landscape orientation
+			height = (metadata.Height * width) / metadata.Width
+			// Ensure height is even
+			if height%2 != 0 {
+				height += 1 // Add 1 instead of subtracting to avoid making it too small
+			}
+		} else {
+			// Portrait or square orientation
+			width = (metadata.Width * height) / metadata.Height
+			// Ensure width is even
+			if width%2 != 0 {
+				width += 1 // Add 1 instead of subtracting to avoid making it too small
+			}
+		}
+	}
+
+	// Ensure dimensions are even (required by most codecs)
+	// Double-check to make sure both dimensions are even, regardless of previous calculations
+	if width%2 != 0 {
+		width += 1 // Add 1 instead of subtracting to avoid making it too small
+	}
+	if height%2 != 0 {
+		height += 1 // Add 1 instead of subtracting to avoid making it too small
+	}
+
+	// Format the resolution as "widthxheight"
+	resolutionArg := fmt.Sprintf("%dx%d", width, height)
+
+	s.logger.LogInfo("Starting transcoding", map[string]interface{}{
+		"input":           inputPath,
+		"output":          outputPath,
+		"resolution_name": resolution,
+		"dimensions":      resolutionArg,
+		"original_width":  metadata.Width,
+		"original_height": metadata.Height,
+	})
+
+	// Build FFmpeg command with proper resolution format
 	cmd := exec.CommandContext(ctx, s.config.Path,
 		"-i", inputPath,
 		"-c:v", s.config.VideoCodec,
 		"-c:a", s.config.AudioCodec,
-		"-s", resolution,
+		"-s", resolutionArg, // Use the formatted resolution
 		"-preset", s.config.Preset,
 		"-y", // Overwrite output file if it exists
 		outputPath,
@@ -158,14 +229,16 @@ func (s *Service) Transcode(ctx context.Context, inputPath, outputPath, resoluti
 
 	// Wait for the command to complete
 	if err := cmd.Wait(); err != nil {
-		s.logger.LogError(err, fmt.Sprintf("Transcoding failed: input=%s, output=%s", inputPath, outputPath))
+		s.logger.LogError(err, fmt.Sprintf("Transcoding failed: input=%s, output=%s, dimensions=%s",
+			inputPath, outputPath, resolutionArg))
 		return fmt.Errorf("transcoding failed: %w", err)
 	}
 
 	s.logger.LogInfo("Transcoding completed successfully", map[string]interface{}{
-		"input":      inputPath,
-		"output":     outputPath,
-		"resolution": resolution,
+		"input":           inputPath,
+		"output":          outputPath,
+		"resolution_name": resolution,
+		"dimensions":      resolutionArg,
 	})
 
 	return nil

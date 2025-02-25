@@ -22,12 +22,12 @@ type Service interface {
 // Config represents the configuration for video storage
 type Config struct {
 	// S3-specific configuration
-	Endpoint        string `yaml:"endpoint"`
-	AccessKeyID     string `yaml:"access_key_id"`
-	SecretAccessKey string `yaml:"secret_access_key"`
-	UseSSL          bool   `yaml:"use_ssl"`
-	Region          string `yaml:"region"`
-	Bucket          string `yaml:"bucket"`
+	Endpoint        string `mapstructure:"endpoint" yaml:"endpoint"`
+	AccessKeyID     string `mapstructure:"accessKeyId" yaml:"access_key_id"`
+	SecretAccessKey string `mapstructure:"secretAccessKey" yaml:"secret_access_key"`
+	UseSSL          bool   `mapstructure:"useSSL" yaml:"use_ssl"`
+	Region          string `mapstructure:"region" yaml:"region"`
+	Bucket          string `mapstructure:"bucket" yaml:"bucket"`
 }
 
 // ValidateResolution checks if the resolution is valid

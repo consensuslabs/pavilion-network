@@ -71,28 +71,63 @@ func (s *ConfigService) Load(path string) (*Config, error) {
 
 	// Bind environment variables
 	viper.BindEnv("environment", "ENV") // Bind ENV to environment field
-	for _, key := range []string{
-		"LOG_LEVEL", "LOG_FORMAT", "LOG_OUTPUT",
-		"LOG_FILE_ENABLED", "LOG_FILE_PATH", "LOG_FILE_ROTATE",
-		"LOG_FILE_MAX_SIZE", "LOG_FILE_MAX_AGE",
-		"LOG_ENV_DEVELOPMENT",
-		"LOG_SAMPLING_INITIAL", "LOG_SAMPLING_THEREAFTER",
-		"DB_PASSWORD",
-		"S3_ACCESS_KEY_ID", "S3_SECRET_ACCESS_KEY",
-		"JWT_SECRET",
-	} {
-		viper.BindEnv(strings.ToLower(strings.Replace(key, "_", ".", -1)), key)
-	}
+
+	// Bind migration control variables
+	viper.BindEnv("auto_migrate", "AUTO_MIGRATE")
+	viper.BindEnv("force_migration", "FORCE_MIGRATION")
+
+	// Bind logging configuration variables
+	viper.BindEnv("logging.level", "LOG_LEVEL")
+	viper.BindEnv("logging.format", "LOG_FORMAT")
+	viper.BindEnv("logging.output", "LOG_OUTPUT")
+	viper.BindEnv("logging.file.enabled", "LOG_FILE_ENABLED")
+	viper.BindEnv("logging.file.path", "LOG_FILE_PATH")
+	viper.BindEnv("logging.file.rotate", "LOG_FILE_ROTATE")
+	viper.BindEnv("logging.file.maxSize", "LOG_FILE_MAX_SIZE")
+	viper.BindEnv("logging.file.maxAge", "LOG_FILE_MAX_AGE")
+	viper.BindEnv("logging.development", "LOG_ENV_DEVELOPMENT")
+	viper.BindEnv("logging.sampling.initial", "LOG_SAMPLING_INITIAL")
+	viper.BindEnv("logging.sampling.thereafter", "LOG_SAMPLING_THEREAFTER")
+
+	// Bind database credentials
+	viper.BindEnv("database.password", "DB_PASSWORD")
+
+	// Bind Redis credentials
+	viper.BindEnv("redis.password", "REDIS_PASSWORD")
+
+	// Bind JWT configuration
+	viper.BindEnv("auth.jwt.secret", "JWT_SECRET")
+
+	// Bind S3 configuration variables - using camelCase to match the mapstructure tags
+	// Only bind credentials from environment variables, let region and bucket come from config.yaml
+	viper.BindEnv("storage.s3.accessKeyId", "S3_ACCESS_KEY_ID")
+	viper.BindEnv("storage.s3.secretAccessKey", "S3_SECRET_ACCESS_KEY")
 
 	// Read the config file
 	if err := viper.ReadInConfig(); err != nil {
 		return nil, fmt.Errorf("failed to read config file: %v", err)
 	}
 
+	// Debug: Print S3 credentials from Viper after reading config file
+	s.logger.LogInfo("S3 credentials from config file", map[string]interface{}{
+		"accessKeyId_direct":      viper.GetString("storage.s3.accessKeyId"),
+		"secretAccessKey_direct":  viper.GetString("storage.s3.secretAccessKey"),
+		"access_key_id_snake":     viper.GetString("storage.s3.access_key_id"),
+		"secret_access_key_snake": viper.GetString("storage.s3.secret_access_key"),
+		"env_access_key":          os.Getenv("S3_ACCESS_KEY_ID"),
+		"env_secret_key":          os.Getenv("S3_SECRET_ACCESS_KEY"),
+	})
+
 	var config Config
 	if err := viper.Unmarshal(&config); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal config: %v", err)
 	}
+
+	// Debug: Print S3 credentials from the unmarshaled config
+	s.logger.LogInfo("S3 credentials after unmarshal", map[string]interface{}{
+		"accessKeyId":     config.Storage.S3.AccessKeyID,
+		"secretAccessKey": config.Storage.S3.SecretAccessKey,
+	})
 
 	// Validate the configuration
 	if err := s.validate(&config); err != nil {

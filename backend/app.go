@@ -3,7 +3,9 @@ package main
 import (
 	"context"
 	"fmt"
+	"net"
 	"net/http"
+	"syscall"
 	"time"
 
 	"github.com/consensuslabs/pavilion-network/backend/internal/auth"
@@ -126,6 +128,19 @@ func NewApp(ctx context.Context, cfg *config.Config) (*App, error) {
 		Region:          cfg.Storage.S3.Region,
 		Bucket:          cfg.Storage.S3.Bucket,
 	}
+
+	// Debug log for S3 configuration
+	loggerService.LogInfo("S3 Configuration in App", map[string]interface{}{
+		"endpoint":        cfg.Storage.S3.Endpoint,
+		"region":          cfg.Storage.S3.Region,
+		"bucket":          cfg.Storage.S3.Bucket,
+		"useSSL":          cfg.Storage.S3.UseSSL,
+		"accessKeyID":     cfg.Storage.S3.AccessKeyID,
+		"secretAccessKey": cfg.Storage.S3.SecretAccessKey != "", // Don't log the actual secret
+		"accessKeyLength": len(cfg.Storage.S3.AccessKeyID),
+		"secretKeyLength": len(cfg.Storage.S3.SecretAccessKey),
+	})
+
 	s3Service, err := s3.NewService(s3Config, loggerService)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize S3 service: %v", err)
@@ -321,11 +336,33 @@ func (a *App) Run() error {
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%d", port),
 		Handler: a.router,
+		// Add BaseContext to ensure the server uses our context
+		BaseContext: func(net.Listener) context.Context {
+			return a.ctx
+		},
+	}
+
+	// Create a TCP listener with SO_REUSEADDR option
+	lc := net.ListenConfig{
+		Control: func(network, address string, c syscall.RawConn) error {
+			var opErr error
+			if err := c.Control(func(fd uintptr) {
+				opErr = syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, syscall.SO_REUSEADDR, 1)
+			}); err != nil {
+				return err
+			}
+			return opErr
+		},
+	}
+
+	listener, err := lc.Listen(a.ctx, "tcp", srv.Addr)
+	if err != nil {
+		return fmt.Errorf("failed to create listener: %v", err)
 	}
 
 	// Start the server in a goroutine
 	go func() {
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := srv.Serve(listener); err != nil && err != http.ErrServerClosed {
 			a.logger.LogError(err, "server failed to start")
 		}
 	}()

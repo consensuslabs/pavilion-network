@@ -31,13 +31,13 @@ ipfs:
   gateway_url: "https://ipfs.io/ipfs/"
 
 logging:
-  level: info  # Will be overridden by LOG_LEVEL
+  level: debug  # Changed from info to debug for more detailed logs
   format: json  # Will be overridden by LOG_FORMAT
-  output: stdout  # Will be overridden by LOG_OUTPUT
+  output: both  # Changed from stdout to both to output to both stdout and file
   file:
-    enabled: false  # Will be overridden by LOG_FILE_ENABLED
-    path: /var/log/pavilion  # Will be overridden by LOG_FILE_PATH
-    rotate: false  # Will be overridden by LOG_FILE_ROTATE
+    enabled: true  # Changed from false to true to enable file logging
+    path: ./logs/app.log  # Changed to use a specific log file path
+    rotate: true  # Will be overridden by LOG_FILE_ROTATE
     maxSize: 100MB  # Will be overridden by LOG_FILE_MAX_SIZE
     maxAge: 7d  # Will be overridden by LOG_FILE_MAX_AGE
   development: true  # Will be overridden by LOG_ENV_DEVELOPMENT
@@ -53,6 +53,10 @@ ffmpeg:
   preset: "fast"
   hlsTime: 10
   hlsPlaylistType: "vod"
+  resolutions:
+    - "720p"
+    - "480p"
+    - "360p"
 
 # ... other configurations ...
 
@@ -63,7 +67,6 @@ storage:
     apiAddress: "/ip4/127.0.0.1/tcp/5001"
     gateway: "http://localhost:8080"
   s3:
-    endpoint: "s3.amazonaws.com"
     bucket: "octopus-doganbros-storage"
     region: "eu-central-1"
     accessKeyId: ""  # Will be overridden by S3_ACCESS_KEY_ID
@@ -89,5 +92,5 @@ video:
 auth:
   jwt:
     secret: your-secret-key  # Will be overridden by JWT_SECRET
-    accessTokenTTL: 15m
+    accessTokenTTL: 168h
     refreshTokenTTL: 168h

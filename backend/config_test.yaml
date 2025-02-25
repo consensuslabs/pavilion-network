@@ -84,5 +84,5 @@ video:
 auth:
   jwt:
     secret: test-secret-key  # Will be overridden by JWT_SECRET
-    accessTokenTTL: 15m
+    accessTokenTTL: 168h
     refreshTokenTTL: 168h 

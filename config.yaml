@@ -1,0 +1,96 @@
+environment: development # Will be overridden by ENV
+
+server:
+  port: 8080
+
+database:
+  host: "localhost"
+  dbname: "pavilion_db"
+  port: 26257
+  user: "root"
+  password: ""  # Will be overridden by DB_PASSWORD
+  sslmode: "disable"
+  timezone: "UTC"
+  pool:
+    maxIdleConns: 10
+    maxOpenConns: 100
+    connMaxLifetime: 1h
+
+  # Postgres
+  # user: "youruser"
+  # password: "yourpassword"
+  # port: 5432
+
+redis:
+  addr: "localhost:6379"
+  password: ""
+  db: 0
+
+ipfs:
+  host: "localhost:5001"
+  gateway_url: "https://ipfs.io/ipfs/"
+
+logging:
+  level: debug  # Changed from info to debug for more detailed logs
+  format: json  # Will be overridden by LOG_FORMAT
+  output: both  # Changed from stdout to both to output to both stdout and file
+  file:
+    enabled: true  # Changed from false to true to enable file logging
+    path: ./logs  # Changed to use the local logs directory
+    rotate: true  # Will be overridden by LOG_FILE_ROTATE
+    maxSize: 100MB  # Will be overridden by LOG_FILE_MAX_SIZE
+    maxAge: 7d  # Will be overridden by LOG_FILE_MAX_AGE
+  development: true  # Will be overridden by LOG_ENV_DEVELOPMENT
+  sampling:
+    initial: 100  # Will be overridden by LOG_SAMPLING_INITIAL
+    thereafter: 100  # Will be overridden by LOG_SAMPLING_THEREAFTER
+
+ffmpeg:
+  path: "/opt/homebrew/bin/ffmpeg"
+  probePath: "/opt/homebrew/bin/ffprobe"
+  videoCodec: "libx264"
+  audioCodec: "copy"
+  preset: "fast"
+  hlsTime: 10
+  hlsPlaylistType: "vod"
+  resolutions:
+    - "720p"
+    - "480p"
+    - "360p"
+
+# ... other configurations ...
+
+storage:
+  uploadDir: "uploads"
+  tempDir: "temp"
+  ipfs:
+    apiAddress: "/ip4/127.0.0.1/tcp/5001"
+    gateway: "http://localhost:8080"
+  s3:
+    bucket: "octopus-doganbros-storage"
+    region: "eu-central-1"
+    accessKeyId: ""  # Will be overridden by S3_ACCESS_KEY_ID
+    secretAccessKey: ""  # Will be overridden by S3_SECRET_ACCESS_KEY
+    useSSL: true
+    directories:
+      videoPost: "video-posts/"
+      meetingRecording: "meeting-recordings/"
+      chatAttachments: "chat-attachments/"
+      profilePhoto: "profile-photos/"
+
+video:
+  maxSize: 104857600  # 100MB in bytes
+  minTitleLength: 3
+  maxTitleLength: 100
+  maxDescLength: 500
+  allowedFormats:
+    - ".mp4"
+    - ".mov"
+    - ".avi"
+    - ".webm"
+
+auth:
+  jwt:
+    secret: your-secret-key  # Will be overridden by JWT_SECRET
+    accessTokenTTL: 24m
+    refreshTokenTTL: 168h 

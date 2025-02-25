@@ -133,6 +133,15 @@ func (s *VideoServiceImpl) ProcessUpload(upload *VideoUpload, file multipart.Fil
 		return fmt.Errorf("failed to get video metadata: %w", err)
 	}
 
+	// Log the video metadata for debugging purposes
+	s.logger.LogInfo("Video metadata extracted", map[string]interface{}{
+		"duration": metadata.Duration,
+		"width":    metadata.Width,
+		"height":   metadata.Height,
+		"format":   metadata.Format,
+		"video_id": upload.VideoID,
+	})
+
 	// Upload original to S3
 	if _, err := file.Seek(0, 0); err != nil {
 		return fmt.Errorf("failed to seek file: %w", err)
@@ -163,27 +172,19 @@ func (s *VideoServiceImpl) ProcessUpload(upload *VideoUpload, file multipart.Fil
 		// Continue processing even if IPFS upload fails
 	}
 
-	// Create transcode record for original format
-	originalTranscode := &Transcode{
-		VideoID:   upload.VideoID,
-		Format:    "mp4",
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-	}
-
-	// Create segment for original file
-	originalSegment := &TranscodeSegment{
-		StoragePath: upload.Video.StoragePath,
-		IPFSCID:     cid,
-		Duration:    int(metadata.Duration),
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
-	}
-
 	// Process transcoding for different resolutions
 	transcodeResults := make([]*Transcode, 0)
+	successfulResolutions := make([]string, 0)
+	failedResolutions := make([]string, 0)
+
+	// Map to store metadata and CIDs for each resolution
+	resolutionData := make(map[string]struct {
+		duration int
+		ipfsCID  string
+	})
 
 	for _, resolution := range []string{"720p", "480p", "360p"} {
+		// Create transcode record
 		transcode := &Transcode{
 			VideoID:   upload.VideoID,
 			Format:    "mp4",
@@ -191,6 +192,7 @@ func (s *VideoServiceImpl) ProcessUpload(upload *VideoUpload, file multipart.Fil
 			UpdatedAt: time.Now(),
 		}
 
+		// Perform transcoding
 		outputPath := filepath.Join(tempDir, fmt.Sprintf("%s.mp4", resolution))
 		if err := s.ffmpeg.Transcode(ctx, originalPath, outputPath, resolution); err != nil {
 			s.logger.LogError("Failed to transcode video", map[string]interface{}{
@@ -199,6 +201,7 @@ func (s *VideoServiceImpl) ProcessUpload(upload *VideoUpload, file multipart.Fil
 				"input":      originalPath,
 				"output":     outputPath,
 			})
+			failedResolutions = append(failedResolutions, resolution)
 			continue // Skip this resolution but continue with others
 		}
 
@@ -209,6 +212,7 @@ func (s *VideoServiceImpl) ProcessUpload(upload *VideoUpload, file multipart.Fil
 				"error": err.Error(),
 				"path":  outputPath,
 			})
+			failedResolutions = append(failedResolutions, resolution)
 			continue
 		}
 
@@ -219,6 +223,7 @@ func (s *VideoServiceImpl) ProcessUpload(upload *VideoUpload, file multipart.Fil
 				"error":      err.Error(),
 				"resolution": resolution,
 			})
+			failedResolutions = append(failedResolutions, resolution)
 			continue
 		}
 
@@ -229,6 +234,7 @@ func (s *VideoServiceImpl) ProcessUpload(upload *VideoUpload, file multipart.Fil
 				"error": err.Error(),
 				"path":  outputPath,
 			})
+			failedResolutions = append(failedResolutions, resolution)
 			continue
 		}
 
@@ -250,19 +256,38 @@ func (s *VideoServiceImpl) ProcessUpload(upload *VideoUpload, file multipart.Fil
 				"resolution": resolution,
 				"path":       outputPath,
 			})
+			failedResolutions = append(failedResolutions, resolution)
 			continue
 		}
 
-		segment := &TranscodeSegment{
-			StoragePath: fmt.Sprintf("videos/%s/%s.mp4", upload.VideoID, resolution),
-			IPFSCID:     transcodedCID,
-			Duration:    int(transcodedMetadata.Duration),
-			CreatedAt:   time.Now(),
-			UpdatedAt:   time.Now(),
+		// Store metadata and CID for this resolution
+		resolutionData[resolution] = struct {
+			duration int
+			ipfsCID  string
+		}{
+			duration: int(transcodedMetadata.Duration),
+			ipfsCID:  transcodedCID,
 		}
 
-		transcode.Segments = []TranscodeSegment{*segment}
+		// Add to successful resolutions
 		transcodeResults = append(transcodeResults, transcode)
+		successfulResolutions = append(successfulResolutions, resolution)
+	}
+
+	// Log summary of transcoding results
+	s.logger.LogInfo("Transcoding process summary", map[string]interface{}{
+		"video_id":               upload.VideoID,
+		"successful_resolutions": successfulResolutions,
+		"failed_resolutions":     failedResolutions,
+		"total_successful":       len(successfulResolutions),
+		"total_failed":           len(failedResolutions),
+	})
+
+	// If no resolutions were successfully transcoded but we have the original, we can still proceed
+	if len(transcodeResults) == 0 && len(failedResolutions) > 0 {
+		s.logger.LogInfo("WARNING: No resolutions were successfully transcoded, but proceeding with original video", map[string]interface{}{
+			"video_id": upload.VideoID,
+		})
 	}
 
 	// Start a transaction to update all records
@@ -275,26 +300,34 @@ func (s *VideoServiceImpl) ProcessUpload(upload *VideoUpload, file multipart.Fil
 			return fmt.Errorf("failed to update video record: %w", err)
 		}
 
-		// Create original transcode and segment
-		if err := tx.Create(originalTranscode).Error; err != nil {
-			return fmt.Errorf("failed to create original transcode record: %w", err)
-		}
-
-		originalSegment.TranscodeID = originalTranscode.ID
-		if err := tx.Create(originalSegment).Error; err != nil {
-			return fmt.Errorf("failed to create original segment record: %w", err)
-		}
-
 		// Create transcodes and segments for each resolution
-		for _, transcode := range transcodeResults {
+		for i, transcode := range transcodeResults {
+			// First create the transcode record
 			if err := tx.Create(transcode).Error; err != nil {
 				return fmt.Errorf("failed to create transcode record: %w", err)
 			}
 
-			segment := transcode.Segments[0]
-			segment.TranscodeID = transcode.ID
-			if err := tx.Create(&segment).Error; err != nil {
-				return fmt.Errorf("failed to create segment record: %w", err)
+			// Create a single segment for this transcode
+			if i < len(successfulResolutions) {
+				resolution := successfulResolutions[i]
+				data := resolutionData[resolution]
+
+				segment := &TranscodeSegment{
+					TranscodeID: transcode.ID,
+					StoragePath: fmt.Sprintf("videos/%s/%s.mp4", upload.VideoID, resolution),
+					IPFSCID:     data.ipfsCID,
+					Duration:    data.duration,
+					CreatedAt:   time.Now(),
+					UpdatedAt:   time.Now(),
+				}
+
+				if err := tx.Create(segment).Error; err != nil {
+					s.logger.LogError("Failed to create segment record", map[string]interface{}{
+						"error":      err.Error(),
+						"resolution": resolution,
+					})
+					return fmt.Errorf("failed to create segment record: %w", err)
+				}
 			}
 		}
 

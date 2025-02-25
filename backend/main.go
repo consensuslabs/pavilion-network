@@ -120,7 +120,7 @@ func main() {
 		cancel()
 
 		// Create a timeout context for shutdown
-		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 5*time.Second)
+		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer shutdownCancel()
 
 		// Create a channel to signal shutdown completion
@@ -137,7 +137,7 @@ func main() {
 		case <-done:
 			fmt.Println("Server shutdown complete")
 		case <-shutdownCtx.Done():
-			fmt.Printf("Shutdown timeout after %v\n", 5*time.Second)
+			fmt.Printf("Shutdown timeout after %v\n", 30*time.Second)
 			os.Exit(1)
 		}
 	}
