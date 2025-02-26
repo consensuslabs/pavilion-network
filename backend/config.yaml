@@ -68,6 +68,7 @@ storage:
     gateway: "http://localhost:8080"
   s3:
     bucket: "octopus-doganbros-storage"
+    root_directory: "videos"  # Use this directory for production files
     region: "eu-central-1"
     accessKeyId: ""  # Will be overridden by S3_ACCESS_KEY_ID
     secretAccessKey: ""  # Will be overridden by S3_SECRET_ACCESS_KEY

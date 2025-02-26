@@ -13,6 +13,7 @@ type AuthService interface {
 	Logout(userID uuid.UUID, refreshToken string) error
 	RefreshToken(refreshToken string) (*LoginResponse, error)
 	ValidateToken(token string) (*TokenClaims, error)
+	MarkEmailVerified(userID uuid.UUID) error
 }
 
 // TokenService handles JWT operations

@@ -28,6 +28,7 @@ type Config struct {
 	UseSSL          bool   `mapstructure:"useSSL" yaml:"use_ssl"`
 	Region          string `mapstructure:"region" yaml:"region"`
 	Bucket          string `mapstructure:"bucket" yaml:"bucket"`
+	RootDirectory   string `mapstructure:"rootDirectory" yaml:"root_directory"`
 }
 
 // ValidateResolution checks if the resolution is valid

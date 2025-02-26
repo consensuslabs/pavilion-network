@@ -702,3 +702,6 @@
 {"L":"DEBUG","T":"2025-02-25T18:35:44.928+0300","C":"database/gorm_logger.go:98","M":"SQL query","source":"gorm","duration":"32.692666ms","rows_affected":1,"sql":"SELECT * FROM \"videos\" WHERE \"videos\".\"id\" = '3632bb3f-4ad0-4f07-a3d2-ab964aa50cae' ORDER BY \"videos\".\"id\" LIMIT 1"}
 {"L":"INFO","T":"2025-02-25T18:35:44.928+0300","C":"video/logger_adapter.go:17","M":"Video upload completed successfully","request_id":"","video_id":"3632bb3f-4ad0-4f07-a3d2-ab964aa50cae","file_path":"videos/3632bb3f-4ad0-4f07-a3d2-ab964aa50cae/original.mp4"}
 {"L":"INFO","T":"2025-02-25T18:35:44.928+0300","C":"http/middleware.go:44","M":"HTTP Request","path":"/video/upload","status":200,"latency_ms":27457,"client_ip":"::1","method":"POST"}
+{"L":"INFO","T":"2025-02-25T19:14:19.935+0300","C":"backend/app.go:380","M":"Initiating graceful shutdown"}
+{"L":"INFO","T":"2025-02-25T19:14:19.936+0300","C":"backend/app.go:393","M":"HTTP server shutdown complete"}
+{"L":"INFO","T":"2025-02-25T19:14:19.949+0300","C":"backend/app.go:430","M":"Application shutdown complete"}

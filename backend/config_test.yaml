@@ -41,13 +41,18 @@ logging:
     thereafter: 100
 
 ffmpeg:
-  path: "/opt/homebrew/bin/ffprobe"
+  path: "/opt/homebrew/bin/ffmpeg"
   probePath: "/opt/homebrew/bin/ffprobe"
   videoCodec: "libx264"
   audioCodec: "copy"
   preset: "fast"
   hlsTime: 10
   hlsPlaylistType: "vod"
+  outputPath: "/tmp/videos"
+  resolutions:
+    - "720p"
+    - "480p"
+    - "360p"
 
 # ... other configurations ...
 
@@ -64,6 +69,7 @@ storage:
     accessKeyId: ""  # Will be overridden by S3_ACCESS_KEY_ID
     secretAccessKey: ""  # Will be overridden by S3_SECRET_ACCESS_KEY
     useSSL: true
+    root_directory: "videos_test"  # Use a separate directory for test files
     directories:
       videoPost: "video-posts/"
       meetingRecording: "meeting-recordings/"

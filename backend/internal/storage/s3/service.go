@@ -69,8 +69,14 @@ func (s *S3Service) UploadVideo(ctx context.Context, videoID uuid.UUID, resoluti
 		return "", fmt.Errorf("invalid resolution: %s", resolution)
 	}
 
-	// Construct the standardized path: videos/{video_id}/[original|720p|480p|360p].mp4
-	key := fmt.Sprintf("videos/%s/%s.mp4", videoID, resolution)
+	// Get the root directory, default to "videos" if not specified
+	rootDir := "videos"
+	if s.config.RootDirectory != "" {
+		rootDir = s.config.RootDirectory
+	}
+
+	// Construct the standardized path: {root_dir}/{video_id}/[original|720p|480p|360p].mp4
+	key := fmt.Sprintf("%s/%s/%s.mp4", rootDir, videoID, resolution)
 
 	// Upload the file
 	_, err := s.client.PutObject(ctx, &s3.PutObjectInput{
@@ -96,8 +102,14 @@ func (s *S3Service) UploadVideo(ctx context.Context, videoID uuid.UUID, resoluti
 
 // GetVideoURL returns the URL for a video in S3
 func (s *S3Service) GetVideoURL(ctx context.Context, key string) (string, error) {
-	// Validate the key format
-	if !strings.HasPrefix(key, "videos/") {
+	// Get the root directory, default to "videos" if not specified
+	rootDir := "videos"
+	if s.config.RootDirectory != "" {
+		rootDir = s.config.RootDirectory
+	}
+
+	// Validate the key format - should start with the root directory
+	if !strings.HasPrefix(key, rootDir+"/") {
 		return "", fmt.Errorf("invalid video key format: %s", key)
 	}
 
@@ -118,8 +130,14 @@ func (s *S3Service) GetVideoURL(ctx context.Context, key string) (string, error)
 
 // DeleteVideo deletes a video and its transcoded versions from S3
 func (s *S3Service) DeleteVideo(ctx context.Context, videoID uuid.UUID) error {
+	// Get the root directory, default to "videos" if not specified
+	rootDir := "videos"
+	if s.config.RootDirectory != "" {
+		rootDir = s.config.RootDirectory
+	}
+
 	// List all objects with the video ID prefix
-	prefix := fmt.Sprintf("videos/%s/", videoID)
+	prefix := fmt.Sprintf("%s/%s/", rootDir, videoID)
 
 	paginator := s3.NewListObjectsV2Paginator(s.client, &s3.ListObjectsV2Input{
 		Bucket: aws.String(s.config.Bucket),

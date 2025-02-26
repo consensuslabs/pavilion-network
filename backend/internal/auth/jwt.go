@@ -30,6 +30,7 @@ func (s *JWTService) GenerateAccessToken(user *User) (string, error) {
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			NotBefore: jwt.NewNumericDate(time.Now()),
 			ID:        uuid.New().String(),
+			Subject:   user.ID.String(),
 		},
 	}
 
@@ -47,6 +48,7 @@ func (s *JWTService) GenerateRefreshToken(user *User) (string, error) {
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			NotBefore: jwt.NewNumericDate(time.Now()),
 			ID:        uuid.New().String(),
+			Subject:   user.ID.String(),
 		},
 	}
 

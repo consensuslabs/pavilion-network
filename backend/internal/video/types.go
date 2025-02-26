@@ -74,6 +74,8 @@ type UploadResponse struct {
 type VideoListResponse struct {
 	Videos []VideoInfo `json:"videos"`
 	Total  int64       `json:"total"`
+	Page   int         `json:"page"`
+	Limit  int         `json:"limit"`
 }
 
 // VideoInfo represents the basic video information

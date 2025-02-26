@@ -306,3 +306,29 @@ func (s *Service) ValidateToken(token string) (*TokenClaims, error) {
 
 	return claims, nil
 }
+
+// MarkEmailVerified marks a user's email as verified
+func (s *Service) MarkEmailVerified(userID uuid.UUID) error {
+	s.logger.LogInfo("Marking email as verified", map[string]interface{}{
+		"userID": userID,
+	})
+
+	var user User
+	if err := s.db.Where("id = ?", userID).First(&user).Error; err != nil {
+		s.logger.LogError(err, "User not found when marking email as verified")
+		return fmt.Errorf("user not found: %v", err)
+	}
+
+	user.EmailVerified = true
+	if err := s.db.Save(&user).Error; err != nil {
+		s.logger.LogError(err, "Failed to update user email verification status")
+		return fmt.Errorf("failed to update user: %v", err)
+	}
+
+	s.logger.LogInfo("Email marked as verified", map[string]interface{}{
+		"userID": userID,
+		"email":  user.Email,
+	})
+
+	return nil
+}

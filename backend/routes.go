@@ -23,5 +23,10 @@ func SetupRoutes(router *gin.Engine, app *App) {
 	{
 		// Video routes that require authentication
 		protected.POST("/video/upload", app.videoHandler.HandleUpload)
+		protected.GET("/videos", app.videoHandler.ListVideos)
+		protected.GET("/video/:id", app.videoHandler.GetVideo)
+		protected.GET("/video/:id/status", app.videoHandler.GetVideoStatus)
+		protected.PATCH("/video/:id", app.videoHandler.UpdateVideo)
+		protected.DELETE("/video/:id", app.videoHandler.DeleteVideo)
 	}
 }
