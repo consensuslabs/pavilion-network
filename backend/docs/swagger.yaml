@@ -224,19 +224,6 @@ definitions:
       updated_at:
         type: string
     type: object
-  video.VideoInfo:
-    properties:
-      created_at:
-        type: string
-      description:
-        type: string
-      id:
-        type: string
-      status:
-        type: string
-      title:
-        type: string
-    type: object
   video.VideoListResponse:
     properties:
       limit:
@@ -247,7 +234,7 @@ definitions:
         type: integer
       videos:
         items:
-          $ref: '#/definitions/video.VideoInfo'
+          $ref: '#/definitions/video.VideoDetailsResponse'
         type: array
     type: object
   video.VideoUpdateRequest:
@@ -540,7 +527,7 @@ paths:
             - $ref: '#/definitions/video.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/video.VideoInfo'
+                  $ref: '#/definitions/video.VideoDetailsResponse'
               type: object
         "400":
           description: Invalid request format or validation error
@@ -657,7 +644,8 @@ paths:
       - video
   /videos:
     get:
-      description: Retrieve a paginated list of videos
+      description: Retrieve a paginated list of videos with detailed information including
+        transcodes
       parameters:
       - description: 'Number of videos to return (default: 10, max: 50)'
         in: query
@@ -671,7 +659,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: Videos retrieved successfully
+          description: Videos retrieved successfully with detailed information
           schema:
             allOf:
             - $ref: '#/definitions/video.APIResponse'

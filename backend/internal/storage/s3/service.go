@@ -64,37 +64,121 @@ func NewService(cfg *videostorage.Config, logger logger.Logger) (*S3Service, err
 
 // UploadVideo uploads a video file to S3 with the standardized path structure
 func (s *S3Service) UploadVideo(ctx context.Context, videoID uuid.UUID, resolution string, reader io.Reader) (string, error) {
+	// Log the beginning of the upload process
+	s.logger.LogInfo("Starting S3 upload", map[string]interface{}{
+		"video_id":        videoID,
+		"resolution":      resolution,
+		"bucket":          s.config.Bucket,
+		"region":          s.config.Region,
+		"root_directory":  s.config.RootDirectory,
+		"access_key_set":  s.config.AccessKeyID != "",
+		"secret_key_set":  s.config.SecretAccessKey != "",
+	})
+
 	// Validate resolution
 	if !videostorage.ValidateResolution(resolution) {
-		return "", fmt.Errorf("invalid resolution: %s", resolution)
+		errMsg := fmt.Sprintf("Invalid resolution for video upload: %s", resolution)
+		s.logger.LogError(nil, errMsg)
+		return "", fmt.Errorf("S3_UPLOAD_VALIDATION_ERROR: %s", errMsg)
 	}
 
 	// Get the root directory, default to "videos" if not specified
 	rootDir := "videos"
 	if s.config.RootDirectory != "" {
 		rootDir = s.config.RootDirectory
+		s.logger.LogInfo("Using configured root directory", map[string]interface{}{
+			"root_directory": rootDir,
+		})
+	} else {
+		s.logger.LogInfo("Using default root directory", map[string]interface{}{
+			"root_directory": rootDir,
+		})
 	}
 
 	// Construct the standardized path: {root_dir}/{video_id}/[original|720p|480p|360p].mp4
 	key := fmt.Sprintf("%s/%s/%s.mp4", rootDir, videoID, resolution)
-
-	// Upload the file
-	_, err := s.client.PutObject(ctx, &s3.PutObjectInput{
-		Bucket: aws.String(s.config.Bucket),
-		Key:    aws.String(key),
-		Body:   reader,
-	})
-	if err != nil {
-		s.logger.LogError(err, fmt.Sprintf("Failed to upload video to S3: video_id=%s, resolution=%s, bucket=%s, key=%s",
-			videoID, resolution, s.config.Bucket, key))
-		return "", fmt.Errorf("failed to upload video to S3: %w", err)
-	}
-
-	s.logger.LogInfo("Successfully uploaded video to S3", map[string]interface{}{
+	
+	s.logger.LogInfo("Constructed S3 upload key", map[string]interface{}{
 		"video_id":   videoID,
 		"resolution": resolution,
 		"bucket":     s.config.Bucket,
 		"key":        key,
+		"full_path":  fmt.Sprintf("s3://%s/%s", s.config.Bucket, key),
+	})
+
+	// Attempt to convert reader to ReadSeeker to get content length, if possible
+	var contentLength int64 = -1
+	if readSeeker, ok := reader.(io.ReadSeeker); ok {
+		// Get current position
+		currentPos, err := readSeeker.Seek(0, io.SeekCurrent)
+		if err == nil {
+			// Go to end to get total size
+			size, err := readSeeker.Seek(0, io.SeekEnd)
+			if err == nil {
+				contentLength = size
+				// Go back to original position
+				_, err = readSeeker.Seek(currentPos, io.SeekStart)
+				if err != nil {
+					s.logger.LogError(err, "Failed to seek back to original position in file")
+				}
+			} else {
+				s.logger.LogError(err, "Failed to seek to end of file to determine size")
+			}
+		} else {
+			s.logger.LogError(err, "Failed to get current position in file")
+		}
+	}
+
+	if contentLength > 0 {
+		s.logger.LogInfo("Determined content length for upload", map[string]interface{}{
+			"content_length": contentLength,
+			"content_length_mb": float64(contentLength) / 1024 / 1024,
+		})
+	} else {
+		s.logger.LogInfo("Could not determine content length, uploading with unknown size", nil)
+	}
+
+	// Upload the file
+	s.logger.LogInfo("Sending PutObject request to S3", map[string]interface{}{
+		"bucket": s.config.Bucket,
+		"key":    key,
+	})
+	
+	result, err := s.client.PutObject(ctx, &s3.PutObjectInput{
+		Bucket: aws.String(s.config.Bucket),
+		Key:    aws.String(key),
+		Body:   reader,
+	})
+	
+	if err != nil {
+		errMsg := fmt.Sprintf("Failed to upload video to S3: video_id=%s, resolution=%s, bucket=%s, key=%s",
+			videoID, resolution, s.config.Bucket, key)
+		s.logger.LogError(err, errMsg)
+		
+		// Attempt to provide more specific error information
+		errorDetails := "unknown error"
+		if strings.Contains(err.Error(), "InvalidAccessKeyId") {
+			errorDetails = "invalid access key ID"
+		} else if strings.Contains(err.Error(), "SignatureDoesNotMatch") {
+			errorDetails = "signature mismatch (check secret key)"
+		} else if strings.Contains(err.Error(), "NoSuchBucket") {
+			errorDetails = fmt.Sprintf("bucket '%s' does not exist", s.config.Bucket)
+		} else if strings.Contains(err.Error(), "PermanentRedirect") {
+			errorDetails = "bucket is in a different region than configured"
+		} else if strings.Contains(err.Error(), "AccessDenied") {
+			errorDetails = "access denied (check permissions)"
+		}
+		
+		return "", fmt.Errorf("S3_UPLOAD_FAILED: %s (%s): %w", errMsg, errorDetails, err)
+	}
+
+	s.logger.LogInfo("Successfully uploaded video to S3", map[string]interface{}{
+		"video_id":     videoID,
+		"resolution":   resolution,
+		"bucket":       s.config.Bucket,
+		"key":          key,
+		"etag":         result.ETag,
+		"full_path":    fmt.Sprintf("s3://%s/%s", s.config.Bucket, key),
 	})
 
 	return key, nil

@@ -321,223 +321,6 @@
                 }
             }
         },
-        "/video/list": {
-            "get": {
-                "description": "Get a list of all available videos",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "video"
-                ],
-                "summary": "List videos",
-                "responses": {
-                    "200": {
-                        "description": "Video list retrieved successfully",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/http.APIResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/video.StatusResponse"
-                                            }
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "500": {
-                        "description": "Internal server error",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/http.APIResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "error": {
-                                            "$ref": "#/definitions/http.APIError"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            }
-        },
-        "/video/status/{fileId}": {
-            "get": {
-                "description": "Get the current status of a video upload",
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "video"
-                ],
-                "summary": "Get video status",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Video file ID",
-                        "name": "fileId",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Video status retrieved successfully",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/http.APIResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/video.StatusResponse"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid file ID",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/http.APIResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "error": {
-                                            "$ref": "#/definitions/http.APIError"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "404": {
-                        "description": "Video not found",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/http.APIResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "error": {
-                                            "$ref": "#/definitions/http.APIError"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            }
-        },
-        "/video/transcode": {
-            "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Initiate video transcoding",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "video"
-                ],
-                "summary": "Transcode video",
-                "parameters": [
-                    {
-                        "description": "Video CID to transcode",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/video.TranscodeRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "Transcoding initiated successfully",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/http.APIResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "data": {
-                                            "$ref": "#/definitions/video.TranscodeResult"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid request format",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/http.APIResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "error": {
-                                            "$ref": "#/definitions/http.APIError"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    },
-                    "401": {
-                        "description": "Unauthorized",
-                        "schema": {
-                            "allOf": [
-                                {
-                                    "$ref": "#/definitions/http.APIResponse"
-                                },
-                                {
-                                    "type": "object",
-                                    "properties": {
-                                        "error": {
-                                            "$ref": "#/definitions/http.APIError"
-                                        }
-                                    }
-                                }
-                            ]
-                        }
-                    }
-                }
-            }
-        },
         "/video/upload": {
             "post": {
                 "security": [
@@ -559,7 +342,7 @@
                 "parameters": [
                     {
                         "type": "file",
-                        "description": "Video file to upload (.mp4, .mov, .avi, .webm)",
+                        "description": "Video file to upload (.mp4, .mov)",
                         "name": "video",
                         "in": "formData",
                         "required": true
@@ -574,20 +357,20 @@
                         "required": true
                     },
                     {
-                        "maxLength": 500,
+                        "maxLength": 1000,
                         "type": "string",
-                        "description": "Video description (max 500 characters)",
+                        "description": "Video description (max 1000 characters)",
                         "name": "description",
                         "in": "formData"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Upload initiated successfully",
+                        "description": "Upload completed successfully",
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/http.APIResponse"
+                                    "$ref": "#/definitions/video.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -603,15 +386,61 @@
                     "400": {
                         "description": "Invalid request format or validation error",
                         "schema": {
+                            "$ref": "#/definitions/video.APIResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/video.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Processing error",
+                        "schema": {
+                            "$ref": "#/definitions/video.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/video/{id}": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve detailed information about a specific video",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "video"
+                ],
+                "summary": "Get video details",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Video ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Video details retrieved successfully",
+                        "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/http.APIResponse"
+                                    "$ref": "#/definitions/video.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
-                                        "error": {
-                                            "$ref": "#/definitions/http.APIError"
+                                        "data": {
+                                            "$ref": "#/definitions/video.VideoDetailsResponse"
                                         }
                                     }
                                 }
@@ -621,72 +450,291 @@
                     "401": {
                         "description": "Unauthorized",
                         "schema": {
+                            "$ref": "#/definitions/video.APIResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Video not found",
+                        "schema": {
+                            "$ref": "#/definitions/video.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/video.APIResponse"
+                        }
+                    }
+                }
+            },
+            "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Delete a video and its associated data",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "video"
+                ],
+                "summary": "Delete video",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Video ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Video deleted successfully",
+                        "schema": {
+                            "$ref": "#/definitions/video.APIResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid video ID format",
+                        "schema": {
+                            "$ref": "#/definitions/video.APIResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/video.APIResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Video not found",
+                        "schema": {
+                            "$ref": "#/definitions/video.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/video.APIResponse"
+                        }
+                    }
+                }
+            },
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update a video's title and/or description",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "video"
+                ],
+                "summary": "Update video details",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Video ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Update request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/video.VideoUpdateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Video updated successfully",
+                        "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/http.APIResponse"
+                                    "$ref": "#/definitions/video.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
-                                        "error": {
-                                            "$ref": "#/definitions/http.APIError"
+                                        "data": {
+                                            "$ref": "#/definitions/video.VideoInfo"
                                         }
                                     }
                                 }
                             ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request format or validation error",
+                        "schema": {
+                            "$ref": "#/definitions/video.APIResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/video.APIResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Video not found",
+                        "schema": {
+                            "$ref": "#/definitions/video.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/video.APIResponse"
                         }
                     }
                 }
             }
         },
-        "/video/watch": {
+        "/video/{id}/status": {
             "get": {
-                "description": "Stream a video by CID or file path",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve the current upload status of a specific video",
                 "produces": [
-                    "video/mp4",
-                    "application/x-mpegURL"
+                    "application/json"
                 ],
                 "tags": [
                     "video"
                 ],
-                "summary": "Watch video",
+                "summary": "Get video upload status",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "IPFS Content ID",
-                        "name": "cid",
+                        "description": "Video ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Video status retrieved successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/video.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                                "type": "string"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/video.APIResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Video not found",
+                        "schema": {
+                            "$ref": "#/definitions/video.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/video.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/videos": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve a paginated list of videos",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "video"
+                ],
+                "summary": "List videos",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Number of videos to return (default: 10, max: 50)",
+                        "name": "limit",
                         "in": "query"
                     },
                     {
-                        "type": "string",
-                        "description": "Video file path",
-                        "name": "file",
+                        "type": "integer",
+                        "description": "Page number for pagination (default: 1)",
+                        "name": "page",
                         "in": "query"
                     }
                 ],
                 "responses": {
                     "200": {
-                        "description": "Video stream",
-                        "schema": {
-                            "type": "file"
-                        }
-                    },
-                    "400": {
-                        "description": "Missing parameters",
+                        "description": "Videos retrieved successfully",
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/http.APIResponse"
+                                    "$ref": "#/definitions/video.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
-                                        "error": {
-                                            "$ref": "#/definitions/http.APIError"
+                                        "data": {
+                                            "$ref": "#/definitions/video.VideoListResponse"
                                         }
                                     }
                                 }
                             ]
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid request parameters",
+                        "schema": {
+                            "$ref": "#/definitions/video.APIResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/video.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "$ref": "#/definitions/video.APIResponse"
                         }
                     }
                 }
@@ -891,169 +939,169 @@
                 }
             }
         },
-        "video.Progress": {
+        "video.APIResponse": {
             "type": "object",
             "properties": {
-                "bytesUploaded": {
-                    "type": "integer"
-                },
-                "duration": {
+                "data": {},
+                "message": {
                     "type": "string"
-                },
-                "endTime": {
-                    "type": "string"
-                },
-                "percentage": {
-                    "type": "number"
-                },
-                "startTime": {
-                    "type": "string"
-                }
-            }
-        },
-        "video.StatusResponse": {
-            "type": "object",
-            "properties": {
-                "completedAt": {
-                    "type": "string"
-                },
-                "currentPhase": {
-                    "type": "string"
-                },
-                "errorMessage": {
-                    "type": "string"
-                },
-                "estimatedDuration": {
-                    "type": "string"
-                },
-                "fileId": {
-                    "type": "string"
-                },
-                "ipfsProgress": {
-                    "$ref": "#/definitions/video.Progress"
-                },
-                "s3Progress": {
-                    "$ref": "#/definitions/video.Progress"
                 },
                 "status": {
                     "type": "string"
-                },
-                "title": {
-                    "type": "string"
-                },
-                "totalProgress": {
-                    "type": "number"
-                },
-                "totalSize": {
-                    "type": "integer"
                 }
             }
         },
-        "video.Transcode": {
+        "video.TranscodeInfo": {
             "type": "object",
             "properties": {
-                "createdAt": {
-                    "type": "string"
-                },
-                "fileCid": {
-                    "type": "string"
-                },
-                "filePath": {
+                "created_at": {
                     "type": "string"
                 },
                 "format": {
-                    "description": "\"hls\" or \"mp4\"",
                     "type": "string"
                 },
                 "id": {
-                    "type": "integer"
+                    "type": "string"
                 },
                 "resolution": {
-                    "description": "e.g., \"720\", \"480\", \"360\"",
                     "type": "string"
                 },
-                "storageType": {
-                    "description": "\"ipfs\" or \"s3\"",
-                    "type": "string"
-                },
-                "type": {
-                    "description": "\"manifest\" or \"video\"",
-                    "type": "string"
-                },
-                "videoId": {
-                    "type": "integer"
-                }
-            }
-        },
-        "video.TranscodeRequest": {
-            "type": "object",
-            "required": [
-                "cid"
-            ],
-            "properties": {
-                "cid": {
-                    "type": "string",
-                    "example": "QmX..."
-                }
-            }
-        },
-        "video.TranscodeResult": {
-            "type": "object",
-            "properties": {
-                "transcodeSegments": {
+                "segments": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/video.TranscodeSegment"
-                    }
-                },
-                "transcodes": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/video.Transcode"
+                        "$ref": "#/definitions/video.TranscodeSegmentInfo"
                     }
                 }
             }
         },
-        "video.TranscodeSegment": {
+        "video.TranscodeSegmentInfo": {
             "type": "object",
             "properties": {
-                "createdAt": {
-                    "type": "string"
-                },
                 "duration": {
-                    "type": "number"
-                },
-                "fileCid": {
-                    "type": "string"
-                },
-                "filePath": {
-                    "type": "string"
+                    "type": "integer"
                 },
                 "id": {
-                    "type": "integer"
-                },
-                "sequence": {
-                    "type": "integer"
-                },
-                "storageType": {
-                    "description": "\"ipfs\" or \"s3\"",
                     "type": "string"
                 },
-                "transcodeId": {
-                    "type": "integer"
+                "ipfs_cid": {
+                    "type": "string"
+                },
+                "storage_path": {
+                    "type": "string"
                 }
             }
         },
         "video.UploadResponse": {
             "type": "object",
             "properties": {
-                "description": {
+                "file_id": {
                     "type": "string"
                 },
-                "fileId": {
+                "id": {
+                    "type": "string"
+                },
+                "ipfs_cid": {
                     "type": "string"
                 },
                 "status": {
+                    "type": "string"
+                },
+                "storage_path": {
+                    "type": "string"
+                },
+                "transcodes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/video.TranscodeInfo"
+                    }
+                }
+            }
+        },
+        "video.VideoDetailsResponse": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "file_id": {
+                    "type": "string"
+                },
+                "file_size": {
+                    "type": "integer"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "ipfs_cid": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "storage_path": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                },
+                "transcodes": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/video.TranscodeInfo"
+                    }
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "video.VideoInfo": {
+            "type": "object",
+            "properties": {
+                "created_at": {
+                    "type": "string"
+                },
+                "description": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "string"
+                },
+                "title": {
+                    "type": "string"
+                }
+            }
+        },
+        "video.VideoListResponse": {
+            "type": "object",
+            "properties": {
+                "limit": {
+                    "type": "integer"
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                },
+                "videos": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/video.VideoInfo"
+                    }
+                }
+            }
+        },
+        "video.VideoUpdateRequest": {
+            "type": "object",
+            "properties": {
+                "description": {
                     "type": "string"
                 },
                 "title": {

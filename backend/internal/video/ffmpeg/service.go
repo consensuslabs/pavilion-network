@@ -3,6 +3,7 @@ package ffmpeg
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -110,18 +111,59 @@ func (s *Service) GetMetadata(ctx context.Context, filePath string) (*VideoMetad
 
 // Transcode transcodes a video file to the specified resolution
 func (s *Service) Transcode(ctx context.Context, inputPath, outputPath, resolution string) error {
-	// Create output directory if it doesn't exist
-	if err := os.MkdirAll(filepath.Dir(outputPath), 0755); err != nil {
-		s.logger.LogError(err, fmt.Sprintf("Failed to create output directory: path=%s", outputPath))
-		return fmt.Errorf("failed to create output directory: %w", err)
+	// Log detailed input values at the start
+	s.logger.LogInfo("Beginning transcoding process", map[string]interface{}{
+		"input_path": inputPath,
+		"output_path": outputPath,
+		"resolution": resolution,
+		"ffmpeg_path": s.config.Path,
+		"ffprobe_path": s.config.ProbePath,
+		"video_codec": s.config.VideoCodec,
+		"audio_codec": s.config.AudioCodec,
+		"preset": s.config.Preset,
+		"output_dir": filepath.Dir(outputPath),
+	})
+
+	// Verify that input file exists
+	if _, err := os.Stat(inputPath); os.IsNotExist(err) {
+		errMsg := fmt.Sprintf("Input file does not exist: %s", inputPath)
+		s.logger.LogError(err, errMsg)
+		return fmt.Errorf("%s: %w", errMsg, err)
 	}
 
+	// Create output directory if it doesn't exist
+	outputDir := filepath.Dir(outputPath)
+	if err := os.MkdirAll(outputDir, 0755); err != nil {
+		errMsg := fmt.Sprintf("Failed to create output directory: path=%s", outputDir)
+		s.logger.LogError(err, errMsg)
+		return fmt.Errorf("%s: %w", errMsg, err)
+	}
+
+	s.logger.LogInfo("Output directory created or verified", map[string]interface{}{
+		"output_dir": outputDir,
+	})
+
 	// Get input video metadata to determine original dimensions
+	s.logger.LogInfo("Getting video metadata", map[string]interface{}{
+		"input_path": inputPath,
+	})
+	
 	metadata, err := s.GetMetadata(ctx, inputPath)
 	if err != nil {
-		s.logger.LogError(err, fmt.Sprintf("Failed to get video metadata: path=%s", inputPath))
-		return fmt.Errorf("failed to get video metadata: %w", err)
+		errMsg := fmt.Sprintf("Failed to get video metadata: path=%s", inputPath)
+		s.logger.LogError(err, errMsg)
+		return fmt.Errorf("%s: %w", errMsg, err)
 	}
+
+	s.logger.LogInfo("Video metadata extracted", map[string]interface{}{
+		"duration": metadata.Duration,
+		"width": metadata.Width,
+		"height": metadata.Height,
+		"format": metadata.Format,
+		"video_codec": metadata.VideoCodec,
+		"audio_codec": metadata.AudioCodec,
+		"bitrate": metadata.Bitrate,
+	})
 
 	// Convert resolution string to actual dimensions
 	var width, height int
@@ -136,7 +178,9 @@ func (s *Service) Transcode(ctx context.Context, inputPath, outputPath, resoluti
 		// Use original dimensions
 		width, height = metadata.Width, metadata.Height
 	default:
-		return fmt.Errorf("unsupported resolution: %s", resolution)
+		errMsg := fmt.Sprintf("Unsupported resolution: %s", resolution)
+		s.logger.LogError(nil, errMsg)
+		return fmt.Errorf(errMsg)
 	}
 
 	// Skip upscaling if the target resolution is higher than the original
@@ -147,6 +191,7 @@ func (s *Service) Transcode(ctx context.Context, inputPath, outputPath, resoluti
 			"target_width":    width,
 			"target_height":   height,
 			"resolution":      resolution,
+			"action": "adjusting dimensions to avoid upscaling",
 		})
 		// Use original dimensions but maintain aspect ratio
 		if metadata.Width > metadata.Height {
@@ -185,6 +230,9 @@ func (s *Service) Transcode(ctx context.Context, inputPath, outputPath, resoluti
 		"dimensions":      resolutionArg,
 		"original_width":  metadata.Width,
 		"original_height": metadata.Height,
+		"video_codec":     s.config.VideoCodec,
+		"audio_codec":     s.config.AudioCodec,
+		"preset":          s.config.Preset,
 	})
 
 	// Build FFmpeg command with proper resolution format
@@ -198,6 +246,12 @@ func (s *Service) Transcode(ctx context.Context, inputPath, outputPath, resoluti
 		outputPath,
 	)
 
+	// Log the exact command being executed
+	s.logger.LogInfo("Executing FFmpeg command", map[string]interface{}{
+		"command": cmd.String(),
+		"arguments": cmd.Args,
+	})
+
 	// Capture stderr for logging
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
@@ -207,9 +261,14 @@ func (s *Service) Transcode(ctx context.Context, inputPath, outputPath, resoluti
 
 	// Start the command
 	if err := cmd.Start(); err != nil {
-		s.logger.LogError(err, fmt.Sprintf("Failed to start transcoding: input=%s, output=%s", inputPath, outputPath))
-		return fmt.Errorf("failed to start transcoding: %w", err)
+		errMsg := fmt.Sprintf("Failed to start transcoding: input=%s, output=%s", inputPath, outputPath)
+		s.logger.LogError(err, errMsg)
+		return fmt.Errorf("%s: %w", errMsg, err)
 	}
+
+	s.logger.LogInfo("FFmpeg process started", map[string]interface{}{
+		"pid": cmd.Process.Pid,
+	})
 
 	// Read stderr in a goroutine
 	go func() {
@@ -219,9 +278,13 @@ func (s *Service) Transcode(ctx context.Context, inputPath, outputPath, resoluti
 			if n > 0 {
 				s.logger.LogInfo("FFmpeg output", map[string]interface{}{
 					"output": string(buf[:n]),
+					"pid": cmd.Process.Pid,
 				})
 			}
 			if err != nil {
+				if err != io.EOF {
+					s.logger.LogError(err, "Error reading FFmpeg stderr")
+				}
 				break
 			}
 		}
@@ -229,9 +292,33 @@ func (s *Service) Transcode(ctx context.Context, inputPath, outputPath, resoluti
 
 	// Wait for the command to complete
 	if err := cmd.Wait(); err != nil {
-		s.logger.LogError(err, fmt.Sprintf("Transcoding failed: input=%s, output=%s, dimensions=%s",
-			inputPath, outputPath, resolutionArg))
-		return fmt.Errorf("transcoding failed: %w", err)
+		errMsg := fmt.Sprintf("Transcoding failed: input=%s, output=%s, dimensions=%s",
+			inputPath, outputPath, resolutionArg)
+		s.logger.LogError(err, errMsg)
+		
+		// Check if output file exists despite error
+		if _, statErr := os.Stat(outputPath); statErr == nil {
+			s.logger.LogInfo("Note: Output file exists despite transcoding error", map[string]interface{}{
+				"output_path": outputPath,
+				"file_size": getFileSize(outputPath),
+			})
+		}
+		
+		return fmt.Errorf("TRANSCODE_FAILED: %s: %w", errMsg, err)
+	}
+
+	// Verify output file exists and has content
+	fileInfo, err := os.Stat(outputPath)
+	if err != nil {
+		errMsg := fmt.Sprintf("Transcoded file not found: %s", outputPath)
+		s.logger.LogError(err, errMsg)
+		return fmt.Errorf("%s: %w", errMsg, err)
+	}
+
+	if fileInfo.Size() == 0 {
+		errMsg := fmt.Sprintf("Transcoded file is empty: %s", outputPath)
+		s.logger.LogError(nil, errMsg)
+		return fmt.Errorf(errMsg)
 	}
 
 	s.logger.LogInfo("Transcoding completed successfully", map[string]interface{}{
@@ -239,9 +326,20 @@ func (s *Service) Transcode(ctx context.Context, inputPath, outputPath, resoluti
 		"output":          outputPath,
 		"resolution_name": resolution,
 		"dimensions":      resolutionArg,
+		"file_size":       fileInfo.Size(),
+		"output_exists":   true,
 	})
 
 	return nil
+}
+
+// getFileSize is a helper to safely get file size
+func getFileSize(path string) int64 {
+	info, err := os.Stat(path)
+	if err != nil {
+		return -1
+	}
+	return info.Size()
 }
 
 // extractValue is a helper function to extract values from ffprobe output

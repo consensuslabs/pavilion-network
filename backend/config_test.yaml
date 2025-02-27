@@ -26,19 +26,18 @@ ipfs:
   gateway_url: "https://ipfs.io/ipfs/"
 
 logging:
-  level: error  # Default to error level for tests
-  format: console  # Default to console for better test output
-  output: stdout  # Always use stdout for tests
+  level: debug  # Changed from info to debug for more detailed logs
+  format: json  # Will be overridden by LOG_FORMAT
+  output: both  # Changed from stdout to both to output to both stdout and file
   file:
-    enabled: false  # Never use file logging in tests
-    path: /var/log/pavilion
-    rotate: false
-    maxSize: 100MB
-    maxAge: 7d
-  development: true  # Always true for test environment
+    enabled: true  # Changed from false to true to enable file logging
+    path: ./logs/app.log  # Changed to use a specific log file path
+    rotate: true  # Will be overridden by LOG_FILE_ROTATE
+    maxSize: 100MB  # Will be overridden by LOG_FILE_MAX_SIZE
+    maxAge: 7d  # Will be overridden by LOG_FILE_MAX_AGE
   sampling:
-    initial: 100  # No sampling in tests
-    thereafter: 100
+    initial: 100  # Will be overridden by LOG_SAMPLING_INITIAL
+    thereafter: 100  # Will be overridden by LOG_SAMPLING_THEREAFTER
 
 ffmpeg:
   path: "/opt/homebrew/bin/ffmpeg"
@@ -63,7 +62,6 @@ storage:
     apiAddress: "/ip4/127.0.0.1/tcp/5001"
     gateway: "http://localhost:8080"
   s3:
-    endpoint: "s3.amazonaws.com"
     bucket: "octopus-doganbros-storage"
     region: "eu-central-1"
     accessKeyId: ""  # Will be overridden by S3_ACCESS_KEY_ID

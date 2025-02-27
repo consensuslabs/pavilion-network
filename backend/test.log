@@ -1,0 +1,151 @@
+=== RUN   TestVideoLifecycle
+Looking for config_test.yaml in these paths:
+ - Current directory
+ - Parent directory (..)
+ - Grandparent directory (../..)
+ - Great-grandparent directory (../../..)
+ - Great-great-grandparent directory (../../../..)
+ - Project root (if found)
+Loaded config from: /Users/umitdogan/workout/dev/pavilion-network-mvp/pavilion-network/backend/config_test.yaml
+Looking for config_test.yaml in these paths:
+ - Current directory
+ - Parent directory (..)
+ - Grandparent directory (../..)
+ - Great-grandparent directory (../../..)
+ - Great-great-grandparent directory (../../../..)
+ - Project root (if found)
+Loaded config from: /Users/umitdogan/workout/dev/pavilion-network-mvp/pavilion-network/backend/config_test.yaml
+2025/02/27 13:37:49 INFO: Migration Configuration map[auto_migrate:false environment:test force_migration:false]
+2025/02/27 13:37:49 INFO: Skipping migrations in non-development environment map[environment:test force_migration:false]
+
+2025/02/27 13:37:50 [32m/Users/umitdogan/workout/dev/pavilion-network-mvp/pavilion-network/backend/testhelper/setup.go:240 [33mSLOW SQL >= 200ms
+[0m[31;1m[592.418ms] [33m[rows:-][35m SELECT c.column_name, c.is_nullable = 'YES', c.udt_name, c.character_maximum_length, c.numeric_precision, c.numeric_precision_radix, c.numeric_scale, c.datetime_precision, 8 * typlen, c.column_default, pd.description, c.identity_increment FROM information_schema.columns AS c JOIN pg_type AS pgt ON c.udt_name = pgt.typname LEFT JOIN pg_catalog.pg_description as pd ON pd.objsubid = c.ordinal_position AND pd.objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = c.table_name AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = c.table_schema)) where table_catalog = 'pavilion_test' AND table_schema = CURRENT_SCHEMA() AND table_name = 'users'[0m
+
+2025/02/27 13:37:52 [32m/Users/umitdogan/workout/dev/pavilion-network-mvp/pavilion-network/backend/testhelper/setup.go:240 [33mSLOW SQL >= 200ms
+[0m[31;1m[368.040ms] [33m[rows:-][35m SELECT c.column_name, c.is_nullable = 'YES', c.udt_name, c.character_maximum_length, c.numeric_precision, c.numeric_precision_radix, c.numeric_scale, c.datetime_precision, 8 * typlen, c.column_default, pd.description, c.identity_increment FROM information_schema.columns AS c JOIN pg_type AS pgt ON c.udt_name = pgt.typname LEFT JOIN pg_catalog.pg_description as pd ON pd.objsubid = c.ordinal_position AND pd.objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = c.table_name AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = c.table_schema)) where table_catalog = 'pavilion_test' AND table_schema = CURRENT_SCHEMA() AND table_name = 'refresh_tokens'[0m
+
+2025/02/27 13:37:53 [32m/Users/umitdogan/workout/dev/pavilion-network-mvp/pavilion-network/backend/testhelper/setup.go:240 [33mSLOW SQL >= 200ms
+[0m[31;1m[213.508ms] [33m[rows:0][35m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'refresh_tokens' AND column_name = 'id') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'refresh_tokens' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))[0m
+
+2025/02/27 13:37:54 [32m/Users/umitdogan/workout/dev/pavilion-network-mvp/pavilion-network/backend/testhelper/setup.go:270 [33mSLOW SQL >= 200ms
+[0m[31;1m[499.066ms] [33m[rows:-][35m SELECT c.column_name, c.is_nullable = 'YES', c.udt_name, c.character_maximum_length, c.numeric_precision, c.numeric_precision_radix, c.numeric_scale, c.datetime_precision, 8 * typlen, c.column_default, pd.description, c.identity_increment FROM information_schema.columns AS c JOIN pg_type AS pgt ON c.udt_name = pgt.typname LEFT JOIN pg_catalog.pg_description as pd ON pd.objsubid = c.ordinal_position AND pd.objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = c.table_name AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = c.table_schema)) where table_catalog = 'pavilion_test' AND table_schema = CURRENT_SCHEMA() AND table_name = 'videos'[0m
+
+2025/02/27 13:37:57 [32m/Users/umitdogan/workout/dev/pavilion-network-mvp/pavilion-network/backend/testhelper/setup.go:270 [33mSLOW SQL >= 200ms
+[0m[31;1m[394.052ms] [33m[rows:-][35m SELECT c.column_name, c.is_nullable = 'YES', c.udt_name, c.character_maximum_length, c.numeric_precision, c.numeric_precision_radix, c.numeric_scale, c.datetime_precision, 8 * typlen, c.column_default, pd.description, c.identity_increment FROM information_schema.columns AS c JOIN pg_type AS pgt ON c.udt_name = pgt.typname LEFT JOIN pg_catalog.pg_description as pd ON pd.objsubid = c.ordinal_position AND pd.objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = c.table_name AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = c.table_schema)) where table_catalog = 'pavilion_test' AND table_schema = CURRENT_SCHEMA() AND table_name = 'video_uploads'[0m
+
+2025/02/27 13:37:58 [32m/Users/umitdogan/workout/dev/pavilion-network-mvp/pavilion-network/backend/testhelper/setup.go:270 [33mSLOW SQL >= 200ms
+[0m[31;1m[333.248ms] [33m[rows:-][35m SELECT c.column_name, c.is_nullable = 'YES', c.udt_name, c.character_maximum_length, c.numeric_precision, c.numeric_precision_radix, c.numeric_scale, c.datetime_precision, 8 * typlen, c.column_default, pd.description, c.identity_increment FROM information_schema.columns AS c JOIN pg_type AS pgt ON c.udt_name = pgt.typname LEFT JOIN pg_catalog.pg_description as pd ON pd.objsubid = c.ordinal_position AND pd.objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = c.table_name AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = c.table_schema)) where table_catalog = 'pavilion_test' AND table_schema = CURRENT_SCHEMA() AND table_name = 'transcodes'[0m
+
+2025/02/27 13:38:00 [32m/Users/umitdogan/workout/dev/pavilion-network-mvp/pavilion-network/backend/testhelper/setup.go:270 [33mSLOW SQL >= 200ms
+[0m[31;1m[390.138ms] [33m[rows:-][35m SELECT c.column_name, c.is_nullable = 'YES', c.udt_name, c.character_maximum_length, c.numeric_precision, c.numeric_precision_radix, c.numeric_scale, c.datetime_precision, 8 * typlen, c.column_default, pd.description, c.identity_increment FROM information_schema.columns AS c JOIN pg_type AS pgt ON c.udt_name = pgt.typname LEFT JOIN pg_catalog.pg_description as pd ON pd.objsubid = c.ordinal_position AND pd.objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = c.table_name AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = c.table_schema)) where table_catalog = 'pavilion_test' AND table_schema = CURRENT_SCHEMA() AND table_name = 'transcode_segments'[0m
+
+2025/02/27 13:38:01 [32m/Users/umitdogan/workout/dev/pavilion-network-mvp/pavilion-network/backend/testhelper/setup.go:270 [33mSLOW SQL >= 200ms
+[0m[31;1m[209.075ms] [33m[rows:0][35m SELECT description FROM pg_catalog.pg_description WHERE objsubid = (SELECT ordinal_position FROM information_schema.columns WHERE table_schema = CURRENT_SCHEMA() AND table_name = 'transcode_segments' AND column_name = 'id') AND objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = 'transcode_segments' AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = CURRENT_SCHEMA()))[0m
+Looking for config_test.yaml in these paths:
+ - Current directory
+ - Parent directory (..)
+ - Grandparent directory (../..)
+ - Great-grandparent directory (../../..)
+ - Great-great-grandparent directory (../../../..)
+ - Project root (if found)
+Loaded config from: /Users/umitdogan/workout/dev/pavilion-network-mvp/pavilion-network/backend/config_test.yaml
+=== RUN   TestVideoLifecycle/Upload_Video
+    video_e2e_test.go:519: ENV: test
+    video_e2e_test.go:520: S3 Access Key Present: false
+    video_e2e_test.go:521: S3 Secret Key Present: false
+    video_e2e_test.go:522: S3 Endpoint: 
+    video_e2e_test.go:523: S3 Bucket: octopus-doganbros-storage
+    video_e2e_test.go:524: Temp Dir: temp
+    video_e2e_test.go:525: FFmpeg Output Path: /tmp/videos
+    video_e2e_test.go:106: Current working directory: /Users/umitdogan/workout/dev/pavilion-network-mvp/pavilion-network/backend/internal/video/tests/e2e
+    video_e2e_test.go:113: Trying path: ../../../testdata/videos/sample.mp4 (absolute: /Users/umitdogan/workout/dev/pavilion-network-mvp/pavilion-network/backend/internal/testdata/videos/sample.mp4)
+    video_e2e_test.go:127: Sample video not found at /Users/umitdogan/workout/dev/pavilion-network-mvp/pavilion-network/backend/internal/testdata/videos/sample.mp4: stat /Users/umitdogan/workout/dev/pavilion-network-mvp/pavilion-network/backend/internal/testdata/videos/sample.mp4: no such file or directory
+    video_e2e_test.go:113: Trying path: ../../../../testdata/videos/sample.mp4 (absolute: /Users/umitdogan/workout/dev/pavilion-network-mvp/pavilion-network/backend/testdata/videos/sample.mp4)
+    video_e2e_test.go:123: Found sample video at: /Users/umitdogan/workout/dev/pavilion-network-mvp/pavilion-network/backend/testdata/videos/sample.mp4
+    video_e2e_test.go:548: Test video file info: Size=35557 bytes, Name=sample.mp4, Mode=-rw-r--r--
+    video_e2e_test.go:558: Copied 35557 bytes to form
+    video_e2e_test.go:584: Upload Response Status: 500
+    video_e2e_test.go:585: Upload Response Body: {"success":false,"error":{"code":"TRANSCODE_FAILED","message":"Video transcoding failed"}}
+    video_e2e_test.go:588: 
+        	Error Trace:	/Users/umitdogan/workout/dev/pavilion-network-mvp/pavilion-network/backend/internal/video/tests/e2e/video_e2e_test.go:588
+        	Error:      	Not equal: 
+        	            	expected: 200
+        	            	actual  : 500
+        	Test:       	TestVideoLifecycle/Upload_Video
+        	Messages:   	Response status should be OK
+    video_e2e_test.go:596: 
+        	Error Trace:	/Users/umitdogan/workout/dev/pavilion-network-mvp/pavilion-network/backend/internal/video/tests/e2e/video_e2e_test.go:596
+        	Error:      	Should be true
+        	Test:       	TestVideoLifecycle/Upload_Video
+        	Messages:   	Response should be successful
+    video_e2e_test.go:597: 
+        	Error Trace:	/Users/umitdogan/workout/dev/pavilion-network-mvp/pavilion-network/backend/internal/video/tests/e2e/video_e2e_test.go:597
+        	Error:      	Expected nil, but got: &e2e.ErrorResponse{Code:"TRANSCODE_FAILED", Message:"Video transcoding failed", Field:""}
+        	Test:       	TestVideoLifecycle/Upload_Video
+        	Messages:   	Error should be nil
+Looking for config_test.yaml in these paths:
+ - Current directory
+ - Parent directory (..)
+ - Grandparent directory (../..)
+ - Great-grandparent directory (../../..)
+ - Great-great-grandparent directory (../../../..)
+ - Project root (if found)
+Loaded config from: /Users/umitdogan/workout/dev/pavilion-network-mvp/pavilion-network/backend/config_test.yaml
+2025/02/27 13:38:02 INFO: Migration Configuration map[auto_migrate:false environment:test force_migration:false]
+2025/02/27 13:38:02 INFO: Skipping migrations in non-development environment map[environment:test force_migration:false]
+
+2025/02/27 13:38:03 [32m/Users/umitdogan/workout/dev/pavilion-network-mvp/pavilion-network/backend/testhelper/setup.go:240 [33mSLOW SQL >= 200ms
+[0m[31;1m[511.383ms] [33m[rows:-][35m SELECT c.column_name, c.is_nullable = 'YES', c.udt_name, c.character_maximum_length, c.numeric_precision, c.numeric_precision_radix, c.numeric_scale, c.datetime_precision, 8 * typlen, c.column_default, pd.description, c.identity_increment FROM information_schema.columns AS c JOIN pg_type AS pgt ON c.udt_name = pgt.typname LEFT JOIN pg_catalog.pg_description as pd ON pd.objsubid = c.ordinal_position AND pd.objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = c.table_name AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = c.table_schema)) where table_catalog = 'pavilion_test' AND table_schema = CURRENT_SCHEMA() AND table_name = 'users'[0m
+
+2025/02/27 13:38:05 [32m/Users/umitdogan/workout/dev/pavilion-network-mvp/pavilion-network/backend/testhelper/setup.go:240 [33mSLOW SQL >= 200ms
+[0m[31;1m[356.487ms] [33m[rows:-][35m SELECT c.column_name, c.is_nullable = 'YES', c.udt_name, c.character_maximum_length, c.numeric_precision, c.numeric_precision_radix, c.numeric_scale, c.datetime_precision, 8 * typlen, c.column_default, pd.description, c.identity_increment FROM information_schema.columns AS c JOIN pg_type AS pgt ON c.udt_name = pgt.typname LEFT JOIN pg_catalog.pg_description as pd ON pd.objsubid = c.ordinal_position AND pd.objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = c.table_name AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = c.table_schema)) where table_catalog = 'pavilion_test' AND table_schema = CURRENT_SCHEMA() AND table_name = 'refresh_tokens'[0m
+
+2025/02/27 13:38:07 [32m/Users/umitdogan/workout/dev/pavilion-network-mvp/pavilion-network/backend/testhelper/setup.go:270 [33mSLOW SQL >= 200ms
+[0m[31;1m[503.744ms] [33m[rows:-][35m SELECT c.column_name, c.is_nullable = 'YES', c.udt_name, c.character_maximum_length, c.numeric_precision, c.numeric_precision_radix, c.numeric_scale, c.datetime_precision, 8 * typlen, c.column_default, pd.description, c.identity_increment FROM information_schema.columns AS c JOIN pg_type AS pgt ON c.udt_name = pgt.typname LEFT JOIN pg_catalog.pg_description as pd ON pd.objsubid = c.ordinal_position AND pd.objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = c.table_name AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = c.table_schema)) where table_catalog = 'pavilion_test' AND table_schema = CURRENT_SCHEMA() AND table_name = 'videos'[0m
+
+2025/02/27 13:38:09 [32m/Users/umitdogan/workout/dev/pavilion-network-mvp/pavilion-network/backend/testhelper/setup.go:270 [33mSLOW SQL >= 200ms
+[0m[31;1m[408.144ms] [33m[rows:-][35m SELECT c.column_name, c.is_nullable = 'YES', c.udt_name, c.character_maximum_length, c.numeric_precision, c.numeric_precision_radix, c.numeric_scale, c.datetime_precision, 8 * typlen, c.column_default, pd.description, c.identity_increment FROM information_schema.columns AS c JOIN pg_type AS pgt ON c.udt_name = pgt.typname LEFT JOIN pg_catalog.pg_description as pd ON pd.objsubid = c.ordinal_position AND pd.objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = c.table_name AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = c.table_schema)) where table_catalog = 'pavilion_test' AND table_schema = CURRENT_SCHEMA() AND table_name = 'video_uploads'[0m
+
+2025/02/27 13:38:11 [32m/Users/umitdogan/workout/dev/pavilion-network-mvp/pavilion-network/backend/testhelper/setup.go:270 [33mSLOW SQL >= 200ms
+[0m[31;1m[398.023ms] [33m[rows:-][35m SELECT c.column_name, c.is_nullable = 'YES', c.udt_name, c.character_maximum_length, c.numeric_precision, c.numeric_precision_radix, c.numeric_scale, c.datetime_precision, 8 * typlen, c.column_default, pd.description, c.identity_increment FROM information_schema.columns AS c JOIN pg_type AS pgt ON c.udt_name = pgt.typname LEFT JOIN pg_catalog.pg_description as pd ON pd.objsubid = c.ordinal_position AND pd.objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = c.table_name AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = c.table_schema)) where table_catalog = 'pavilion_test' AND table_schema = CURRENT_SCHEMA() AND table_name = 'transcodes'[0m
+
+2025/02/27 13:38:13 [32m/Users/umitdogan/workout/dev/pavilion-network-mvp/pavilion-network/backend/testhelper/setup.go:270 [33mSLOW SQL >= 200ms
+[0m[31;1m[403.454ms] [33m[rows:-][35m SELECT c.column_name, c.is_nullable = 'YES', c.udt_name, c.character_maximum_length, c.numeric_precision, c.numeric_precision_radix, c.numeric_scale, c.datetime_precision, 8 * typlen, c.column_default, pd.description, c.identity_increment FROM information_schema.columns AS c JOIN pg_type AS pgt ON c.udt_name = pgt.typname LEFT JOIN pg_catalog.pg_description as pd ON pd.objsubid = c.ordinal_position AND pd.objoid = (SELECT oid FROM pg_catalog.pg_class WHERE relname = c.table_name AND relnamespace = (SELECT oid FROM pg_catalog.pg_namespace WHERE nspname = c.table_schema)) where table_catalog = 'pavilion_test' AND table_schema = CURRENT_SCHEMA() AND table_name = 'transcode_segments'[0m
+=== RUN   TestVideoLifecycle/Get_Video
+    video_e2e_test.go:637: 
+        	Error Trace:	/Users/umitdogan/workout/dev/pavilion-network-mvp/pavilion-network/backend/internal/video/tests/e2e/video_e2e_test.go:637
+        	Error:      	Not equal: 
+        	            	expected: string("9b8380a6-b170-47b8-aa88-0afcf5aa5196")
+        	            	actual  : <nil>(<nil>)
+        	Test:       	TestVideoLifecycle/Get_Video
+        	Messages:   	Video ID should match
+    video_e2e_test.go:638: 
+        	Error Trace:	/Users/umitdogan/workout/dev/pavilion-network-mvp/pavilion-network/backend/internal/video/tests/e2e/video_e2e_test.go:638
+        	Error:      	Not equal: 
+        	            	expected: string("Test Video")
+        	            	actual  : <nil>(<nil>)
+        	Test:       	TestVideoLifecycle/Get_Video
+        	Messages:   	Video title should match
+=== RUN   TestVideoLifecycle/List_Videos
+--- FAIL: TestVideoLifecycle (25.91s)
+    --- FAIL: TestVideoLifecycle/Upload_Video (0.20s)
+    --- FAIL: TestVideoLifecycle/Get_Video (0.03s)
+    --- FAIL: TestVideoLifecycle/List_Videos (0.02s)
+panic: interface conversion: interface {} is nil, not []interface {} [recovered]
+	panic: interface conversion: interface {} is nil, not []interface {}
+
+goroutine 14 [running]:
+testing.tRunner.func1.2({0x105a0e940, 0x140003bf620})
+	/opt/homebrew/Cellar/go/1.24.0/libexec/src/testing/testing.go:1734 +0x1ac
+testing.tRunner.func1()
+	/opt/homebrew/Cellar/go/1.24.0/libexec/src/testing/testing.go:1737 +0x334
+panic({0x105a0e940?, 0x140003bf620?})
+	/opt/homebrew/Cellar/go/1.24.0/libexec/src/runtime/panic.go:787 +0x124
+github.com/consensuslabs/pavilion-network/backend/internal/video/tests/e2e.TestVideoLifecycle.func3(0x14000582a80)
+	/Users/umitdogan/workout/dev/pavilion-network-mvp/pavilion-network/backend/internal/video/tests/e2e/video_e2e_test.go:668 +0x430
+testing.tRunner(0x14000582a80, 0x14000442a40)
+	/opt/homebrew/Cellar/go/1.24.0/libexec/src/testing/testing.go:1792 +0xe4
+created by testing.(*T).Run in goroutine 35
+	/opt/homebrew/Cellar/go/1.24.0/libexec/src/testing/testing.go:1851 +0x374
+FAIL	github.com/consensuslabs/pavilion-network/backend/internal/video/tests/e2e	26.659s
+FAIL

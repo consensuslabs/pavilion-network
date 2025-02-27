@@ -28,11 +28,28 @@ func NewService(cfg *storage.IPFSConfig, logger storage.Logger) *Service {
 }
 
 // UploadVideo uploads a video file to IPFS and returns its CID
-func (s *Service) UploadVideo(_ context.Context, _ uuid.UUID, _ string, reader io.Reader) (string, error) {
+func (s *Service) UploadVideo(_ context.Context, videoID uuid.UUID, resolution string, reader io.Reader) (string, error) {
+	s.logger.LogInfo("Starting IPFS upload", map[string]interface{}{
+		"video_id":   videoID,
+		"resolution": resolution,
+		"gateway":    s.gatewayURL,
+	})
+	
 	cid, err := s.shell.Add(reader)
 	if err != nil {
-		return "", fmt.Errorf("failed to upload to IPFS: %v", err)
+		errMsg := fmt.Sprintf("Failed to upload to IPFS: video_id=%s, resolution=%s", 
+			videoID, resolution)
+		s.logger.LogError(err, errMsg)
+		return "", fmt.Errorf("IPFS_UPLOAD_FAILED: %s: %w", errMsg, err)
 	}
+	
+	s.logger.LogInfo("Successfully uploaded to IPFS", map[string]interface{}{
+		"video_id":   videoID,
+		"resolution": resolution,
+		"cid":        cid,
+		"gateway_url": s.gatewayURL + cid,
+	})
+	
 	return cid, nil
 }
 

@@ -85,10 +85,20 @@ func LoadTestConfig() (*Config, error) {
 		"../../../../.env.test",
 	}
 
+	// Print current working directory for debugging
+	cwd, _ := os.Getwd()
+	fmt.Println("Current working directory for config loading:", cwd)
+	
 	envLoaded := false
 	for _, envFile := range envFiles {
+		absPath, _ := filepath.Abs(envFile)
+		if _, err := os.Stat(absPath); err == nil {
+			fmt.Printf("Found .env.test at: %s\n", absPath)
+		}
+		
 		if err := godotenv.Load(envFile); err == nil {
 			envLoaded = true
+			fmt.Printf("Successfully loaded env from: %s\n", envFile)
 			break
 		}
 	}
@@ -96,9 +106,37 @@ func LoadTestConfig() (*Config, error) {
 	if !envLoaded {
 		fmt.Println("Warning: .env.test not loaded from any location, proceeding without it")
 	}
+	
+	// Try looking for an env file at the project root level
+	rootSearchPaths := []string{
+		"/Users/umitdogan/workout/dev/pavilion-network-mvp/pavilion-network/backend/.env.test",
+		"/Users/umitdogan/workout/dev/pavilion-network-mvp/pavilion-network/.env.test",
+	}
+	
+	for _, envFile := range rootSearchPaths {
+		if _, err := os.Stat(envFile); err == nil {
+			fmt.Printf("Found additional .env.test at: %s\n", envFile)
+			if err := godotenv.Load(envFile); err == nil {
+				fmt.Printf("Successfully loaded env from additional path: %s\n", envFile)
+				envLoaded = true
+			}
+		}
+	}
 
 	v := viper.New()
+	
+	// Set up environment variables mapping
+	v.SetEnvPrefix("")  // No prefix for environment variables
 	v.AutomaticEnv()
+	
+	// Map specific environment variables to config keys for S3
+	v.BindEnv("storage.s3.accessKeyId", "S3_ACCESS_KEY_ID")
+	v.BindEnv("storage.s3.secretAccessKey", "S3_SECRET_ACCESS_KEY")
+	
+	// Debug output of environment variables
+	fmt.Println("Environment variables:")
+	fmt.Printf("S3_ACCESS_KEY_ID set: %v\n", os.Getenv("S3_ACCESS_KEY_ID") != "")
+	fmt.Printf("S3_SECRET_ACCESS_KEY set: %v\n", os.Getenv("S3_SECRET_ACCESS_KEY") != "")
 
 	// Check if TEST_CONFIG_FILE environment variable is set to explicitly specify config file location.
 	if cfgFile := os.Getenv("TEST_CONFIG_FILE"); cfgFile != "" {

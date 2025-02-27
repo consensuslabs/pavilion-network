@@ -100,7 +100,7 @@ func (h *VideoHandler) HandleUpload(c *gin.Context) {
 			"video_id":   upload.VideoID,
 			"error":      err.Error(),
 		})
-		h.app.ResponseHandler.ErrorResponse(c, http.StatusInternalServerError, "VIDEO_NOT_FOUND", "Failed to get video details", err)
+		h.app.ResponseHandler.ErrorResponse(c, http.StatusInternalServerError, "DATABASE_ERROR", "Failed to retrieve video details", err)
 		return
 	}
 
@@ -157,11 +157,8 @@ func (h *VideoHandler) HandleUpload(c *gin.Context) {
 		"file_path":  upload.Video.StoragePath,
 	})
 
-	h.app.ResponseHandler.SuccessResponse(c, APIResponse{
-		Message: "Upload completed successfully",
-		Status:  "success",
-		Data:    response,
-	}, "")
+	// Directly pass the UploadResponse to SuccessResponse without wrapping it in APIResponse
+	h.app.ResponseHandler.SuccessResponse(c, response, "Upload completed successfully")
 }
 
 // Helper function to check authentication
@@ -211,8 +208,10 @@ func (h *VideoHandler) validateVideoUpload(fileHeader *multipart.FileHeader, tit
 // @Description Retrieve detailed information about a specific video
 // @Tags video
 // @Produce json
+// @Security BearerAuth
 // @Param id path string true "Video ID (UUID)"
 // @Success 200 {object} APIResponse{data=VideoDetailsResponse} "Video details retrieved successfully"
+// @Failure 401 {object} APIResponse "Unauthorized"
 // @Failure 404 {object} APIResponse "Video not found"
 // @Failure 500 {object} APIResponse "Internal server error"
 // @Router /video/{id} [get]
@@ -267,11 +266,8 @@ func (h *VideoHandler) GetVideo(c *gin.Context) {
 		"video_id":   videoID,
 	})
 
-	h.app.ResponseHandler.SuccessResponse(c, APIResponse{
-		Message: "Video details retrieved successfully",
-		Status:  "success",
-		Data:    response,
-	}, "")
+	// Directly pass the VideoDetailsResponse to SuccessResponse without wrapping it in APIResponse
+	h.app.ResponseHandler.SuccessResponse(c, response, "Video details retrieved successfully")
 }
 
 // Helper function to parse UUID from string
@@ -280,13 +276,15 @@ func parseUUID(id string) (uuid.UUID, error) {
 }
 
 // @Summary List videos
-// @Description Retrieve a paginated list of videos
+// @Description Retrieve a paginated list of videos with detailed information including transcodes
 // @Tags video
 // @Produce json
+// @Security BearerAuth
 // @Param limit query int false "Number of videos to return (default: 10, max: 50)"
 // @Param page query int false "Page number for pagination (default: 1)"
-// @Success 200 {object} APIResponse{data=VideoListResponse} "Videos retrieved successfully"
+// @Success 200 {object} APIResponse{data=VideoListResponse} "Videos retrieved successfully with detailed information"
 // @Failure 400 {object} APIResponse "Invalid request parameters"
+// @Failure 401 {object} APIResponse "Unauthorized"
 // @Failure 500 {object} APIResponse "Internal server error"
 // @Router /videos [get]
 func (h *VideoHandler) ListVideos(c *gin.Context) {
@@ -343,17 +341,17 @@ func (h *VideoHandler) ListVideos(c *gin.Context) {
 		return
 	}
 
-	// Build response
-	videoInfos := make([]VideoInfo, 0, len(videos))
+	// Build response with detailed video information
+	videoDetails := make([]VideoDetailsResponse, 0, len(videos))
 	for _, video := range videos {
-		videoInfos = append(videoInfos, video.ToVideoInfo())
+		videoDetails = append(videoDetails, video.ToVideoDetailsResponse())
 	}
 
 	response := VideoListResponse{
-		Videos: videoInfos,
+		Videos: videoDetails,
 		Page:   page,
 		Limit:  limit,
-		Total:  int64(len(videoInfos)), // For MVP, this is just the current page count - note we're converting to int64
+		Total:  int64(len(videoDetails)), // For MVP, this is just the current page count - note we're converting to int64
 	}
 
 	h.app.Logger.LogInfo("Videos retrieved successfully", map[string]interface{}{
@@ -363,19 +361,18 @@ func (h *VideoHandler) ListVideos(c *gin.Context) {
 		"limit":      limit,
 	})
 
-	h.app.ResponseHandler.SuccessResponse(c, APIResponse{
-		Message: "Videos retrieved successfully",
-		Status:  "success",
-		Data:    response,
-	}, "")
+	// Directly pass the VideoListResponse to SuccessResponse without wrapping it in APIResponse
+	h.app.ResponseHandler.SuccessResponse(c, response, "Videos retrieved successfully")
 }
 
 // @Summary Get video upload status
 // @Description Retrieve the current upload status of a specific video
 // @Tags video
 // @Produce json
+// @Security BearerAuth
 // @Param id path string true "Video ID (UUID)"
 // @Success 200 {object} APIResponse{data=map[string]string} "Video status retrieved successfully"
+// @Failure 401 {object} APIResponse "Unauthorized"
 // @Failure 404 {object} APIResponse "Video not found"
 // @Failure 500 {object} APIResponse "Internal server error"
 // @Router /video/{id}/status [get]
@@ -434,11 +431,8 @@ func (h *VideoHandler) GetVideoStatus(c *gin.Context) {
 		"status":     status,
 	})
 
-	h.app.ResponseHandler.SuccessResponse(c, APIResponse{
-		Message: "Video status retrieved successfully",
-		Status:  "success",
-		Data:    map[string]string{"status": status},
-	}, "")
+	// Directly pass the status map to SuccessResponse without wrapping it in APIResponse
+	h.app.ResponseHandler.SuccessResponse(c, map[string]string{"status": status}, "Video status retrieved successfully")
 }
 
 // @Summary Update video details
@@ -449,7 +443,7 @@ func (h *VideoHandler) GetVideoStatus(c *gin.Context) {
 // @Security BearerAuth
 // @Param id path string true "Video ID (UUID)"
 // @Param request body VideoUpdateRequest true "Update request"
-// @Success 200 {object} APIResponse{data=VideoInfo} "Video updated successfully"
+// @Success 200 {object} APIResponse{data=VideoDetailsResponse} "Video updated successfully"
 // @Failure 400 {object} APIResponse "Invalid request format or validation error"
 // @Failure 401 {object} APIResponse "Unauthorized"
 // @Failure 404 {object} APIResponse "Video not found"
@@ -560,11 +554,8 @@ func (h *VideoHandler) UpdateVideo(c *gin.Context) {
 		"video_id":   videoID,
 	})
 
-	h.app.ResponseHandler.SuccessResponse(c, APIResponse{
-		Message: "Video updated successfully",
-		Status:  "success",
-		Data:    updatedVideo.ToVideoInfo(),
-	}, "")
+	// Directly pass the VideoDetailsResponse to SuccessResponse without wrapping it in APIResponse
+	h.app.ResponseHandler.SuccessResponse(c, updatedVideo.ToVideoDetailsResponse(), "Video updated successfully")
 }
 
 // validateUpdateRequest validates the video update request
@@ -662,8 +653,6 @@ func (h *VideoHandler) DeleteVideo(c *gin.Context) {
 		"video_id":   videoID,
 	})
 
-	h.app.ResponseHandler.SuccessResponse(c, APIResponse{
-		Message: "Video deleted successfully",
-		Status:  "success",
-	}, "")
+	// Directly pass a success message to SuccessResponse without wrapping it in APIResponse
+	h.app.ResponseHandler.SuccessResponse(c, nil, "Video deleted successfully")
 }
