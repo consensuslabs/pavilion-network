@@ -479,7 +479,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Delete a video and its associated data",
+                "description": "Soft delete a video (marks as deleted but preserves the record)",
                 "produces": [
                     "application/json"
                 ],

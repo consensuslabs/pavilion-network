@@ -349,12 +349,26 @@ func (s *VideoServiceImpl) ProcessUpload(upload *VideoUpload, file multipart.Fil
 // GetVideo retrieves a video by ID
 func (s *VideoServiceImpl) GetVideo(videoID uuid.UUID) (*Video, error) {
 	var video Video
+
+	// Use Unscoped to check if the video exists at all, including soft-deleted ones
+	var count int64
+	if err := s.db.Unscoped().Model(&Video{}).Where("id = ?", videoID).Count(&count).Error; err != nil {
+		return nil, fmt.Errorf("failed to check video existence: %w", err)
+	}
+
+	// Now try to get the non-deleted video
 	if err := s.db.Preload("Upload").Preload("Transcodes").Preload("Transcodes.Segments").First(&video, videoID).Error; err != nil {
 		if err == gorm.ErrRecordNotFound {
-			return nil, nil
+			if count > 0 {
+				// Video exists but is soft-deleted
+				return nil, fmt.Errorf("video has been deleted: %s", videoID)
+			}
+			// Video doesn't exist at all
+			return nil, fmt.Errorf("video not found: %s", videoID)
 		}
 		return nil, fmt.Errorf("failed to get video: %w", err)
 	}
+
 	return &video, nil
 }
 
@@ -363,7 +377,10 @@ func (s *VideoServiceImpl) ListVideos(page, limit int) ([]Video, error) {
 	var videos []Video
 	offset := (page - 1) * limit
 
+	// Note: GORM's default scope already excludes soft-deleted records
+	// but we're being explicit here for clarity
 	if err := s.db.Preload("Upload").Preload("Transcodes").Preload("Transcodes.Segments").
+		Where("deleted_at IS NULL").
 		Offset(offset).Limit(limit).Find(&videos).Error; err != nil {
 		return nil, fmt.Errorf("failed to list videos: %w", err)
 	}
@@ -371,7 +388,7 @@ func (s *VideoServiceImpl) ListVideos(page, limit int) ([]Video, error) {
 	return videos, nil
 }
 
-// DeleteVideo deletes a video by ID
+// DeleteVideo soft deletes a video by ID
 func (s *VideoServiceImpl) DeleteVideo(videoID uuid.UUID) error {
 	ctx := context.Background()
 
@@ -393,7 +410,7 @@ func (s *VideoServiceImpl) DeleteVideo(videoID uuid.UUID) error {
 		// Continue with database deletion even if S3 deletion fails
 	}
 
-	// Delete from database (will cascade to related records)
+	// Soft delete from database (GORM will automatically set DeletedAt)
 	if err := s.db.Delete(&Video{}, videoID).Error; err != nil {
 		return fmt.Errorf("failed to delete video: %w", err)
 	}

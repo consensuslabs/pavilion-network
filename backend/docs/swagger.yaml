@@ -429,7 +429,7 @@ paths:
       - auth
   /video/{id}:
     delete:
-      description: Delete a video and its associated data
+      description: Soft delete a video (marks as deleted but preserves the record)
       parameters:
       - description: Video ID (UUID)
         in: path

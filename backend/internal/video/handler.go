@@ -212,7 +212,7 @@ func (h *VideoHandler) validateVideoUpload(fileHeader *multipart.FileHeader, tit
 // @Param id path string true "Video ID (UUID)"
 // @Success 200 {object} APIResponse{data=VideoDetailsResponse} "Video details retrieved successfully"
 // @Failure 401 {object} APIResponse "Unauthorized"
-// @Failure 404 {object} APIResponse "Video not found"
+// @Failure 404 {object} APIResponse "Video not found or has been deleted"
 // @Failure 500 {object} APIResponse "Internal server error"
 // @Router /video/{id} [get]
 func (h *VideoHandler) GetVideo(c *gin.Context) {
@@ -240,21 +240,32 @@ func (h *VideoHandler) GetVideo(c *gin.Context) {
 	// Get video details
 	video, err := h.app.Video.GetVideo(uuid)
 	if err != nil {
+		// Check for specific error messages
+		errMsg := err.Error()
+		if strings.Contains(errMsg, "video not found") || strings.Contains(errMsg, "video has been deleted") {
+			h.app.Logger.LogInfo("Video not found or has been deleted", map[string]interface{}{
+				"request_id": requestID,
+				"video_id":   videoID,
+				"error":      errMsg,
+			})
+
+			// Use different error codes for not found vs deleted
+			errorCode := "VIDEO_NOT_FOUND"
+			if strings.Contains(errMsg, "has been deleted") {
+				errorCode = "VIDEO_DELETED"
+			}
+
+			h.app.ResponseHandler.ErrorResponse(c, http.StatusNotFound, errorCode, errMsg, nil)
+			return
+		}
+
+		// For other errors
 		h.app.Logger.LogInfo("Failed to get video details", map[string]interface{}{
 			"request_id": requestID,
 			"video_id":   videoID,
 			"error":      err.Error(),
 		})
 		h.app.ResponseHandler.ErrorResponse(c, http.StatusInternalServerError, "DATABASE_ERROR", "Failed to retrieve video details", err)
-		return
-	}
-
-	if video == nil {
-		h.app.Logger.LogInfo("Video not found", map[string]interface{}{
-			"request_id": requestID,
-			"video_id":   videoID,
-		})
-		h.app.ResponseHandler.ErrorResponse(c, http.StatusNotFound, "VIDEO_NOT_FOUND", "Video not found", nil)
 		return
 	}
 
@@ -373,7 +384,7 @@ func (h *VideoHandler) ListVideos(c *gin.Context) {
 // @Param id path string true "Video ID (UUID)"
 // @Success 200 {object} APIResponse{data=map[string]string} "Video status retrieved successfully"
 // @Failure 401 {object} APIResponse "Unauthorized"
-// @Failure 404 {object} APIResponse "Video not found"
+// @Failure 404 {object} APIResponse "Video not found or has been deleted"
 // @Failure 500 {object} APIResponse "Internal server error"
 // @Router /video/{id}/status [get]
 func (h *VideoHandler) GetVideoStatus(c *gin.Context) {
@@ -401,21 +412,32 @@ func (h *VideoHandler) GetVideoStatus(c *gin.Context) {
 	// Get video details
 	video, err := h.app.Video.GetVideo(uuid)
 	if err != nil {
+		// Check for specific error messages
+		errMsg := err.Error()
+		if strings.Contains(errMsg, "video not found") || strings.Contains(errMsg, "video has been deleted") {
+			h.app.Logger.LogInfo("Video not found or has been deleted", map[string]interface{}{
+				"request_id": requestID,
+				"video_id":   videoID,
+				"error":      errMsg,
+			})
+
+			// Use different error codes for not found vs deleted
+			errorCode := "VIDEO_NOT_FOUND"
+			if strings.Contains(errMsg, "has been deleted") {
+				errorCode = "VIDEO_DELETED"
+			}
+
+			h.app.ResponseHandler.ErrorResponse(c, http.StatusNotFound, errorCode, errMsg, nil)
+			return
+		}
+
+		// For other errors
 		h.app.Logger.LogInfo("Failed to get video status", map[string]interface{}{
 			"request_id": requestID,
 			"video_id":   videoID,
 			"error":      err.Error(),
 		})
 		h.app.ResponseHandler.ErrorResponse(c, http.StatusInternalServerError, "DATABASE_ERROR", "Failed to retrieve video status", err)
-		return
-	}
-
-	if video == nil {
-		h.app.Logger.LogInfo("Video not found", map[string]interface{}{
-			"request_id": requestID,
-			"video_id":   videoID,
-		})
-		h.app.ResponseHandler.ErrorResponse(c, http.StatusNotFound, "VIDEO_NOT_FOUND", "Video not found", nil)
 		return
 	}
 
@@ -446,7 +468,7 @@ func (h *VideoHandler) GetVideoStatus(c *gin.Context) {
 // @Success 200 {object} APIResponse{data=VideoDetailsResponse} "Video updated successfully"
 // @Failure 400 {object} APIResponse "Invalid request format or validation error"
 // @Failure 401 {object} APIResponse "Unauthorized"
-// @Failure 404 {object} APIResponse "Video not found"
+// @Failure 404 {object} APIResponse "Video not found or has been deleted"
 // @Failure 500 {object} APIResponse "Internal server error"
 // @Router /video/{id} [patch]
 func (h *VideoHandler) UpdateVideo(c *gin.Context) {
@@ -497,21 +519,32 @@ func (h *VideoHandler) UpdateVideo(c *gin.Context) {
 	// Get the current video to check if it exists
 	video, err := h.app.Video.GetVideo(uuid)
 	if err != nil {
+		// Check for specific error messages
+		errMsg := err.Error()
+		if strings.Contains(errMsg, "video not found") || strings.Contains(errMsg, "video has been deleted") {
+			h.app.Logger.LogInfo("Video not found or has been deleted", map[string]interface{}{
+				"request_id": requestID,
+				"video_id":   videoID,
+				"error":      errMsg,
+			})
+
+			// Use different error codes for not found vs deleted
+			errorCode := "VIDEO_NOT_FOUND"
+			if strings.Contains(errMsg, "has been deleted") {
+				errorCode = "VIDEO_DELETED"
+			}
+
+			h.app.ResponseHandler.ErrorResponse(c, http.StatusNotFound, errorCode, errMsg, nil)
+			return
+		}
+
+		// For other errors
 		h.app.Logger.LogInfo("Failed to get video for update", map[string]interface{}{
 			"request_id": requestID,
 			"video_id":   videoID,
 			"error":      err.Error(),
 		})
 		h.app.ResponseHandler.ErrorResponse(c, http.StatusInternalServerError, "DATABASE_ERROR", "Failed to retrieve video for update", err)
-		return
-	}
-
-	if video == nil {
-		h.app.Logger.LogInfo("Video not found for update", map[string]interface{}{
-			"request_id": requestID,
-			"video_id":   videoID,
-		})
-		h.app.ResponseHandler.ErrorResponse(c, http.StatusNotFound, "VIDEO_NOT_FOUND", "Video not found", nil)
 		return
 	}
 
@@ -583,7 +616,7 @@ func (h *VideoHandler) validateUpdateRequest(request *VideoUpdateRequest) error 
 }
 
 // @Summary Delete video
-// @Description Delete a video and its associated data
+// @Description Soft delete a video (marks as deleted but preserves the record)
 // @Tags video
 // @Produce json
 // @Security BearerAuth
@@ -637,7 +670,7 @@ func (h *VideoHandler) DeleteVideo(c *gin.Context) {
 		return
 	}
 
-	// Delete the video
+	// Soft delete the video
 	if err := h.app.Video.DeleteVideo(uuid); err != nil {
 		h.app.Logger.LogInfo("Failed to delete video", map[string]interface{}{
 			"request_id": requestID,
@@ -648,7 +681,7 @@ func (h *VideoHandler) DeleteVideo(c *gin.Context) {
 		return
 	}
 
-	h.app.Logger.LogInfo("Video deleted successfully", map[string]interface{}{
+	h.app.Logger.LogInfo("Video soft deleted successfully", map[string]interface{}{
 		"request_id": requestID,
 		"video_id":   videoID,
 	})

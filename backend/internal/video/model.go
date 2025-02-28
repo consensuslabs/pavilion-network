@@ -9,18 +9,19 @@ import (
 
 // Video represents a video entity in the database
 type Video struct {
-	ID          uuid.UUID    `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
-	FileID      string       `gorm:"unique;not null" json:"file_id"`
-	Title       string       `gorm:"not null" json:"title"`
-	Description string       `json:"description"`
-	StoragePath string       `gorm:"not null" json:"storage_path"`
-	IPFSCID     string       `gorm:"column:ipfs_cid" json:"ipfs_cid"`
-	Checksum    string       `gorm:"size:64" json:"checksum"`
-	FileSize    int64        `gorm:"not null" json:"file_size"`
-	CreatedAt   time.Time    `gorm:"not null;default:now()" json:"created_at"`
-	UpdatedAt   time.Time    `gorm:"not null;default:now()" json:"updated_at"`
-	Upload      *VideoUpload `gorm:"foreignKey:VideoID" json:"upload,omitempty"`
-	Transcodes  []Transcode  `gorm:"foreignKey:VideoID" json:"transcodes,omitempty"`
+	ID          uuid.UUID      `gorm:"type:uuid;primary_key;default:gen_random_uuid()" json:"id"`
+	FileID      string         `gorm:"unique;not null" json:"file_id"`
+	Title       string         `gorm:"not null" json:"title"`
+	Description string         `json:"description"`
+	StoragePath string         `gorm:"not null" json:"storage_path"`
+	IPFSCID     string         `gorm:"column:ipfs_cid" json:"ipfs_cid"`
+	Checksum    string         `gorm:"size:64" json:"checksum"`
+	FileSize    int64          `gorm:"not null" json:"file_size"`
+	CreatedAt   time.Time      `gorm:"not null;default:now()" json:"created_at"`
+	UpdatedAt   time.Time      `gorm:"not null;default:now()" json:"updated_at"`
+	DeletedAt   gorm.DeletedAt `gorm:"index" json:"-"`
+	Upload      *VideoUpload   `gorm:"foreignKey:VideoID" json:"upload,omitempty"`
+	Transcodes  []Transcode    `gorm:"foreignKey:VideoID" json:"transcodes,omitempty"`
 }
 
 // VideoUpload represents the upload process tracking

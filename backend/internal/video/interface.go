@@ -14,6 +14,7 @@ type VideoService interface {
 	ProcessUpload(upload *VideoUpload, file multipart.File, header *multipart.FileHeader) error
 	GetVideo(videoID uuid.UUID) (*Video, error)
 	ListVideos(page, limit int) ([]Video, error)
+	// DeleteVideo performs a soft delete of a video by setting its DeletedAt field
 	DeleteVideo(videoID uuid.UUID) error
 	UpdateVideo(videoID uuid.UUID, title, description string) error
 }

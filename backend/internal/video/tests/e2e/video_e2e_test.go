@@ -869,9 +869,10 @@ func TestVideoLifecycle(t *testing.T) {
 		assert.True(t, response.Success, "Response should be successful")
 		assert.Nil(t, response.Error, "Error should be nil")
 
-		// Verify video was deleted from database
-		_, err = videoService.GetVideo(testVideo.ID)
-		assert.Error(t, err, "Video should be deleted")
+		// Verify video is not found after soft delete
+		video, err := videoService.GetVideo(testVideo.ID)
+		assert.Nil(t, video, "Video should not be found after soft delete")
+		assert.Error(t, err, "Error should be returned when trying to get a soft-deleted video")
 	})
 }
 
