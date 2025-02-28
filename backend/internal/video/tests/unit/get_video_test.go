@@ -74,7 +74,7 @@ func TestGetVideo_Success(t *testing.T) {
 	// Set up mock expectations
 	mockVideoService.On("GetVideo", videoID).Return(testVideo, nil)
 	mockLogger.On("LogInfo", "Video details retrieved successfully", mock.Anything).Return()
-	mockResponseHandler.On("SuccessResponse", mock.Anything, mock.Anything, "").Return()
+	mockResponseHandler.On("SuccessResponse", mock.Anything, mock.Anything, "Video details retrieved successfully").Return()
 
 	// Create handler and call it
 	handler := video.NewVideoHandler(app)
@@ -136,9 +136,10 @@ func TestGetVideo_NotFound(t *testing.T) {
 	mockVideoService, mockResponseHandler, mockLogger, app := helpers.SetupMockDependencies()
 
 	// Set up mock expectations for not found case
-	mockVideoService.On("GetVideo", videoID).Return(nil, nil)
-	mockLogger.On("LogInfo", "Video not found", mock.Anything).Return()
-	mockResponseHandler.On("ErrorResponse", mock.Anything, http.StatusNotFound, "VIDEO_NOT_FOUND", "Video not found", nil).Return()
+	notFoundErr := fmt.Errorf("video not found: %s", videoID)
+	mockVideoService.On("GetVideo", videoID).Return(nil, notFoundErr)
+	mockLogger.On("LogInfo", "Video not found or has been deleted", mock.Anything).Return()
+	mockResponseHandler.On("ErrorResponse", mock.Anything, http.StatusNotFound, "VIDEO_NOT_FOUND", fmt.Sprintf("video not found: %s", videoID), nil).Return()
 
 	// Create handler and call it
 	handler := video.NewVideoHandler(app)

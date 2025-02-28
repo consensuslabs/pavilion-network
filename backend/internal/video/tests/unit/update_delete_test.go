@@ -56,7 +56,7 @@ func TestUpdateVideo_Success(t *testing.T) {
 	}, nil)
 	mockVideoService.On("UpdateVideo", videoID, title, description).Return(nil)
 	mockLogger.On("LogInfo", "Video updated successfully", mock.Anything).Return()
-	mockResponseHandler.On("SuccessResponse", mock.Anything, mock.Anything, "").Return()
+	mockResponseHandler.On("SuccessResponse", mock.Anything, mock.Anything, "Video updated successfully").Return()
 
 	// Create handler and call it
 	handler := video.NewVideoHandler(app)
@@ -174,8 +174,8 @@ func TestDeleteVideo_Success(t *testing.T) {
 		Description: "Test Description",
 	}, nil)
 	mockVideoService.On("DeleteVideo", videoID).Return(nil)
-	mockLogger.On("LogInfo", "Video deleted successfully", mock.Anything).Return()
-	mockResponseHandler.On("SuccessResponse", mock.Anything, mock.Anything, "").Return()
+	mockLogger.On("LogInfo", "Video soft deleted successfully", mock.Anything).Return()
+	mockResponseHandler.On("SuccessResponse", mock.Anything, mock.Anything, "Video deleted successfully").Return()
 
 	// Create handler and call it
 	handler := video.NewVideoHandler(app)

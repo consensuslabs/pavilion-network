@@ -38,7 +38,7 @@ func TestListVideos_Success(t *testing.T) {
 	// Set up mock expectations
 	mockVideoService.On("ListVideos", 1, 10).Return(testVideos, nil)
 	mockLogger.On("LogInfo", "Videos retrieved successfully", mock.Anything).Return()
-	mockResponseHandler.On("SuccessResponse", mock.Anything, mock.Anything, "").Return()
+	mockResponseHandler.On("SuccessResponse", mock.Anything, mock.Anything, "Videos retrieved successfully").Return()
 
 	// Create handler and call it
 	handler := video.NewVideoHandler(app)
