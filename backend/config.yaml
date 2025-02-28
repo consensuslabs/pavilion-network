@@ -21,6 +21,20 @@ database:
   # password: "yourpassword"
   # port: 5432
 
+scylladb:
+  hosts: 
+    - "localhost"
+  port: 9042
+  keyspace: "pavilion_db"
+  username: "root"
+  password: "" # Will be overridden by SCYLLA_PASSWORD
+  consistency: "quorum"
+  replication:
+    class: "SimpleStrategy"
+    replicationFactor: 3
+  timeout: "5s"
+  connectTimeout: "10s"
+
 redis:
   addr: "localhost:6379"
   password: ""

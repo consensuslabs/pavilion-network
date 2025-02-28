@@ -17,6 +17,7 @@ type Config struct {
 	Ffmpeg      video.FfmpegConfig `yaml:"ffmpeg"`
 	Video       VideoConfig        `yaml:"video"`
 	Auth        AuthConfig         `yaml:"auth"`
+	ScyllaDB    ScyllaDBConfig     `yaml:"scylladb"`
 }
 
 // AuthConfig represents authentication configuration settings
@@ -107,4 +108,20 @@ type LoggingConfig struct {
 		Initial    int `mapstructure:"initial" yaml:"initial"`
 		Thereafter int `mapstructure:"thereafter" yaml:"thereafter"`
 	} `mapstructure:"sampling" yaml:"sampling"`
+}
+
+// ScyllaDBConfig represents ScyllaDB configuration settings
+type ScyllaDBConfig struct {
+	Hosts       []string `mapstructure:"hosts"`
+	Port        int      `mapstructure:"port"`
+	Keyspace    string   `mapstructure:"keyspace"`
+	Username    string   `mapstructure:"username"`
+	Password    string   `mapstructure:"password"`
+	Consistency string   `mapstructure:"consistency"`
+	Replication struct {
+		Class             string `mapstructure:"class"`
+		ReplicationFactor int    `mapstructure:"replicationFactor"`
+	} `mapstructure:"replication"`
+	Timeout        time.Duration `mapstructure:"timeout"`
+	ConnectTimeout time.Duration `mapstructure:"connectTimeout"`
 }

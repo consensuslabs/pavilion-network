@@ -16,6 +16,20 @@ database:
     maxOpenConns: 100
     connMaxLifetime: 1h
 
+scylladb:
+  hosts: 
+    - "localhost"
+  port: 9042
+  keyspace: "pavilion_db"
+  username: "root"
+  password: ""
+  consistency: "quorum"
+  replication:
+    class: "SimpleStrategy"
+    replicationFactor: 3
+  timeout: "5s"
+  connectTimeout: "10s"
+
 redis:
   addr: "localhost:6379"
   password: ""

@@ -15,6 +15,20 @@ redis:
   password: ""
   db: 0
 
+scylladb:
+  hosts: 
+    - "localhost"
+  port: 9042
+  keyspace: "pavilion_db"
+  username: "root"
+  password: ""
+  consistency: "quorum"
+  replication:
+    class: "SimpleStrategy"
+    replicationFactor: 3
+  timeout: "5s"
+  connectTimeout: "10s"
+
 ipfs:
   host: "localhost:5001"
   gateway_url: "https://ipfs.io/ipfs/"

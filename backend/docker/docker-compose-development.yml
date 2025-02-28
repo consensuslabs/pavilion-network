@@ -9,6 +9,26 @@ services:
     volumes:
       - cockroach_data_1:/cockroach/cockroach-data
 
+  scylladb:
+    image: scylladb/scylla:latest
+    container_name: pavilion-scylladb
+    ports:
+      - "9042:9042" # CQL port
+      - "9160:9160" # Thrift port
+      - "7010:7000" # Inter-node communication
+      - "7011:7001" # SSL inter-node communication
+      - "10000:10000" # REST API
+    volumes:
+      - scylla_data:/var/lib/scylla
+    command: --developer-mode=1 --smp 1
+    environment:
+      - SCYLLA_BATCH_SIZE=128
+    healthcheck:
+      test: [ "CMD-SHELL", "nodetool status || exit 1" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
   redis:
     image: redis
     container_name: pavilion-redis
@@ -32,3 +52,4 @@ volumes:
   cockroach_data_1:
   redis_data:
   ipfs_data:
+  scylla_data:

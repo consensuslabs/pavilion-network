@@ -1538,3 +1538,6 @@
 {"L":"DEBUG","T":"2025-02-28T21:48:01.659+0300","C":"database/gorm_logger.go:98","M":"SQL query","source":"gorm","duration":"40.57075ms","rows_affected":10,"sql":"SELECT * FROM \"videos\" WHERE deleted_at IS NULL AND \"videos\".\"deleted_at\" IS NULL LIMIT 10"}
 {"L":"INFO","T":"2025-02-28T21:48:01.659+0300","C":"video/logger_adapter.go:17","M":"Videos retrieved successfully","count":10,"page":1,"limit":10,"request_id":""}
 {"L":"INFO","T":"2025-02-28T21:48:01.660+0300","C":"http/middleware.go:44","M":"HTTP Request","status":200,"latency_ms":41,"client_ip":"::1","method":"GET","path":"/videos"}
+{"L":"INFO","T":"2025-03-01T02:08:23.560+0300","C":"backend/app.go:380","M":"Initiating graceful shutdown"}
+{"L":"INFO","T":"2025-03-01T02:08:23.566+0300","C":"backend/app.go:393","M":"HTTP server shutdown complete"}
+{"L":"INFO","T":"2025-03-01T02:08:23.598+0300","C":"backend/app.go:430","M":"Application shutdown complete"}
