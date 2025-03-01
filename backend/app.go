@@ -10,8 +10,10 @@ import (
 
 	"github.com/consensuslabs/pavilion-network/backend/internal/auth"
 	"github.com/consensuslabs/pavilion-network/backend/internal/cache"
+	"github.com/consensuslabs/pavilion-network/backend/internal/comment"
 	"github.com/consensuslabs/pavilion-network/backend/internal/config"
 	"github.com/consensuslabs/pavilion-network/backend/internal/database"
+	"github.com/consensuslabs/pavilion-network/backend/internal/database/scylladb"
 	"github.com/consensuslabs/pavilion-network/backend/internal/health"
 	httpHandler "github.com/consensuslabs/pavilion-network/backend/internal/http"
 	"github.com/consensuslabs/pavilion-network/backend/internal/logger"
@@ -24,6 +26,7 @@ import (
 	"github.com/consensuslabs/pavilion-network/backend/internal/video/tempfile"
 	"github.com/consensuslabs/pavilion-network/backend/migrations"
 	"github.com/gin-gonic/gin"
+	"github.com/gocql/gocql"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
 	"gorm.io/gorm"
@@ -31,22 +34,25 @@ import (
 
 // App holds all application dependencies
 type App struct {
-	ctx           context.Context
-	Config        *config.Config
-	db            *gorm.DB
-	dbService     database.Service
-	cache         cache.Service
-	router        *gin.Engine
-	auth          *auth.Service
-	jwtService    auth.TokenService
-	refreshTokens auth.RefreshTokenService
-	logger        logger.Logger
-	ipfsService   storage.IPFSService
-	s3Service     storage.S3Service
-	videoHandler  *video.VideoHandler
-	healthHandler *health.Handler
-	httpHandler   httpHandler.ResponseHandler
-	authHandler   *auth.Handler
+	ctx            context.Context
+	Config         *config.Config
+	db             *gorm.DB
+	dbService      database.Service
+	cache          cache.Service
+	router         *gin.Engine
+	auth           *auth.Service
+	jwtService     auth.TokenService
+	refreshTokens  auth.RefreshTokenService
+	logger         logger.Logger
+	ipfsService    storage.IPFSService
+	s3Service      storage.S3Service
+	videoHandler   *video.VideoHandler
+	healthHandler  *health.Handler
+	httpHandler    httpHandler.ResponseHandler
+	authHandler    *auth.Handler
+	commentHandler *comment.Handler
+	scyllaSession  *gocql.Session
+	scyllaManager  *scylladb.SchemaManager
 }
 
 // NewApp creates a new application instance
@@ -213,31 +219,99 @@ func NewApp(ctx context.Context, cfg *config.Config) (*App, error) {
 	// Initialize video handler
 	videoHandler := video.NewVideoHandler(videoApp)
 
-	// Initialize auth service
+	// Initialize health handler
+	healthHandler := health.NewHandler(responseHandler)
+
+	// Initialize router
+	router := gin.Default()
+
+	// Initialize JWT service
 	authConfig := auth.NewConfigFromAuthConfig(&cfg.Auth)
 	jwtService := auth.NewJWTService(authConfig)
-	refreshTokenService := auth.NewRefreshTokenRepository(db, loggerService)
-	authService := auth.NewService(db, jwtService, refreshTokenService, authConfig, loggerService)
+
+	// Initialize refresh token service
+	refreshTokens := auth.NewRefreshTokenRepository(db, loggerService)
+
+	// Initialize auth service
+	authService := auth.NewService(db, jwtService, refreshTokens, authConfig, loggerService)
 
 	// Initialize auth handler
 	authHandler := auth.NewHandler(authService, responseHandler)
 
+	// Create app instance
 	app := &App{
 		ctx:           ctx,
 		Config:        cfg,
 		db:            db,
 		dbService:     dbService,
 		cache:         cacheService,
-		router:        gin.Default(),
+		router:        router,
 		auth:          authService,
+		jwtService:    jwtService,
+		refreshTokens: refreshTokens,
 		logger:        loggerService,
 		ipfsService:   ipfsService,
 		s3Service:     s3Service,
 		videoHandler:  videoHandler,
-		healthHandler: health.NewHandler(responseHandler),
+		healthHandler: healthHandler,
 		httpHandler:   responseHandler,
 		authHandler:   authHandler,
 	}
+
+	// Initialize ScyllaDB connection
+	scyllaConfig := scylladb.Config{
+		Hosts:          cfg.ScyllaDB.Hosts,
+		Port:           cfg.ScyllaDB.Port,
+		Keyspace:       cfg.ScyllaDB.Keyspace,
+		Username:       cfg.ScyllaDB.Username,
+		Password:       cfg.ScyllaDB.Password,
+		Consistency:    cfg.ScyllaDB.Consistency,
+		Timeout:        cfg.ScyllaDB.Timeout,
+		ConnectTimeout: cfg.ScyllaDB.ConnectTimeout,
+		Replication: scylladb.Replication{
+			Class:             cfg.ScyllaDB.Replication.Class,
+			ReplicationFactor: cfg.ScyllaDB.Replication.ReplicationFactor,
+		},
+	}
+
+	// Create logger adapter to convert between logger interfaces
+	loggerAdapter := &loggerAdapter{logger: loggerService}
+
+	scyllaClient := scylladb.NewClient(scyllaConfig, loggerAdapter)
+	if err := scyllaClient.Connect(); err != nil {
+		loggerService.LogError(fmt.Errorf("failed to connect to ScyllaDB: %w", err), "ScyllaDB connection error")
+		return nil, fmt.Errorf("failed to connect to ScyllaDB: %w", err)
+	}
+
+	app.scyllaSession = scyllaClient.Session()
+
+	// Initialize schema manager
+	app.scyllaManager = scylladb.NewSchemaManager(app.scyllaSession, scyllaConfig, loggerAdapter)
+
+	// Get migration config to check if we should auto-migrate
+	migrationConfig := app.dbService.GetMigrationConfig()
+
+	// Initialize schema only if auto-migrate is enabled
+	if migrationConfig.ShouldAutoMigrate() {
+		loggerService.LogInfo("Auto-migrate enabled, initializing ScyllaDB schema", nil)
+		if err := app.scyllaManager.InitializeSchema(); err != nil {
+			loggerService.LogError(fmt.Errorf("failed to initialize ScyllaDB schema: %w", err), "ScyllaDB schema error")
+			return nil, fmt.Errorf("failed to initialize ScyllaDB schema: %w", err)
+		}
+	} else {
+		loggerService.LogInfo("Auto-migrate disabled, skipping ScyllaDB schema initialization", nil)
+	}
+
+	// Initialize comment repository
+	commentRepo := scylladb.NewCommentRepository(app.scyllaSession, loggerAdapter)
+
+	// Initialize comment service
+	commentService := comment.NewService(commentRepo)
+
+	// Initialize comment handler
+	app.commentHandler = comment.NewHandler(commentService, responseHandler)
+
+	loggerService.LogInfo("ScyllaDB and comment service initialized successfully", nil)
 
 	return app, nil
 }
@@ -429,4 +503,27 @@ func (a *App) Shutdown() error {
 
 	a.logger.LogInfo("Application shutdown complete", nil)
 	return nil
+}
+
+// loggerAdapter adapts the logger.Logger interface to the video.Logger interface
+type loggerAdapter struct {
+	logger logger.Logger
+}
+
+// LogInfo implements the video.Logger interface
+func (a *loggerAdapter) LogInfo(msg string, fields map[string]interface{}) {
+	a.logger.LogInfo(msg, fields)
+}
+
+// LogError implements the video.Logger interface
+func (a *loggerAdapter) LogError(msg string, fields map[string]interface{}) {
+	if err, ok := fields["error"]; ok {
+		if errStr, ok := err.(string); ok {
+			a.logger.LogError(fmt.Errorf(errStr), msg)
+		} else {
+			a.logger.LogError(fmt.Errorf("unknown error"), msg)
+		}
+	} else {
+		a.logger.LogError(fmt.Errorf("no error details"), msg)
+	}
 }

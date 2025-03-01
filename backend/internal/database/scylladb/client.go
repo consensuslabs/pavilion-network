@@ -25,6 +25,18 @@ func NewClient(config Config, logger video.Logger) *Client {
 
 // Connect establishes a connection to the ScyllaDB cluster
 func (c *Client) Connect() error {
+	// Log connection attempt
+	c.logger.LogInfo("Attempting to connect to ScyllaDB", map[string]interface{}{
+		"hosts":          c.config.Hosts,
+		"port":           c.config.Port,
+		"username":       c.config.Username,
+		"auth_enabled":   c.config.Username != "" && c.config.Password != "",
+		"keyspace":       c.config.Keyspace,
+		"timeout":        c.config.Timeout.String(),
+		"connectTimeout": c.config.ConnectTimeout.String(),
+		"consistency":    c.config.Consistency,
+	})
+
 	cluster := gocql.NewCluster(c.config.Hosts...)
 	cluster.Port = c.config.Port
 	cluster.Consistency = getConsistencyLevel(c.config.Consistency)
@@ -44,7 +56,11 @@ func (c *Client) Connect() error {
 	var err error
 	c.session, err = cluster.CreateSession()
 	if err != nil {
-		c.logger.LogError("Failed to connect to ScyllaDB", map[string]interface{}{"error": err.Error()})
+		c.logger.LogError("Failed to connect to ScyllaDB", map[string]interface{}{
+			"error": err.Error(),
+			"hosts": c.config.Hosts,
+			"port":  c.config.Port,
+		})
 		return err
 	}
 
@@ -52,21 +68,39 @@ func (c *Client) Connect() error {
 	c.schema = NewSchemaManager(c.session, c.config, c.logger)
 
 	// Create keyspace if it doesn't exist
+	c.logger.LogInfo("Creating keyspace if it doesn't exist", map[string]interface{}{
+		"keyspace":           c.config.Keyspace,
+		"replication_class":  c.config.Replication.Class,
+		"replication_factor": c.config.Replication.ReplicationFactor,
+	})
+
 	if err := c.schema.CreateKeyspaceIfNotExists(); err != nil {
-		c.logger.LogError("Failed to create keyspace", map[string]interface{}{"error": err.Error()})
+		c.logger.LogError("Failed to create keyspace", map[string]interface{}{
+			"error":    err.Error(),
+			"keyspace": c.config.Keyspace,
+		})
 		return err
 	}
+
+	c.logger.LogInfo("Keyspace created or already exists", map[string]interface{}{
+		"keyspace": c.config.Keyspace,
+	})
 
 	// Close the initial session
 	c.session.Close()
 
 	// Reconnect with the keyspace
+	c.logger.LogInfo("Reconnecting with keyspace", map[string]interface{}{
+		"keyspace": c.config.Keyspace,
+	})
+
 	cluster.Keyspace = c.config.Keyspace
 	c.session, err = cluster.CreateSession()
 	if err != nil {
 		c.logger.LogError("Failed to connect to ScyllaDB with keyspace", map[string]interface{}{
 			"error":    err.Error(),
 			"keyspace": c.config.Keyspace,
+			"hosts":    c.config.Hosts,
 		})
 		return err
 	}
@@ -74,16 +108,29 @@ func (c *Client) Connect() error {
 	c.logger.LogInfo("Connected to ScyllaDB", map[string]interface{}{
 		"hosts":    c.config.Hosts,
 		"keyspace": c.config.Keyspace,
+		"port":     c.config.Port,
+		"status":   "connected",
 	})
 
 	// Update schema manager with new session
 	c.schema = NewSchemaManager(c.session, c.config, c.logger)
 
 	// Initialize schema
+	c.logger.LogInfo("Initializing schema tables", map[string]interface{}{
+		"keyspace": c.config.Keyspace,
+	})
+
 	if err := c.schema.InitializeSchema(); err != nil {
-		c.logger.LogError("Failed to initialize schema", map[string]interface{}{"error": err.Error()})
+		c.logger.LogError("Failed to initialize schema", map[string]interface{}{
+			"error":    err.Error(),
+			"keyspace": c.config.Keyspace,
+		})
 		return err
 	}
+
+	c.logger.LogInfo("Schema initialized successfully", map[string]interface{}{
+		"keyspace": c.config.Keyspace,
+	})
 
 	return nil
 }

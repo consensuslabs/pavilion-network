@@ -9,6 +9,7 @@ import (
 type Service interface {
 	Connect() (*gorm.DB, error)
 	Close() error
+	GetMigrationConfig() *MigrationConfig
 }
 
 // Logger interface for logging operations

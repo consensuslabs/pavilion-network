@@ -17,6 +17,11 @@ func SetupRoutes(router *gin.Engine, app *App) {
 	// Register auth routes
 	app.authHandler.RegisterRoutes(router)
 
+	// Register comment routes if comment service is available
+	if app.commentHandler != nil {
+		app.commentHandler.RegisterRoutes(router, app.auth)
+	}
+
 	// Protected routes group
 	protected := router.Group("")
 	protected.Use(auth.AuthMiddleware(app.auth, app.httpHandler))

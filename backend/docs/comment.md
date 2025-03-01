@@ -1,9 +1,9 @@
 ---
-# Comments Feature Specification
+# Comment Feature Specification
 
 ## Overview
 
-The Comments feature allows users to add, view, edit, and delete comments on videos in the Pavilion Network platform. Unlike other data in the system which is stored in CockroachDB, comments will be stored in ScyllaDB, a high-performance NoSQL database, to better handle the sequential and potentially high-volume nature of comment data.
+The Comment feature allows users to add, view, edit, and delete comments on videos in the Pavilion Network platform. Unlike other data in the system which is stored in CockroachDB, comments will be stored in ScyllaDB, a high-performance NoSQL database, to better handle the sequential and potentially high-volume nature of comment data.
 
 ## Architecture
 
@@ -57,7 +57,7 @@ To efficiently handle high-volume reactions (likes/dislikes) while maintaining d
 
 ```cql
 CREATE TABLE comments (
-  id uuid,
+  id uuid PRIMARY KEY,
   video_id uuid,
   user_id uuid,
   content text,
@@ -65,35 +65,79 @@ CREATE TABLE comments (
   updated_at timestamp,
   deleted_at timestamp,
   parent_id uuid,
-  likes counter,
-  dislikes counter,
-  status text, -- ENUM: 'ACTIVE', 'FLAGGED', 'HIDDEN'
-  PRIMARY KEY (video_id, id)
-) WITH CLUSTERING ORDER BY (id DESC);
-```
-
-2. **Comment Reactions Table**
-
-```cql
-CREATE TABLE comment_reactions (
-  comment_id uuid,
-  user_id uuid,
-  reaction_type text, -- ENUM: 'LIKE', 'DISLIKE'
-  created_at timestamp,
-  updated_at timestamp,
-  PRIMARY KEY ((comment_id), user_id)
+  likes int,
+  dislikes int,
+  status text -- ENUM: 'ACTIVE', 'FLAGGED', 'HIDDEN'
 );
 ```
 
-3. **User Reactions View**
+This table stores the primary comment data. Each comment has a unique UUID as its primary key and includes fields for tracking the video it belongs to, the user who created it, the content, timestamps, parent comment (for replies), and engagement metrics.
+
+2. **Comments By Video Table**
 
 ```cql
-CREATE MATERIALIZED VIEW user_reactions AS
-  SELECT comment_id, user_id, reaction_type, created_at
-  FROM comment_reactions 
-  WHERE user_id IS NOT NULL AND comment_id IS NOT NULL
-  PRIMARY KEY ((user_id), comment_id);
+CREATE TABLE comments_by_video (
+  video_id uuid,
+  comment_id uuid,
+  created_at timestamp,
+  PRIMARY KEY (video_id, created_at, comment_id)
+) WITH CLUSTERING ORDER BY (created_at DESC, comment_id ASC);
 ```
+
+This table optimizes queries for retrieving comments for a specific video. It organizes comments by video ID and created timestamp, allowing for efficient pagination and time-based sorting. The clustering order ensures newest comments appear first in query results.
+
+3. **Replies Table**
+
+```cql
+CREATE TABLE replies (
+  parent_id uuid,
+  comment_id uuid,
+  created_at timestamp,
+  PRIMARY KEY (parent_id, created_at, comment_id)
+) WITH CLUSTERING ORDER BY (created_at DESC, comment_id ASC);
+```
+
+This table optimizes the retrieval of replies to a specific comment. It organizes replies by parent comment ID and creation time, allowing for efficient thread-based views. The clustering order ensures newest replies appear first in query results.
+
+4. **Reactions Table**
+
+```cql
+CREATE TABLE reactions (
+  comment_id uuid,
+  user_id uuid,
+  type text, -- ENUM: 'LIKE', 'DISLIKE'
+  created_at timestamp,
+  PRIMARY KEY (comment_id, user_id)
+);
+```
+
+This table tracks user reactions to comments. The primary key combination of comment_id and user_id ensures that a user can only have one reaction per comment, preventing duplicate reactions. The type field indicates whether the reaction is a like or dislike.
+
+### Table Relationships and Access Patterns
+
+The ScyllaDB schema is optimized for the following common access patterns:
+
+1. **Video-Comment Relationship:**
+   - One video can have many comments
+   - The `comments_by_video` table facilitates efficient retrieval of comments for a specific video
+   - Pagination and time-based sorting are handled through the clustering order
+
+2. **Comment Threading:**
+   - Comments can have parent-child relationships (nested comments)
+   - Parent comments are stored in the main `comments` table
+   - Child comments (replies) are indexed in the `replies` table for efficient retrieval
+   - This design enables fast loading of comment threads
+
+3. **User Engagement:**
+   - Users can react to comments with likes or dislikes
+   - The `reactions` table tracks individual user reactions
+   - The primary key structure prevents duplicate reactions from the same user
+   - Comment like/dislike counts are maintained in the `comments` table
+
+4. **Performance Optimizations:**
+   - Denormalized tables (`comments_by_video`, `replies`) enable high-performance reads
+   - Composite primary keys with clustering orders support efficient filtering and pagination
+   - The schema is optimized for read-heavy workloads, common in comment systems
 
 ### Enum Types
 
@@ -110,8 +154,8 @@ To ensure type safety and consistency, the following enum types will be used:
 
 ### Integration Points
 
-1. **Video Service**: The Comments service will interact with the Video service to verify video existence.
-2. **Auth Service**: The Comments service will use the Auth service to verify user authentication and authorization.
+1. **Video Service**: The Comment service will interact with the Video service to verify video existence.
+2. **Auth Service**: The Comment service will use the Auth service to verify user authentication and authorization.
 3. **ScyllaDB**: A new database service will be created to interact with ScyllaDB.
 4. **Redis**: Used for caching frequent queries and handling real-time reaction counts.
 5. **Pulsar**: Used for asynchronous processing of reaction events.
@@ -292,111 +336,20 @@ POST /comment/:id/reaction
 }
 ```
 
-### 7. Get Users Who Reacted to a Comment
+### 7. Remove a Reaction from a Comment
 
 ```
-GET /comment/:id/reactions?page=1&limit=20&type=LIKE
+DELETE /comment/:id/reaction
 ```
-
-**Query Parameters:**
-- `page`: Page number (default: 1)
-- `limit`: Number of users per page (default: 20)
-- `type`: Reaction type to filter by (options: "LIKE", "DISLIKE", default: all)
 
 **Response:**
 ```json
 {
   "status": "success",
   "data": {
-    "users": [
-      {
-        "id": "user-uuid",
-        "name": "User Display Name",
-        "reaction_type": "LIKE",
-        "created_at": "timestamp"
-      }
-    ],
-    "total": 45,
-    "page": 1,
-    "limit": 20
+    "id": "comment-id",
+    "likes": 10,
+    "dislikes": 2
   }
 }
-```
-
-## Implementation Plan
-
-### Phase 1: ScyllaDB Integration
-
-1. Create a new ScyllaDB service in `internal/database/scylladb/`
-2. Add ScyllaDB configuration to the application config
-3. Implement connection and basic CRUD operations for ScyllaDB
-
-### Phase 2: Redis Integration for Reaction Caching
-
-1. Extend the Redis cache service with reaction-specific methods
-2. Implement TTL-based caching for reaction data
-3. Create background jobs for syncing Redis with ScyllaDB
-
-### Phase 3: Pulsar Integration for Async Processing
-
-1. Set up Pulsar topics for comment events
-2. Implement Pulsar producer for reaction events
-3. Create Pulsar consumers for batch processing
-
-### Phase 4: Comments Package
-
-1. Create a new comments package in `internal/comments/`
-2. Implement the comments service with the following components:
-   - `interface.go`: Define interfaces for the comments service
-   - `model.go`: Define the comment model with proper enum types
-   - `service.go`: Implement the business logic for comments
-   - `handler.go`: Implement the HTTP handlers for comments
-   - `types.go`: Define types for comments including enum types
-
-### Phase 5: API Integration
-
-1. Add comment routes to the application
-2. Update the video service to include comment counts
-3. Implement authentication and authorization for comment operations
-
-### Phase 6: Testing
-
-1. Write unit tests for the comments service
-2. Write integration tests for the comments API
-3. Perform load testing to ensure the system can handle high volumes of reactions
-
-## Performance Optimizations
-
-1. **Read Path Optimization:**
-   - Cache hot comments' reaction data in Redis
-   - Use materialized views for common query patterns
-   - Implement pagination for all list endpoints
-
-2. **Write Path Optimization:**
-   - Use ScyllaDB's lightweight transactions for atomic operations
-   - Batch write reactions for efficiency
-   - Use Redis as a write-through cache for immediate user feedback
-
-3. **Query Optimization:**
-   - Partition keys designed for efficient comment retrieval by video
-   - Clustering keys optimized for time-based sorting
-   - Secondary indexes for user-based queries
-
-## Security Considerations
-
-1. **Authentication**: All comment operations except reading will require authentication
-2. **Authorization**: Users can only edit or delete their own comments
-3. **Rate Limiting**: Implement rate limiting to prevent spam
-4. **Content Validation**: Validate comment content to prevent malicious input
-5. **Data Privacy**: Ensure user data is properly protected in ScyllaDB
-
-## Frontend Considerations
-
-1. **Comment UI**: Design a clean, intuitive interface for displaying and interacting with comments
-2. **Real-time Updates**: Consider implementing WebSockets for real-time comment updates
-3. **Pagination**: Implement infinite scrolling or pagination for comments
-4. **Markdown Support**: Consider supporting basic markdown in comments
-5. **Responsive Design**: Ensure the comment UI works well on all device sizes
-6. **Optimistic Updates**: Update UI immediately before server confirmation for reactions
-
---- 
+``` 

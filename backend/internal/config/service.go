@@ -95,6 +95,9 @@ func (s *ConfigService) Load(path string) (*Config, error) {
 	// Bind Redis credentials
 	viper.BindEnv("redis.password", "REDIS_PASSWORD")
 
+	// Bind ScyllaDB password only
+	viper.BindEnv("scylladb.password", "SCYLLA_PASSWORD")
+
 	// Bind JWT configuration
 	viper.BindEnv("auth.jwt.secret", "JWT_SECRET")
 

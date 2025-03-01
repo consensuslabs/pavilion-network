@@ -184,3 +184,8 @@ func (s *DatabaseService) Close() error {
 	}
 	return nil
 }
+
+// GetMigrationConfig returns the migration configuration
+func (s *DatabaseService) GetMigrationConfig() *MigrationConfig {
+	return s.migrationConfig
+}

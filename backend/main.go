@@ -40,6 +40,9 @@ import (
 // @tag.name video
 // @tag.description Video management endpoints
 
+// @tag.name comments
+// @tag.description Comment management endpoints
+
 // @tag.name health
 // @tag.description Health check endpoints
 

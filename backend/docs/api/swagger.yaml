@@ -112,6 +112,86 @@ definitions:
         example: johndoe
         type: string
     type: object
+  comment.Comment:
+    description: A comment on a video with metadata and reaction counts
+    properties:
+      content:
+        example: This is a great video!
+        type: string
+      created_at:
+        example: "2023-01-01T12:00:00Z"
+        type: string
+      deleted_at:
+        example: "2023-01-02T12:00:00Z"
+        type: string
+      dislikes:
+        example: 1
+        type: integer
+      id:
+        example: 123e4567-e89b-12d3-a456-426614174000
+        format: uuid
+        type: string
+      likes:
+        example: 5
+        type: integer
+      parent_id:
+        example: 123e4567-e89b-12d3-a456-426614174003
+        format: uuid
+        type: string
+      status:
+        allOf:
+        - $ref: '#/definitions/comment.Status'
+        enum:
+        - ACTIVE
+        - FLAGGED
+        - HIDDEN
+        example: ACTIVE
+      updated_at:
+        example: "2023-01-01T12:00:00Z"
+        type: string
+      user_id:
+        example: 123e4567-e89b-12d3-a456-426614174002
+        format: uuid
+        type: string
+      video_id:
+        example: 123e4567-e89b-12d3-a456-426614174001
+        format: uuid
+        type: string
+    type: object
+  comment.PaginatedComments:
+    description: A paginated list of comments with metadata about the pagination
+    properties:
+      comments:
+        items:
+          $ref: '#/definitions/comment.Comment'
+        type: array
+      current_page:
+        example: 1
+        type: integer
+      has_next_page:
+        example: true
+        type: boolean
+      has_prev_page:
+        example: false
+        type: boolean
+      total_count:
+        example: 42
+        type: integer
+      total_pages:
+        example: 3
+        type: integer
+    type: object
+  comment.Status:
+    description: Status of a comment (ACTIVE, FLAGGED, or HIDDEN)
+    enum:
+    - ACTIVE
+    - FLAGGED
+    - HIDDEN
+    type: string
+    x-enum-varnames:
+    - StatusActive
+    - StatusFlagged
+    - StatusHidden
   http.APIError:
     description: Error response structure
     properties:
@@ -144,6 +224,25 @@ definitions:
       success:
         description: Indicates if the request was successful
         example: true
+        type: boolean
+    type: object
+  http.Error:
+    properties:
+      code:
+        type: string
+      field:
+        type: string
+      message:
+        type: string
+    type: object
+  http.Response:
+    properties:
+      data: {}
+      error:
+        $ref: '#/definitions/http.Error'
+      message:
+        type: string
+      success:
         type: boolean
     type: object
   video.APIResponse:
@@ -224,19 +323,6 @@ definitions:
       updated_at:
         type: string
     type: object
-  video.VideoInfo:
-    properties:
-      created_at:
-        type: string
-      description:
-        type: string
-      id:
-        type: string
-      status:
-        type: string
-      title:
-        type: string
-    type: object
   video.VideoListResponse:
     properties:
       limit:
@@ -247,7 +333,7 @@ definitions:
         type: integer
       videos:
         items:
-          $ref: '#/definitions/video.VideoInfo'
+          $ref: '#/definitions/video.VideoDetailsResponse'
         type: array
     type: object
   video.VideoUpdateRequest:
@@ -440,9 +526,339 @@ paths:
       summary: Register new user
       tags:
       - auth
+  /comment/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Soft-deletes a comment (marks it as hidden)
+      parameters:
+      - description: Comment ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: JWT Bearer token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Comment deleted successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.Response'
+            - properties:
+                message:
+                  type: string
+              type: object
+        "400":
+          description: Invalid comment ID format
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.Response'
+            - properties:
+                error:
+                  $ref: '#/definitions/http.Error'
+              type: object
+        "401":
+          description: Unauthorized - user not authenticated
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.Response'
+            - properties:
+                error:
+                  $ref: '#/definitions/http.Error'
+              type: object
+        "404":
+          description: Comment not found
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.Response'
+            - properties:
+                error:
+                  $ref: '#/definitions/http.Error'
+              type: object
+        "500":
+          description: Internal server error
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.Response'
+            - properties:
+                error:
+                  $ref: '#/definitions/http.Error'
+              type: object
+      summary: Delete a comment
+      tags:
+      - comments
+    put:
+      consumes:
+      - application/json
+      description: Updates the content of an existing comment
+      parameters:
+      - description: Comment ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: JWT Bearer token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Updated comment data
+        in: body
+        name: comment
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Comment updated successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.Response'
+            - properties:
+                message:
+                  type: string
+              type: object
+        "400":
+          description: Invalid comment ID format or invalid comment data
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.Response'
+            - properties:
+                error:
+                  $ref: '#/definitions/http.Error'
+              type: object
+        "401":
+          description: Unauthorized - user not authenticated
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.Response'
+            - properties:
+                error:
+                  $ref: '#/definitions/http.Error'
+              type: object
+        "404":
+          description: Comment not found
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.Response'
+            - properties:
+                error:
+                  $ref: '#/definitions/http.Error'
+              type: object
+        "500":
+          description: Internal server error
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.Response'
+            - properties:
+                error:
+                  $ref: '#/definitions/http.Error'
+              type: object
+      summary: Update a comment
+      tags:
+      - comments
+  /comment/{id}/reaction:
+    delete:
+      consumes:
+      - application/json
+      description: Removes a user's reaction from a comment
+      parameters:
+      - description: Comment ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: JWT Bearer token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Reaction removed successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.Response'
+            - properties:
+                message:
+                  type: string
+              type: object
+        "400":
+          description: Invalid comment ID format
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.Response'
+            - properties:
+                error:
+                  $ref: '#/definitions/http.Error'
+              type: object
+        "401":
+          description: Unauthorized - user not authenticated
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.Response'
+            - properties:
+                error:
+                  $ref: '#/definitions/http.Error'
+              type: object
+        "404":
+          description: Comment not found
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.Response'
+            - properties:
+                error:
+                  $ref: '#/definitions/http.Error'
+              type: object
+        "500":
+          description: Internal server error
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.Response'
+            - properties:
+                error:
+                  $ref: '#/definitions/http.Error'
+              type: object
+      summary: Remove a reaction from a comment
+      tags:
+      - comments
+    post:
+      consumes:
+      - application/json
+      description: Adds or updates a user's reaction (like/dislike) to a comment
+      parameters:
+      - description: Comment ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: JWT Bearer token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Reaction data
+        in: body
+        name: reaction
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Reaction added successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.Response'
+            - properties:
+                message:
+                  type: string
+              type: object
+        "400":
+          description: Invalid comment ID format or invalid reaction type
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.Response'
+            - properties:
+                error:
+                  $ref: '#/definitions/http.Error'
+              type: object
+        "401":
+          description: Unauthorized - user not authenticated
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.Response'
+            - properties:
+                error:
+                  $ref: '#/definitions/http.Error'
+              type: object
+        "404":
+          description: Comment not found
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.Response'
+            - properties:
+                error:
+                  $ref: '#/definitions/http.Error'
+              type: object
+        "500":
+          description: Internal server error
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.Response'
+            - properties:
+                error:
+                  $ref: '#/definitions/http.Error'
+              type: object
+      summary: Add a reaction to a comment
+      tags:
+      - comments
+  /comment/{id}/replies:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves a paginated list of replies for a specific comment
+      parameters:
+      - description: Comment ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: 'Page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Number of replies per page (default: 20, max: 100)'
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Replies retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/comment.PaginatedComments'
+              type: object
+        "400":
+          description: Invalid comment ID format
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.Response'
+            - properties:
+                error:
+                  $ref: '#/definitions/http.Error'
+              type: object
+        "500":
+          description: Internal server error
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.Response'
+            - properties:
+                error:
+                  $ref: '#/definitions/http.Error'
+              type: object
+      summary: Get replies to a comment
+      tags:
+      - comments
   /video/{id}:
     delete:
-      description: Delete a video and its associated data
+      description: Soft delete a video (marks as deleted but preserves the record)
       parameters:
       - description: Video ID (UUID)
         in: path
@@ -502,7 +918,7 @@ paths:
           schema:
             $ref: '#/definitions/video.APIResponse'
         "404":
-          description: Video not found
+          description: Video not found or has been deleted
           schema:
             $ref: '#/definitions/video.APIResponse'
         "500":
@@ -540,7 +956,7 @@ paths:
             - $ref: '#/definitions/video.APIResponse'
             - properties:
                 data:
-                  $ref: '#/definitions/video.VideoInfo'
+                  $ref: '#/definitions/video.VideoDetailsResponse'
               type: object
         "400":
           description: Invalid request format or validation error
@@ -551,7 +967,7 @@ paths:
           schema:
             $ref: '#/definitions/video.APIResponse'
         "404":
-          description: Video not found
+          description: Video not found or has been deleted
           schema:
             $ref: '#/definitions/video.APIResponse'
         "500":
@@ -563,6 +979,126 @@ paths:
       summary: Update video details
       tags:
       - video
+  /video/{id}/comment:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new comment or reply on a video
+      parameters:
+      - description: Video ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: JWT Bearer token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Comment data
+        in: body
+        name: comment
+        required: true
+        schema:
+          type: object
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Comment created successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/comment.Comment'
+              type: object
+        "400":
+          description: Invalid video ID format or invalid comment data
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.Response'
+            - properties:
+                error:
+                  $ref: '#/definitions/http.Error'
+              type: object
+        "401":
+          description: Unauthorized - user not authenticated
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.Response'
+            - properties:
+                error:
+                  $ref: '#/definitions/http.Error'
+              type: object
+        "500":
+          description: Internal server error
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.Response'
+            - properties:
+                error:
+                  $ref: '#/definitions/http.Error'
+              type: object
+      summary: Create a comment
+      tags:
+      - comments
+  /video/{id}/comments:
+    get:
+      consumes:
+      - application/json
+      description: Retrieves a paginated list of comments for a specific video
+      parameters:
+      - description: Video ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: 'Page number (default: 1)'
+        in: query
+        name: page
+        type: integer
+      - description: 'Number of comments per page (default: 20, max: 100)'
+        in: query
+        name: limit
+        type: integer
+      - description: 'Sort order (options: newest, oldest, most_liked; default: newest)'
+        in: query
+        name: sort
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Comments retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/comment.PaginatedComments'
+              type: object
+        "400":
+          description: Invalid video ID format
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.Response'
+            - properties:
+                error:
+                  $ref: '#/definitions/http.Error'
+              type: object
+        "500":
+          description: Internal server error
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.Response'
+            - properties:
+                error:
+                  $ref: '#/definitions/http.Error'
+              type: object
+      summary: Get comments for a video
+      tags:
+      - comments
   /video/{id}/status:
     get:
       description: Retrieve the current upload status of a specific video
@@ -591,7 +1127,7 @@ paths:
           schema:
             $ref: '#/definitions/video.APIResponse'
         "404":
-          description: Video not found
+          description: Video not found or has been deleted
           schema:
             $ref: '#/definitions/video.APIResponse'
         "500":
@@ -657,7 +1193,8 @@ paths:
       - video
   /videos:
     get:
-      description: Retrieve a paginated list of videos
+      description: Retrieve a paginated list of videos with detailed information including
+        transcodes
       parameters:
       - description: 'Number of videos to return (default: 10, max: 50)'
         in: query
@@ -671,7 +1208,7 @@ paths:
       - application/json
       responses:
         "200":
-          description: Videos retrieved successfully
+          description: Videos retrieved successfully with detailed information
           schema:
             allOf:
             - $ref: '#/definitions/video.APIResponse'
@@ -710,5 +1247,7 @@ tags:
   name: auth
 - description: Video management endpoints
   name: video
+- description: Comment management endpoints
+  name: comments
 - description: Health check endpoints
   name: health

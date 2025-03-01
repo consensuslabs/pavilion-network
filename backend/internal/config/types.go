@@ -112,16 +112,16 @@ type LoggingConfig struct {
 
 // ScyllaDBConfig represents ScyllaDB configuration settings
 type ScyllaDBConfig struct {
-	Hosts       []string `mapstructure:"hosts"`
-	Port        int      `mapstructure:"port"`
-	Keyspace    string   `mapstructure:"keyspace"`
-	Username    string   `mapstructure:"username"`
-	Password    string   `mapstructure:"password"`
-	Consistency string   `mapstructure:"consistency"`
+	Hosts       []string `mapstructure:"hosts" yaml:"hosts"`
+	Port        int      `mapstructure:"port" yaml:"port"`
+	Keyspace    string   `mapstructure:"keyspace" yaml:"keyspace"`
+	Username    string   `mapstructure:"username" yaml:"username"`
+	Password    string   `mapstructure:"password" yaml:"password"`
+	Consistency string   `mapstructure:"consistency" yaml:"consistency"`
 	Replication struct {
-		Class             string `mapstructure:"class"`
-		ReplicationFactor int    `mapstructure:"replicationFactor"`
-	} `mapstructure:"replication"`
-	Timeout        time.Duration `mapstructure:"timeout"`
-	ConnectTimeout time.Duration `mapstructure:"connectTimeout"`
+		Class             string `mapstructure:"class" yaml:"class"`
+		ReplicationFactor int    `mapstructure:"replicationFactor" yaml:"replicationFactor"`
+	} `mapstructure:"replication" yaml:"replication"`
+	Timeout        time.Duration `mapstructure:"timeout" yaml:"timeout"`
+	ConnectTimeout time.Duration `mapstructure:"connectTimeout" yaml:"connectTimeout"`
 }
