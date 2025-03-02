@@ -158,6 +158,17 @@ definitions:
         format: uuid
         type: string
     type: object
+  comment.CreateCommentRequest:
+    properties:
+      content:
+        example: This is a comment
+        type: string
+      parent_id:
+        example: "null"
+        type: string
+    required:
+    - content
+    type: object
   comment.PaginatedComments:
     description: A paginated list of comments with metadata about the pagination
     properties:
@@ -181,6 +192,14 @@ definitions:
         example: 3
         type: integer
     type: object
+  comment.ReactionRequest:
+    properties:
+      type:
+        example: like
+        type: string
+    required:
+    - type
+    type: object
   comment.Status:
     description: Status of a comment (ACTIVE, FLAGGED, or HIDDEN)
     enum:
@@ -192,6 +211,14 @@ definitions:
     - StatusActive
     - StatusFlagged
     - StatusHidden
+  comment.UpdateCommentRequest:
+    properties:
+      content:
+        example: Updated comment content
+        type: string
+    required:
+    - content
+    type: object
   http.APIError:
     description: Error response structure
     properties:
@@ -530,16 +557,11 @@ paths:
     delete:
       consumes:
       - application/json
-      description: Soft-deletes a comment (marks it as hidden)
+      description: Deletes an existing comment
       parameters:
       - description: Comment ID (UUID)
         in: path
         name: id
-        required: true
-        type: string
-      - description: JWT Bearer token
-        in: header
-        name: Authorization
         required: true
         type: string
       produces:
@@ -590,9 +612,11 @@ paths:
                 error:
                   $ref: '#/definitions/http.Error'
               type: object
+      security:
+      - BearerAuth: []
       summary: Delete a comment
       tags:
-      - comments
+      - comment
     put:
       consumes:
       - application/json
@@ -603,17 +627,12 @@ paths:
         name: id
         required: true
         type: string
-      - description: JWT Bearer token
-        in: header
-        name: Authorization
-        required: true
-        type: string
       - description: Updated comment data
         in: body
         name: comment
         required: true
         schema:
-          type: object
+          $ref: '#/definitions/comment.UpdateCommentRequest'
       produces:
       - application/json
       responses:
@@ -662,9 +681,11 @@ paths:
                 error:
                   $ref: '#/definitions/http.Error'
               type: object
+      security:
+      - BearerAuth: []
       summary: Update a comment
       tags:
-      - comments
+      - comment
   /comment/{id}/reaction:
     delete:
       consumes:
@@ -674,11 +695,6 @@ paths:
       - description: Comment ID (UUID)
         in: path
         name: id
-        required: true
-        type: string
-      - description: JWT Bearer token
-        in: header
-        name: Authorization
         required: true
         type: string
       produces:
@@ -712,7 +728,7 @@ paths:
                   $ref: '#/definitions/http.Error'
               type: object
         "404":
-          description: Comment not found
+          description: Comment or reaction not found
           schema:
             allOf:
             - $ref: '#/definitions/http.Response'
@@ -729,22 +745,19 @@ paths:
                 error:
                   $ref: '#/definitions/http.Error'
               type: object
+      security:
+      - BearerAuth: []
       summary: Remove a reaction from a comment
       tags:
-      - comments
+      - comment
     post:
       consumes:
       - application/json
-      description: Adds or updates a user's reaction (like/dislike) to a comment
+      description: Adds a reaction (like/dislike) to a comment
       parameters:
       - description: Comment ID (UUID)
         in: path
         name: id
-        required: true
-        type: string
-      - description: JWT Bearer token
-        in: header
-        name: Authorization
         required: true
         type: string
       - description: Reaction data
@@ -752,7 +765,7 @@ paths:
         name: reaction
         required: true
         schema:
-          type: object
+          $ref: '#/definitions/comment.ReactionRequest'
       produces:
       - application/json
       responses:
@@ -801,9 +814,11 @@ paths:
                 error:
                   $ref: '#/definitions/http.Error'
               type: object
+      security:
+      - BearerAuth: []
       summary: Add a reaction to a comment
       tags:
-      - comments
+      - comment
   /comment/{id}/replies:
     get:
       consumes:
@@ -855,7 +870,7 @@ paths:
               type: object
       summary: Get replies to a comment
       tags:
-      - comments
+      - comment
   /video/{id}:
     delete:
       description: Soft delete a video (marks as deleted but preserves the record)
@@ -983,16 +998,11 @@ paths:
     post:
       consumes:
       - application/json
-      description: Creates a new comment or reply on a video
+      description: Creates a new comment on a video
       parameters:
       - description: Video ID (UUID)
         in: path
         name: id
-        required: true
-        type: string
-      - description: JWT Bearer token
-        in: header
-        name: Authorization
         required: true
         type: string
       - description: Comment data
@@ -1000,7 +1010,7 @@ paths:
         name: comment
         required: true
         schema:
-          type: object
+          $ref: '#/definitions/comment.CreateCommentRequest'
       produces:
       - application/json
       responses:
@@ -1040,9 +1050,11 @@ paths:
                 error:
                   $ref: '#/definitions/http.Error'
               type: object
-      summary: Create a comment
+      security:
+      - BearerAuth: []
+      summary: Create a new comment
       tags:
-      - comments
+      - comment
   /video/{id}/comments:
     get:
       consumes:
@@ -1098,7 +1110,7 @@ paths:
               type: object
       summary: Get comments for a video
       tags:
-      - comments
+      - comment
   /video/{id}/status:
     get:
       description: Retrieve the current upload status of a specific video
@@ -1248,6 +1260,6 @@ tags:
 - description: Video management endpoints
   name: video
 - description: Comment management endpoints
-  name: comments
+  name: comment
 - description: Health check endpoints
   name: health

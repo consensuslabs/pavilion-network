@@ -237,6 +237,14 @@ func (r *CommentRepository) Create(ctx context.Context, c *comment.Comment) erro
 		c.Status = comment.StatusActive
 	}
 
+	// Log what we're about to do
+	r.logger.LogInfo("Creating comment in ScyllaDB", map[string]interface{}{
+		"commentID":   c.ID.String(),
+		"videoID":     c.VideoID.String(),
+		"userID":      c.UserID.String(),
+		"hasParentID": c.ParentID != nil,
+	})
+
 	// Create batch to insert comment and update indexes
 	batch := r.session.NewBatch(gocql.LoggedBatch)
 
@@ -273,10 +281,16 @@ func (r *CommentRepository) Create(ctx context.Context, c *comment.Comment) erro
 	if err := r.session.ExecuteBatch(batch); err != nil {
 		r.logger.LogError("Error creating comment", map[string]interface{}{
 			"error":     err.Error(),
-			"commentID": c.ID,
+			"commentID": c.ID.String(),
+			"videoID":   c.VideoID.String(),
+			"errorType": fmt.Sprintf("%T", err),
 		})
-		return err
+		return fmt.Errorf("failed to execute batch: %w", err)
 	}
+
+	r.logger.LogInfo("Comment created successfully", map[string]interface{}{
+		"commentID": c.ID.String(),
+	})
 
 	return nil
 }

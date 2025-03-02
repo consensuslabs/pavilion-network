@@ -329,6 +329,11 @@ const docTemplate = `{
         },
         "/comment/{id}": {
             "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Updates the content of an existing comment",
                 "consumes": [
                     "application/json"
@@ -337,7 +342,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "comments"
+                    "comment"
                 ],
                 "summary": "Update a comment",
                 "parameters": [
@@ -349,19 +354,12 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "type": "string",
-                        "description": "JWT Bearer token",
-                        "name": "Authorization",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "description": "Updated comment data",
                         "name": "comment",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "type": "object"
+                            "$ref": "#/definitions/comment.UpdateCommentRequest"
                         }
                     }
                 ],
@@ -459,7 +457,12 @@ const docTemplate = `{
                 }
             },
             "delete": {
-                "description": "Soft-deletes a comment (marks it as hidden)",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Deletes an existing comment",
                 "consumes": [
                     "application/json"
                 ],
@@ -467,7 +470,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "comments"
+                    "comment"
                 ],
                 "summary": "Delete a comment",
                 "parameters": [
@@ -476,13 +479,6 @@ const docTemplate = `{
                         "description": "Comment ID (UUID)",
                         "name": "id",
                         "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "JWT Bearer token",
-                        "name": "Authorization",
-                        "in": "header",
                         "required": true
                     }
                 ],
@@ -582,7 +578,12 @@ const docTemplate = `{
         },
         "/comment/{id}/reaction": {
             "post": {
-                "description": "Adds or updates a user's reaction (like/dislike) to a comment",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Adds a reaction (like/dislike) to a comment",
                 "consumes": [
                     "application/json"
                 ],
@@ -590,7 +591,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "comments"
+                    "comment"
                 ],
                 "summary": "Add a reaction to a comment",
                 "parameters": [
@@ -602,19 +603,12 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "type": "string",
-                        "description": "JWT Bearer token",
-                        "name": "Authorization",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "description": "Reaction data",
                         "name": "reaction",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "type": "object"
+                            "$ref": "#/definitions/comment.ReactionRequest"
                         }
                     }
                 ],
@@ -712,6 +706,11 @@ const docTemplate = `{
                 }
             },
             "delete": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Removes a user's reaction from a comment",
                 "consumes": [
                     "application/json"
@@ -720,7 +719,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "comments"
+                    "comment"
                 ],
                 "summary": "Remove a reaction from a comment",
                 "parameters": [
@@ -729,13 +728,6 @@ const docTemplate = `{
                         "description": "Comment ID (UUID)",
                         "name": "id",
                         "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "JWT Bearer token",
-                        "name": "Authorization",
-                        "in": "header",
                         "required": true
                     }
                 ],
@@ -795,7 +787,7 @@ const docTemplate = `{
                         }
                     },
                     "404": {
-                        "description": "Comment not found",
+                        "description": "Comment or reaction not found",
                         "schema": {
                             "allOf": [
                                 {
@@ -843,7 +835,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "comments"
+                    "comment"
                 ],
                 "summary": "Get replies to a comment",
                 "parameters": [
@@ -1210,7 +1202,12 @@ const docTemplate = `{
         },
         "/video/{id}/comment": {
             "post": {
-                "description": "Creates a new comment or reply on a video",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Creates a new comment on a video",
                 "consumes": [
                     "application/json"
                 ],
@@ -1218,9 +1215,9 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "comments"
+                    "comment"
                 ],
-                "summary": "Create a comment",
+                "summary": "Create a new comment",
                 "parameters": [
                     {
                         "type": "string",
@@ -1230,19 +1227,12 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "type": "string",
-                        "description": "JWT Bearer token",
-                        "name": "Authorization",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "description": "Comment data",
                         "name": "comment",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "type": "object"
+                            "$ref": "#/definitions/comment.CreateCommentRequest"
                         }
                     }
                 ],
@@ -1332,7 +1322,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "comments"
+                    "comment"
                 ],
                 "summary": "Get comments for a video",
                 "parameters": [
@@ -1770,6 +1760,22 @@ const docTemplate = `{
                 }
             }
         },
+        "comment.CreateCommentRequest": {
+            "type": "object",
+            "required": [
+                "content"
+            ],
+            "properties": {
+                "content": {
+                    "type": "string",
+                    "example": "This is a comment"
+                },
+                "parent_id": {
+                    "type": "string",
+                    "example": "null"
+                }
+            }
+        },
         "comment.PaginatedComments": {
             "description": "A paginated list of comments with metadata about the pagination",
             "type": "object",
@@ -1802,6 +1808,18 @@ const docTemplate = `{
                 }
             }
         },
+        "comment.ReactionRequest": {
+            "type": "object",
+            "required": [
+                "type"
+            ],
+            "properties": {
+                "type": {
+                    "type": "string",
+                    "example": "like"
+                }
+            }
+        },
         "comment.Status": {
             "description": "Status of a comment (ACTIVE, FLAGGED, or HIDDEN)",
             "type": "string",
@@ -1815,6 +1833,18 @@ const docTemplate = `{
                 "StatusFlagged",
                 "StatusHidden"
             ]
+        },
+        "comment.UpdateCommentRequest": {
+            "type": "object",
+            "required": [
+                "content"
+            ],
+            "properties": {
+                "content": {
+                    "type": "string",
+                    "example": "Updated comment content"
+                }
+            }
         },
         "http.APIError": {
             "description": "Error response structure",
@@ -2066,7 +2096,7 @@ const docTemplate = `{
         },
         {
             "description": "Comment management endpoints",
-            "name": "comments"
+            "name": "comment"
         },
         {
             "description": "Health check endpoints",

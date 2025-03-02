@@ -309,7 +309,7 @@ func NewApp(ctx context.Context, cfg *config.Config) (*App, error) {
 	commentService := comment.NewService(commentRepo)
 
 	// Initialize comment handler
-	app.commentHandler = comment.NewHandler(commentService, responseHandler)
+	app.commentHandler = comment.NewHandler(commentService, responseHandler, loggerAdapter)
 
 	loggerService.LogInfo("ScyllaDB and comment service initialized successfully", nil)
 

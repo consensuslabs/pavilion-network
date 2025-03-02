@@ -3,6 +3,7 @@ package comment
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -75,20 +76,26 @@ func (s *serviceImpl) GetRepliesByCommentID(ctx context.Context, options Comment
 
 // CreateComment creates a new comment
 func (s *serviceImpl) CreateComment(ctx context.Context, comment *Comment) error {
+	fmt.Printf("DEBUG SERVICE: Starting CreateComment for videoID %s\n", comment.VideoID.String())
+
 	// Validate comment
 	if comment.VideoID == uuid.Nil {
+		fmt.Printf("DEBUG SERVICE: Invalid videoID - nil UUID\n")
 		return errors.New("video ID is required")
 	}
 	if comment.UserID == uuid.Nil {
+		fmt.Printf("DEBUG SERVICE: Invalid userID - nil UUID\n")
 		return errors.New("user ID is required")
 	}
 	if comment.Content == "" {
+		fmt.Printf("DEBUG SERVICE: Empty content\n")
 		return errors.New("content is required")
 	}
 
 	// Set default values
 	if comment.ID == uuid.Nil {
 		comment.ID = uuid.New()
+		fmt.Printf("DEBUG SERVICE: Generated new comment ID: %s\n", comment.ID.String())
 	}
 	now := time.Now().UTC()
 	if comment.CreatedAt.IsZero() {
@@ -103,21 +110,34 @@ func (s *serviceImpl) CreateComment(ctx context.Context, comment *Comment) error
 
 	// If this is a reply, validate parent comment exists
 	if comment.ParentID != nil {
+		fmt.Printf("DEBUG SERVICE: This is a reply to comment %s\n", comment.ParentID.String())
 		parent, err := s.repo.GetByID(ctx, *comment.ParentID)
 		if err != nil {
-			return err
+			fmt.Printf("DEBUG SERVICE: Error validating parent comment: %v\n", err)
+			return fmt.Errorf("error validating parent comment: %w", err)
 		}
 		if parent == nil {
+			fmt.Printf("DEBUG SERVICE: Parent comment not found\n")
 			return ErrCommentNotFound
 		}
 
 		// Ensure parent is not itself a reply
 		if parent.ParentID != nil {
+			fmt.Printf("DEBUG SERVICE: Cannot reply to a reply\n")
 			return errors.New("cannot reply to a reply")
 		}
 	}
 
-	return s.repo.Create(ctx, comment)
+	fmt.Printf("DEBUG SERVICE: Calling repository.Create\n")
+	// Save the comment to the repository
+	err := s.repo.Create(ctx, comment)
+	if err != nil {
+		fmt.Printf("DEBUG SERVICE: Repository error: %v\n", err)
+		return fmt.Errorf("error creating comment in repository: %w", err)
+	}
+
+	fmt.Printf("DEBUG SERVICE: Comment created successfully\n")
+	return nil
 }
 
 // UpdateComment updates a comment's content
