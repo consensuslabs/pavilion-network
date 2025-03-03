@@ -40,11 +40,12 @@ func NewVideoHandler(app *App) *VideoHandler {
 func (h *VideoHandler) HandleUpload(c *gin.Context) {
 	requestID := c.GetString("request_id")
 
-	// Check authentication
-	if !isAuthenticated(c) {
-		h.app.ResponseHandler.ErrorResponse(c, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required", nil)
-		return
-	}
+	// Authentication is already handled by middleware
+	// The following authentication check is removed as it's redundant and insecure
+	// if !isAuthenticated(c) {
+	//	h.app.ResponseHandler.ErrorResponse(c, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required", nil)
+	//	return
+	// }
 
 	file, fileHeader, err := c.Request.FormFile("video")
 	if err != nil {
@@ -161,13 +162,6 @@ func (h *VideoHandler) HandleUpload(c *gin.Context) {
 	h.app.ResponseHandler.SuccessResponse(c, response, "Upload completed successfully")
 }
 
-// Helper function to check authentication
-func isAuthenticated(c *gin.Context) bool {
-	// Get the Authorization header
-	authHeader := c.GetHeader("Authorization")
-	return authHeader != "" && strings.HasPrefix(authHeader, "Bearer ")
-}
-
 // validateVideoUpload validates the video upload request
 func (h *VideoHandler) validateVideoUpload(fileHeader *multipart.FileHeader, title, description string) error {
 	if fileHeader == nil {
@@ -219,11 +213,12 @@ func (h *VideoHandler) GetVideo(c *gin.Context) {
 	requestID := c.GetString("request_id")
 	videoID := c.Param("id")
 
-	// Check authentication
-	if !isAuthenticated(c) {
-		h.app.ResponseHandler.ErrorResponse(c, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required", nil)
-		return
-	}
+	// Authentication is already handled by middleware
+	// The following authentication check is removed as it's redundant and insecure
+	// if !isAuthenticated(c) {
+	//	h.app.ResponseHandler.ErrorResponse(c, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required", nil)
+	//	return
+	// }
 
 	// Parse UUID from string
 	uuid, err := parseUUID(videoID)
@@ -301,11 +296,12 @@ func parseUUID(id string) (uuid.UUID, error) {
 func (h *VideoHandler) ListVideos(c *gin.Context) {
 	requestID := c.GetString("request_id")
 
-	// Check authentication
-	if !isAuthenticated(c) {
-		h.app.ResponseHandler.ErrorResponse(c, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required", nil)
-		return
-	}
+	// Authentication is already handled by middleware
+	// The following authentication check is removed as it's redundant and insecure
+	// if !isAuthenticated(c) {
+	//	h.app.ResponseHandler.ErrorResponse(c, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required", nil)
+	//	return
+	// }
 
 	// Parse pagination parameters
 	limit := 10 // Default limit
@@ -391,11 +387,12 @@ func (h *VideoHandler) GetVideoStatus(c *gin.Context) {
 	requestID := c.GetString("request_id")
 	videoID := c.Param("id")
 
-	// Check authentication
-	if !isAuthenticated(c) {
-		h.app.ResponseHandler.ErrorResponse(c, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required", nil)
-		return
-	}
+	// Authentication is already handled by middleware
+	// The following authentication check is removed as it's redundant and insecure
+	// if !isAuthenticated(c) {
+	//	h.app.ResponseHandler.ErrorResponse(c, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required", nil)
+	//	return
+	// }
 
 	// Parse UUID from string
 	uuid, err := parseUUID(videoID)
@@ -475,11 +472,12 @@ func (h *VideoHandler) UpdateVideo(c *gin.Context) {
 	requestID := c.GetString("request_id")
 	videoID := c.Param("id")
 
-	// Check authentication
-	if !isAuthenticated(c) {
-		h.app.ResponseHandler.ErrorResponse(c, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required", nil)
-		return
-	}
+	// Authentication is already handled by middleware
+	// The following authentication check is removed as it's redundant and insecure
+	// if !isAuthenticated(c) {
+	//	h.app.ResponseHandler.ErrorResponse(c, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required", nil)
+	//	return
+	// }
 
 	// Parse UUID from string
 	uuid, err := parseUUID(videoID)
@@ -631,11 +629,12 @@ func (h *VideoHandler) DeleteVideo(c *gin.Context) {
 	requestID := c.GetString("request_id")
 	videoID := c.Param("id")
 
-	// Check authentication
-	if !isAuthenticated(c) {
-		h.app.ResponseHandler.ErrorResponse(c, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required", nil)
-		return
-	}
+	// Authentication is already handled by middleware
+	// The following authentication check is removed as it's redundant and insecure
+	// if !isAuthenticated(c) {
+	//	h.app.ResponseHandler.ErrorResponse(c, http.StatusUnauthorized, "UNAUTHORIZED", "Authentication required", nil)
+	//	return
+	// }
 
 	// Parse UUID from string
 	uuid, err := parseUUID(videoID)

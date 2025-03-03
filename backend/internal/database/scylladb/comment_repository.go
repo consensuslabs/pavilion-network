@@ -29,6 +29,9 @@ func NewCommentRepository(session *gocql.Session, logger video.Logger) comment.R
 
 // GetByID retrieves a comment by its ID
 func (r *CommentRepository) GetByID(ctx context.Context, id uuid.UUID) (*comment.Comment, error) {
+	// Convert UUID to binary for ScyllaDB
+	idBytes, _ := id.MarshalBinary()
+
 	query := `
 		SELECT id, video_id, user_id, content, created_at, updated_at, 
 			   deleted_at, parent_id, likes, dislikes, status
@@ -38,12 +41,13 @@ func (r *CommentRepository) GetByID(ctx context.Context, id uuid.UUID) (*comment
 
 	var c comment.Comment
 	var status string
-	var parentID *uuid.UUID
+	var parentIDBytes []byte
+	parentIDBytes = nil // Initialize as nil to properly handle NULL values
 
-	err := r.session.Query(query, id).WithContext(ctx).Scan(
+	err := r.session.Query(query, idBytes).WithContext(ctx).Scan(
 		&c.ID, &c.VideoID, &c.UserID, &c.Content,
 		&c.CreatedAt, &c.UpdatedAt, &c.DeletedAt,
-		&parentID, &c.Likes, &c.Dislikes, &status,
+		&parentIDBytes, &c.Likes, &c.Dislikes, &status,
 	)
 
 	if err != nil {
@@ -57,8 +61,22 @@ func (r *CommentRepository) GetByID(ctx context.Context, id uuid.UUID) (*comment
 		return nil, err
 	}
 
+	// Convert parentIDBytes to UUID pointer if not nil
+	if parentIDBytes != nil {
+		parentID := uuid.UUID{}
+		if err := parentID.UnmarshalBinary(parentIDBytes); err != nil {
+			r.logger.LogError("Error unmarshaling parent ID", map[string]interface{}{
+				"error":     err.Error(),
+				"commentID": id,
+			})
+			return nil, fmt.Errorf("failed to unmarshal parent ID: %w", err)
+		}
+		c.ParentID = &parentID
+	} else {
+		c.ParentID = nil
+	}
+
 	c.Status = comment.Status(status)
-	c.ParentID = parentID
 
 	return &c, nil
 }
@@ -223,9 +241,12 @@ func (r *CommentRepository) GetReplies(ctx context.Context, options comment.Comm
 
 // Create creates a new comment
 func (r *CommentRepository) Create(ctx context.Context, c *comment.Comment) error {
+	fmt.Printf("DEBUG REPO: Starting Create for comment ID %s, videoID %s\n", c.ID.String(), c.VideoID.String())
+
 	// Set default values if not provided
 	if c.ID == uuid.Nil {
 		c.ID = uuid.New()
+		fmt.Printf("DEBUG REPO: Generated new comment ID: %s\n", c.ID.String())
 	}
 	if c.CreatedAt.IsZero() {
 		c.CreatedAt = time.Now().UTC()
@@ -237,6 +258,37 @@ func (r *CommentRepository) Create(ctx context.Context, c *comment.Comment) erro
 		c.Status = comment.StatusActive
 	}
 
+	// Log what we're about to do
+	r.logger.LogInfo("Creating comment in ScyllaDB", map[string]interface{}{
+		"commentID":   c.ID.String(),
+		"videoID":     c.VideoID.String(),
+		"userID":      c.UserID.String(),
+		"hasParentID": c.ParentID != nil,
+	})
+	fmt.Printf("DEBUG REPO: User ID: %s, Content length: %d\n", c.UserID.String(), len(c.Content))
+	if c.ParentID != nil {
+		fmt.Printf("DEBUG REPO: This is a reply to comment: %s\n", c.ParentID.String())
+	} else {
+		fmt.Printf("DEBUG REPO: This is a top-level comment\n")
+	}
+
+	// Convert UUIDs to byte arrays for ScyllaDB
+	commentIDBytes, _ := c.ID.MarshalBinary()
+	videoIDBytes, _ := c.VideoID.MarshalBinary()
+	userIDBytes, _ := c.UserID.MarshalBinary()
+
+	var parentIDBytes interface{} = nil
+	if c.ParentID != nil {
+		// Only marshal the parent ID if it's not nil
+		bytes, _ := c.ParentID.MarshalBinary()
+		parentIDBytes = bytes
+		fmt.Printf("DEBUG REPO: Marshaled parent ID to bytes\n")
+	} else {
+		fmt.Printf("DEBUG REPO: Parent ID is nil, using nil value directly\n")
+	}
+
+	fmt.Printf("DEBUG REPO: Successfully marshaled UUIDs to binary\n")
+
 	// Create batch to insert comment and update indexes
 	batch := r.session.NewBatch(gocql.LoggedBatch)
 
@@ -247,10 +299,11 @@ func (r *CommentRepository) Create(ctx context.Context, c *comment.Comment) erro
 			deleted_at, parent_id, likes, dislikes, status
 		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 	`
+	fmt.Printf("DEBUG REPO: Comment query: %s\n", commentQuery)
 	batch.Query(commentQuery,
-		c.ID, c.VideoID, c.UserID, c.Content,
+		commentIDBytes, videoIDBytes, userIDBytes, c.Content,
 		c.CreatedAt, c.UpdatedAt, c.DeletedAt,
-		c.ParentID, c.Likes, c.Dislikes, string(c.Status),
+		parentIDBytes, c.Likes, c.Dislikes, string(c.Status),
 	)
 
 	// Update comment_by_video index
@@ -258,7 +311,8 @@ func (r *CommentRepository) Create(ctx context.Context, c *comment.Comment) erro
 		INSERT INTO comments_by_video (video_id, comment_id, created_at)
 		VALUES (?, ?, ?)
 	`
-	batch.Query(videoIndexQuery, c.VideoID, c.ID, c.CreatedAt)
+	fmt.Printf("DEBUG REPO: Video index query: %s\n", videoIndexQuery)
+	batch.Query(videoIndexQuery, videoIDBytes, commentIDBytes, c.CreatedAt)
 
 	// Update replies index if this is a reply
 	if c.ParentID != nil {
@@ -266,17 +320,27 @@ func (r *CommentRepository) Create(ctx context.Context, c *comment.Comment) erro
 			INSERT INTO replies (parent_id, comment_id, created_at)
 			VALUES (?, ?, ?)
 		`
-		batch.Query(replyIndexQuery, c.ParentID, c.ID, c.CreatedAt)
+		fmt.Printf("DEBUG REPO: Reply index query: %s\n", replyIndexQuery)
+		batch.Query(replyIndexQuery, parentIDBytes, commentIDBytes, c.CreatedAt)
 	}
 
+	fmt.Printf("DEBUG REPO: Executing batch with %d statements\n", batch.Size())
 	// Execute batch
 	if err := r.session.ExecuteBatch(batch); err != nil {
 		r.logger.LogError("Error creating comment", map[string]interface{}{
 			"error":     err.Error(),
-			"commentID": c.ID,
+			"commentID": c.ID.String(),
+			"videoID":   c.VideoID.String(),
+			"errorType": fmt.Sprintf("%T", err),
 		})
-		return err
+		fmt.Printf("DEBUG REPO: Batch execution failed: %v (type: %T)\n", err, err)
+		return fmt.Errorf("failed to execute batch: %w", err)
 	}
+
+	r.logger.LogInfo("Comment created successfully", map[string]interface{}{
+		"commentID": c.ID.String(),
+	})
+	fmt.Printf("DEBUG REPO: Comment created successfully\n")
 
 	return nil
 }
