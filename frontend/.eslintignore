@@ -1,0 +1,4 @@
+server/test
+*.spec.ts
+server/migrations
+server/dist
