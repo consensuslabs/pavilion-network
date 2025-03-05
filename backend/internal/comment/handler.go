@@ -131,16 +131,16 @@ func (h *Handler) GetRepliesByCommentID(c *gin.Context) {
 
 // @Summary Create a new comment
 // @Description Creates a new comment for a video
-// @Tags Comment
+// @Tags comment
 // @Accept json
 // @Produce json
 // @Param id path string true "Video ID"
 // @Param Authorization header string true "Bearer token"
 // @Param comment body CreateCommentRequest true "Comment data"
-// @Success 200 {object} response.SuccessResponse{data=Comment} "Comment created successfully"
-// @Failure 400 {object} response.ErrorResponse "Invalid video ID format or invalid comment"
-// @Failure 401 {object} response.ErrorResponse "User not authenticated"
-// @Failure 500 {object} response.ErrorResponse "Failed to create comment"
+// @Success 200 {object} httpHandler.APIResponse{data=Comment} "Comment created successfully"
+// @Failure 400 {object} httpHandler.APIResponse{error=httpHandler.APIError} "Invalid video ID format or invalid comment"
+// @Failure 401 {object} httpHandler.APIResponse{error=httpHandler.APIError} "User not authenticated"
+// @Failure 500 {object} httpHandler.APIResponse{error=httpHandler.APIError} "Failed to create comment"
 // @Router /video/{id}/comment [post]
 func (h *Handler) CreateComment(c *gin.Context) {
 	fmt.Printf("DEBUG HANDLER: Starting CreateComment handler\n")

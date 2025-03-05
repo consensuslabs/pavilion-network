@@ -1,7 +1,7 @@
 services:
 
   cockroachdb-1:
-    image: cockroachdb/cockroach:v22.1.12
+    image: cockroachdb/cockroach:v25.1.0
     command: start-single-node --insecure
     ports:
       - "26257:26257"
@@ -38,12 +38,12 @@ services:
       - redis_data:/data
 
   pulsar:
-    image: apachepulsar/pulsar:2.10.1
+    image: apachepulsar/pulsar:4.0.3
     container_name: pavilion-pulsar
     ports:
       - "6650:6650" # Pulsar protocol port
       - "6651:6651" # Pulsar SSL protocol port
-      - "8080:8080" # Pulsar web UI port
+      - "8083:8080" # Pulsar web UI port
     environment:
       PULSAR_MEM: "-Xms512m -Xmx512m"
     command: >
@@ -59,7 +59,7 @@ services:
       retries: 5
 
   pulsar-init:
-    image: apachepulsar/pulsar:2.10.1
+    image: apachepulsar/pulsar:4.0.3
     container_name: pavilion-pulsar-init
     depends_on:
       pulsar:

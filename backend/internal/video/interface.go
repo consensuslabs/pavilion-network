@@ -36,3 +36,8 @@ type Logger interface {
 	LogInfo(message string, fields map[string]interface{})
 	LogError(message string, fields map[string]interface{})
 }
+
+// NotificationService defines the minimal interface for notification operations from video service
+type NotificationService interface {
+	PublishVideoEvent(ctx interface{}, event interface{}) error
+}

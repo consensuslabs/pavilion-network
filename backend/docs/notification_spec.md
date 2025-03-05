@@ -287,7 +287,7 @@ var (
 version: '3'
 services:
   pulsar:
-    image: apachepulsar/pulsar:2.10.1
+    image: apachepulsar/pulsar:4.0.3
     ports:
       - "6650:6650"
       - "8080:8080"

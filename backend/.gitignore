@@ -13,3 +13,7 @@
 
 # Output of the go coverage tool
 *.out 
+
+# Log files but not the logs directory itself
+logs/*
+!logs/.gitkeep

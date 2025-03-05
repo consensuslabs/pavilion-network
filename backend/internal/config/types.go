@@ -18,6 +18,8 @@ type Config struct {
 	Video       VideoConfig        `yaml:"video"`
 	Auth        AuthConfig         `yaml:"auth"`
 	ScyllaDB    ScyllaDBConfig     `yaml:"scylladb"`
+	Pulsar      PulsarConfig       `yaml:"pulsar"`
+	Notification NotificationConfig `yaml:"notification"`
 }
 
 // AuthConfig represents authentication configuration settings
@@ -124,4 +126,34 @@ type ScyllaDBConfig struct {
 	} `mapstructure:"replication" yaml:"replication"`
 	Timeout        time.Duration `mapstructure:"timeout" yaml:"timeout"`
 	ConnectTimeout time.Duration `mapstructure:"connectTimeout" yaml:"connectTimeout"`
+}
+
+// PulsarConfig represents Apache Pulsar configuration settings
+type PulsarConfig struct {
+	URL              string        `mapstructure:"url" yaml:"url"`
+	TLSEnabled       bool          `mapstructure:"tls_enabled" yaml:"tls_enabled"`
+	TLSCertPath      string        `mapstructure:"tls_cert_path" yaml:"tls_cert_path"`
+	WebServiceURL    string        `mapstructure:"web_service_url" yaml:"web_service_url"`
+	OperationTimeout time.Duration `mapstructure:"operation_timeout" yaml:"operation_timeout"`
+	ConnectionTimeout time.Duration `mapstructure:"connection_timeout" yaml:"connection_timeout"`
+	Namespace        string        `mapstructure:"namespace" yaml:"namespace"`
+	AuthToken        string        `mapstructure:"auth_token" yaml:"auth_token"` // Token for auth, sourced from env var
+}
+
+// NotificationConfig represents notification system configuration settings
+type NotificationConfig struct {
+	Enabled            bool          `mapstructure:"enabled" yaml:"enabled"`
+	VideoEventsTopic   string        `mapstructure:"video_events_topic" yaml:"video_events_topic"`
+	CommentEventsTopic string        `mapstructure:"comment_events_topic" yaml:"comment_events_topic"`
+	UserEventsTopic    string        `mapstructure:"user_events_topic" yaml:"user_events_topic"`
+	DeadLetterTopic    string        `mapstructure:"dead_letter_topic" yaml:"dead_letter_topic"`
+	RetryQueueTopic    string        `mapstructure:"retry_queue_topic" yaml:"retry_queue_topic"`
+	RetentionTimeHours int           `mapstructure:"retention_time_hours" yaml:"retention_time_hours"`
+	DeduplicationEnabled bool        `mapstructure:"deduplication_enabled" yaml:"deduplication_enabled"`
+	DeduplicationWindow time.Duration `mapstructure:"deduplication_window" yaml:"deduplication_window"`
+	RetryEnabled       bool          `mapstructure:"retry_enabled" yaml:"retry_enabled"`
+	MaxRetries         int           `mapstructure:"max_retries" yaml:"max_retries"`
+	BackoffInitial     time.Duration `mapstructure:"backoff_initial" yaml:"backoff_initial"`
+	BackoffMax         time.Duration `mapstructure:"backoff_max" yaml:"backoff_max"`
+	BackoffMultiplier  float64       `mapstructure:"backoff_multiplier" yaml:"backoff_multiplier"`
 }

@@ -13,7 +13,7 @@ The Docker Compose configuration has been updated to include:
 
 The Pulsar setup includes:
 
-- **Version**: Apache Pulsar 2.10.1
+- **Version**: Apache Pulsar 4.0.3
 - **Ports**:
   - `6650`: Pulsar protocol port
   - `6651`: Pulsar SSL protocol port (for future use)

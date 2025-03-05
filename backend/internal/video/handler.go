@@ -158,6 +158,45 @@ func (h *VideoHandler) HandleUpload(c *gin.Context) {
 		"file_path":  upload.Video.StoragePath,
 	})
 
+	// Send notification if notification service is available
+	if h.app.NotificationService != nil {
+		// Get user ID from context
+		userIDStr, exists := c.Get("userID")
+		if exists {
+			userID, err := uuid.Parse(userIDStr.(string))
+			if err == nil {
+				// Create and publish video event
+				videoEvent := &VideoEvent{
+					ID:      uuid.New(),
+					Type:    "VIDEO_UPLOADED",
+					VideoID: video.ID,
+					UserID:  userID,
+					Title:   video.Title,
+					Metadata: map[string]interface{}{
+						"fileSize": video.FileSize,
+						"ipfsCid":  video.IPFSCID,
+					},
+				}
+				
+				// Use context from gin
+				err := h.app.NotificationService.PublishVideoEvent(c.Request.Context(), videoEvent)
+				if err != nil {
+					h.app.Logger.LogError("Failed to publish video upload notification", map[string]interface{}{
+						"request_id": requestID,
+						"video_id":   video.ID.String(),
+						"error":      err.Error(),
+					})
+					// Continue despite notification error
+				} else {
+					h.app.Logger.LogInfo("Video upload notification published", map[string]interface{}{
+						"request_id": requestID,
+						"video_id":   video.ID.String(),
+					})
+				}
+			}
+		}
+	}
+
 	// Directly pass the UploadResponse to SuccessResponse without wrapping it in APIResponse
 	h.app.ResponseHandler.SuccessResponse(c, response, "Upload completed successfully")
 }

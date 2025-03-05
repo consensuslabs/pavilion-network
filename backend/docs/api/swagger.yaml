@@ -158,6 +158,19 @@ definitions:
         format: uuid
         type: string
     type: object
+  comment.CreateCommentRequest:
+    description: Request body for creating a new comment
+    properties:
+      content:
+        example: This is a great video!
+        type: string
+      parent_id:
+        example: 123e4567-e89b-12d3-a456-426614174003
+        format: uuid
+        type: string
+    required:
+    - content
+    type: object
   comment.PaginatedComments:
     description: A paginated list of comments with metadata about the pagination
     properties:
@@ -181,6 +194,18 @@ definitions:
         example: 3
         type: integer
     type: object
+  comment.ReactionRequest:
+    description: Request body for adding a reaction to a comment
+    properties:
+      type:
+        enum:
+        - LIKE
+        - DISLIKE
+        example: LIKE
+        type: string
+    required:
+    - type
+    type: object
   comment.Status:
     description: Status of a comment (ACTIVE, FLAGGED, or HIDDEN)
     enum:
@@ -192,6 +217,15 @@ definitions:
     - StatusActive
     - StatusFlagged
     - StatusHidden
+  comment.UpdateCommentRequest:
+    description: Request body for updating a comment
+    properties:
+      content:
+        example: This is an updated comment.
+        type: string
+    required:
+    - content
+    type: object
   http.APIError:
     description: Error response structure
     properties:
@@ -244,6 +278,63 @@ definitions:
         type: string
       success:
         type: boolean
+    type: object
+  notification.EventType:
+    description: Type of notification event (e.g. VIDEO_UPLOADED, COMMENT_CREATED)
+    enum:
+    - VIDEO_UPLOADED
+    - VIDEO_PROCESSED
+    - VIDEO_UPDATED
+    - VIDEO_DELETED
+    - COMMENT_CREATED
+    - COMMENT_REPLIED
+    - COMMENT_REACTION
+    - USER_FOLLOWED
+    - USER_MENTIONED
+    - AUTH_EVENT
+    type: string
+    x-enum-varnames:
+    - VideoUploaded
+    - VideoProcessed
+    - VideoUpdated
+    - VideoDeleted
+    - CommentCreated
+    - CommentReplied
+    - CommentReaction
+    - UserFollowed
+    - UserMentioned
+    - AuthEvent
+  notification.Notification:
+    description: A notification entity with metadata and status information
+    properties:
+      content:
+        description: Human-readable notification content
+        example: Your video 'My awesome video' has been uploaded successfully
+        type: string
+      createdAt:
+        description: When the notification was created
+        example: "2025-03-05T21:26:06Z"
+        type: string
+      id:
+        description: Unique identifier for the notification
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      metadata:
+        additionalProperties: true
+        description: Additional metadata about the notification
+        type: object
+      readAt:
+        description: When the notification was marked as read (null if unread)
+        type: string
+      type:
+        allOf:
+        - $ref: '#/definitions/notification.EventType'
+        description: Type of notification (VIDEO_UPLOADED, COMMENT_CREATED, etc.)
+        example: VIDEO_UPLOADED
+      userId:
+        description: User ID who should receive this notification
+        example: 550e8400-e29b-41d4-a716-446655440001
+        type: string
     type: object
   video.APIResponse:
     properties:
@@ -358,6 +449,186 @@ info:
   title: Pavilion Network API
   version: "1.0"
 paths:
+  /api/v1/notifications/:
+    get:
+      description: Retrieve a paginated list of notifications for the authenticated
+        user
+      parameters:
+      - description: 'Number of notifications to return (default: 10)'
+        in: query
+        name: limit
+        type: integer
+      - description: 'Page number for pagination (default: 1)'
+        in: query
+        name: page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Notifications retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/notification.Notification'
+                  type: array
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/http.APIError'
+              type: object
+        "500":
+          description: Internal server error
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/http.APIError'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get user notifications
+      tags:
+      - notifications
+  /api/v1/notifications/{id}/read:
+    put:
+      description: Mark a specific notification as read
+      parameters:
+      - description: Notification ID (UUID)
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Notification marked as read
+          schema:
+            $ref: '#/definitions/http.APIResponse'
+        "400":
+          description: Invalid notification ID
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/http.APIError'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/http.APIError'
+              type: object
+        "404":
+          description: Notification not found
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/http.APIError'
+              type: object
+        "500":
+          description: Internal server error
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/http.APIError'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Mark notification as read
+      tags:
+      - notifications
+  /api/v1/notifications/read-all:
+    put:
+      description: Mark all notifications as read for the authenticated user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: All notifications marked as read
+          schema:
+            $ref: '#/definitions/http.APIResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/http.APIError'
+              type: object
+        "500":
+          description: Internal server error
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/http.APIError'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Mark all notifications as read
+      tags:
+      - notifications
+  /api/v1/notifications/unread-count:
+    get:
+      description: Get the count of unread notifications for the authenticated user
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Unread count retrieved successfully
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.APIResponse'
+            - properties:
+                data:
+                  additionalProperties:
+                    type: integer
+                  type: object
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/http.APIError'
+              type: object
+        "500":
+          description: Internal server error
+          schema:
+            allOf:
+            - $ref: '#/definitions/http.APIResponse'
+            - properties:
+                error:
+                  $ref: '#/definitions/http.APIError'
+              type: object
+      security:
+      - BearerAuth: []
+      summary: Get unread notification count
+      tags:
+      - notifications
   /auth/login:
     post:
       consumes:
@@ -530,16 +801,11 @@ paths:
     delete:
       consumes:
       - application/json
-      description: Soft-deletes a comment (marks it as hidden)
+      description: Deletes an existing comment
       parameters:
       - description: Comment ID (UUID)
         in: path
         name: id
-        required: true
-        type: string
-      - description: JWT Bearer token
-        in: header
-        name: Authorization
         required: true
         type: string
       produces:
@@ -590,9 +856,11 @@ paths:
                 error:
                   $ref: '#/definitions/http.Error'
               type: object
+      security:
+      - BearerAuth: []
       summary: Delete a comment
       tags:
-      - comments
+      - comment
     put:
       consumes:
       - application/json
@@ -603,17 +871,12 @@ paths:
         name: id
         required: true
         type: string
-      - description: JWT Bearer token
-        in: header
-        name: Authorization
-        required: true
-        type: string
       - description: Updated comment data
         in: body
         name: comment
         required: true
         schema:
-          type: object
+          $ref: '#/definitions/comment.UpdateCommentRequest'
       produces:
       - application/json
       responses:
@@ -662,9 +925,11 @@ paths:
                 error:
                   $ref: '#/definitions/http.Error'
               type: object
+      security:
+      - BearerAuth: []
       summary: Update a comment
       tags:
-      - comments
+      - comment
   /comment/{id}/reaction:
     delete:
       consumes:
@@ -674,11 +939,6 @@ paths:
       - description: Comment ID (UUID)
         in: path
         name: id
-        required: true
-        type: string
-      - description: JWT Bearer token
-        in: header
-        name: Authorization
         required: true
         type: string
       produces:
@@ -712,7 +972,7 @@ paths:
                   $ref: '#/definitions/http.Error'
               type: object
         "404":
-          description: Comment not found
+          description: Comment or reaction not found
           schema:
             allOf:
             - $ref: '#/definitions/http.Response'
@@ -729,22 +989,19 @@ paths:
                 error:
                   $ref: '#/definitions/http.Error'
               type: object
+      security:
+      - BearerAuth: []
       summary: Remove a reaction from a comment
       tags:
-      - comments
+      - comment
     post:
       consumes:
       - application/json
-      description: Adds or updates a user's reaction (like/dislike) to a comment
+      description: Adds a reaction (like/dislike) to a comment
       parameters:
       - description: Comment ID (UUID)
         in: path
         name: id
-        required: true
-        type: string
-      - description: JWT Bearer token
-        in: header
-        name: Authorization
         required: true
         type: string
       - description: Reaction data
@@ -752,7 +1009,7 @@ paths:
         name: reaction
         required: true
         schema:
-          type: object
+          $ref: '#/definitions/comment.ReactionRequest'
       produces:
       - application/json
       responses:
@@ -801,9 +1058,11 @@ paths:
                 error:
                   $ref: '#/definitions/http.Error'
               type: object
+      security:
+      - BearerAuth: []
       summary: Add a reaction to a comment
       tags:
-      - comments
+      - comment
   /comment/{id}/replies:
     get:
       consumes:
@@ -855,7 +1114,19 @@ paths:
               type: object
       summary: Get replies to a comment
       tags:
-      - comments
+      - comment
+  /health:
+    get:
+      description: Checks if the API server is running properly
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Health check successful
+          schema: {}
+      summary: Health check endpoint
+      tags:
+      - health
   /video/{id}:
     delete:
       description: Soft delete a video (marks as deleted but preserves the record)
@@ -983,14 +1254,14 @@ paths:
     post:
       consumes:
       - application/json
-      description: Creates a new comment or reply on a video
+      description: Creates a new comment for a video
       parameters:
-      - description: Video ID (UUID)
+      - description: Video ID
         in: path
         name: id
         required: true
         type: string
-      - description: JWT Bearer token
+      - description: Bearer token
         in: header
         name: Authorization
         required: true
@@ -1000,49 +1271,49 @@ paths:
         name: comment
         required: true
         schema:
-          type: object
+          $ref: '#/definitions/comment.CreateCommentRequest'
       produces:
       - application/json
       responses:
-        "201":
+        "200":
           description: Comment created successfully
           schema:
             allOf:
-            - $ref: '#/definitions/http.Response'
+            - $ref: '#/definitions/http.APIResponse'
             - properties:
                 data:
                   $ref: '#/definitions/comment.Comment'
               type: object
         "400":
-          description: Invalid video ID format or invalid comment data
+          description: Invalid video ID format or invalid comment
           schema:
             allOf:
-            - $ref: '#/definitions/http.Response'
+            - $ref: '#/definitions/http.APIResponse'
             - properties:
                 error:
-                  $ref: '#/definitions/http.Error'
+                  $ref: '#/definitions/http.APIError'
               type: object
         "401":
-          description: Unauthorized - user not authenticated
+          description: User not authenticated
           schema:
             allOf:
-            - $ref: '#/definitions/http.Response'
+            - $ref: '#/definitions/http.APIResponse'
             - properties:
                 error:
-                  $ref: '#/definitions/http.Error'
+                  $ref: '#/definitions/http.APIError'
               type: object
         "500":
-          description: Internal server error
+          description: Failed to create comment
           schema:
             allOf:
-            - $ref: '#/definitions/http.Response'
+            - $ref: '#/definitions/http.APIResponse'
             - properties:
                 error:
-                  $ref: '#/definitions/http.Error'
+                  $ref: '#/definitions/http.APIError'
               type: object
-      summary: Create a comment
+      summary: Create a new comment
       tags:
-      - comments
+      - comment
   /video/{id}/comments:
     get:
       consumes:
@@ -1098,7 +1369,7 @@ paths:
               type: object
       summary: Get comments for a video
       tags:
-      - comments
+      - comment
   /video/{id}/status:
     get:
       description: Retrieve the current upload status of a specific video

@@ -22,6 +22,11 @@ func SetupRoutes(router *gin.Engine, app *App) {
 		app.commentHandler.RegisterRoutes(router, app.auth)
 	}
 
+	// Register notification routes if notification service is available
+	if app.notificationHandler != nil {
+		app.notificationHandler.RegisterRoutes(router, auth.AuthMiddleware(app.auth, app.httpHandler))
+	}
+
 	// Protected routes group
 	protected := router.Group("")
 	protected.Use(auth.AuthMiddleware(app.auth, app.httpHandler))
