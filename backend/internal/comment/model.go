@@ -90,23 +90,22 @@ type PaginatedComments struct {
 	HasPrevPage bool      `json:"has_prev_page" example:"false"`
 }
 
-// CreateCommentRequest represents the request body for creating a comment
-// @Description Request body for creating a new comment
+// CreateCommentRequest represents the request body for creating a new comment
+// For top-level comments, omit parent_id or set it to null (not "null")
+// For replies, set parent_id to the UUID of the parent comment
 type CreateCommentRequest struct {
-	Content  string     `json:"content" binding:"required" example:"This is a great video!"`
-	ParentID *uuid.UUID `json:"parent_id,omitempty" example:"123e4567-e89b-12d3-a456-426614174003" swaggertype:"string" format:"uuid"`
+	Content  string     `json:"content" binding:"required" example:"This is a comment"`
+	ParentID *uuid.UUID `json:"parent_id" example:""`
 }
 
 // UpdateCommentRequest represents the request body for updating a comment
-// @Description Request body for updating a comment
 type UpdateCommentRequest struct {
-	Content string `json:"content" binding:"required" example:"This is an updated comment."`
+	Content string `json:"content" binding:"required" example:"Updated comment content"`
 }
 
-// ReactionRequest represents the request body for adding a reaction
-// @Description Request body for adding a reaction to a comment
+// ReactionRequest represents the request body for adding a reaction to a comment
 type ReactionRequest struct {
-	Type string `json:"type" binding:"required" example:"LIKE" enums:"LIKE,DISLIKE"`
+	Type string `json:"type" binding:"required" example:"like"`
 }
 
 // NewComment creates a new comment with default values

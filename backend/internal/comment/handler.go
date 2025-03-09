@@ -3,12 +3,14 @@ package comment
 import (
 	"errors"
 	"fmt"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/consensuslabs/pavilion-network/backend/internal/auth"
 	httpHandler "github.com/consensuslabs/pavilion-network/backend/internal/http"
+	"github.com/consensuslabs/pavilion-network/backend/internal/video"
 	"github.com/consensuslabs/pavilion-network/backend/internal/video"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -19,13 +21,16 @@ type Handler struct {
 	service  Service
 	response httpHandler.ResponseHandler
 	logger   video.Logger
+	logger   video.Logger
 }
 
 // NewHandler creates a new comment handler
 func NewHandler(service Service, response httpHandler.ResponseHandler, logger video.Logger) *Handler {
+func NewHandler(service Service, response httpHandler.ResponseHandler, logger video.Logger) *Handler {
 	return &Handler{
 		service:  service,
 		response: response,
+		logger:   logger,
 		logger:   logger,
 	}
 }
@@ -241,6 +246,8 @@ func (h *Handler) CreateComment(c *gin.Context) {
 // @Param id path string true "Comment ID (UUID)"
 // @Security BearerAuth
 // @Param comment body UpdateCommentRequest true "Updated comment data"
+// @Security BearerAuth
+// @Param comment body UpdateCommentRequest true "Updated comment data"
 // @Success 200 {object} http.Response{message=string} "Comment updated successfully"
 // @Failure 400 {object} http.Response{error=http.Error} "Invalid comment ID format or invalid comment data"
 // @Failure 401 {object} http.Response{error=http.Error} "Unauthorized - user not authenticated"
@@ -256,6 +263,7 @@ func (h *Handler) UpdateComment(c *gin.Context) {
 	}
 
 	// Parse request body
+	var req UpdateCommentRequest
 	var req UpdateCommentRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -278,10 +286,12 @@ func (h *Handler) UpdateComment(c *gin.Context) {
 
 // @Summary Delete a comment
 // @Description Deletes an existing comment
+// @Description Deletes an existing comment
 // @Tags comment
 // @Accept json
 // @Produce json
 // @Param id path string true "Comment ID (UUID)"
+// @Security BearerAuth
 // @Security BearerAuth
 // @Success 200 {object} http.Response{message=string} "Comment deleted successfully"
 // @Failure 400 {object} http.Response{error=http.Error} "Invalid comment ID format"
@@ -312,10 +322,13 @@ func (h *Handler) DeleteComment(c *gin.Context) {
 
 // @Summary Add a reaction to a comment
 // @Description Adds a reaction (like/dislike) to a comment
+// @Description Adds a reaction (like/dislike) to a comment
 // @Tags comment
 // @Accept json
 // @Produce json
 // @Param id path string true "Comment ID (UUID)"
+// @Security BearerAuth
+// @Param reaction body ReactionRequest true "Reaction data"
 // @Security BearerAuth
 // @Param reaction body ReactionRequest true "Reaction data"
 // @Success 200 {object} http.Response{message=string} "Reaction added successfully"
@@ -334,12 +347,14 @@ func (h *Handler) AddReaction(c *gin.Context) {
 
 	// Get user ID from context (set by auth middleware)
 	userID, exists := c.Get("userID")
+	userID, exists := c.Get("userID")
 	if !exists {
 		h.response.UnauthorizedResponse(c, "User not authenticated")
 		return
 	}
 
 	// Parse request body
+	var req ReactionRequest
 	var req ReactionRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -350,7 +365,9 @@ func (h *Handler) AddReaction(c *gin.Context) {
 	// Validate reaction type
 	var reactionType Type
 	if req.Type == string(TypeLike) {
+	if req.Type == string(TypeLike) {
 		reactionType = TypeLike
+	} else if req.Type == string(TypeDislike) {
 	} else if req.Type == string(TypeDislike) {
 		reactionType = TypeDislike
 	} else {
@@ -386,9 +403,11 @@ func (h *Handler) AddReaction(c *gin.Context) {
 // @Produce json
 // @Param id path string true "Comment ID (UUID)"
 // @Security BearerAuth
+// @Security BearerAuth
 // @Success 200 {object} http.Response{message=string} "Reaction removed successfully"
 // @Failure 400 {object} http.Response{error=http.Error} "Invalid comment ID format"
 // @Failure 401 {object} http.Response{error=http.Error} "Unauthorized - user not authenticated"
+// @Failure 404 {object} http.Response{error=http.Error} "Comment or reaction not found"
 // @Failure 404 {object} http.Response{error=http.Error} "Comment or reaction not found"
 // @Failure 500 {object} http.Response{error=http.Error} "Internal server error"
 // @Router /comment/{id}/reaction [delete]
@@ -401,6 +420,7 @@ func (h *Handler) RemoveReaction(c *gin.Context) {
 	}
 
 	// Get user ID from context (set by auth middleware)
+	userID, exists := c.Get("userID")
 	userID, exists := c.Get("userID")
 	if !exists {
 		h.response.UnauthorizedResponse(c, "User not authenticated")

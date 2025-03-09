@@ -332,6 +332,9 @@ func (r *CommentRepository) Create(ctx context.Context, c *comment.Comment) erro
 			"commentID": c.ID.String(),
 			"videoID":   c.VideoID.String(),
 			"errorType": fmt.Sprintf("%T", err),
+			"commentID": c.ID.String(),
+			"videoID":   c.VideoID.String(),
+			"errorType": fmt.Sprintf("%T", err),
 		})
 		fmt.Printf("DEBUG REPO: Batch execution failed: %v (type: %T)\n", err, err)
 		return fmt.Errorf("failed to execute batch: %w", err)

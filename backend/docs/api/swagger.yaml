@@ -802,6 +802,7 @@ paths:
       consumes:
       - application/json
       description: Deletes an existing comment
+      description: Deletes an existing comment
       parameters:
       - description: Comment ID (UUID)
         in: path
@@ -858,8 +859,11 @@ paths:
               type: object
       security:
       - BearerAuth: []
+      security:
+      - BearerAuth: []
       summary: Delete a comment
       tags:
+      - comment
       - comment
     put:
       consumes:
@@ -876,6 +880,7 @@ paths:
         name: comment
         required: true
         schema:
+          $ref: '#/definitions/comment.UpdateCommentRequest'
           $ref: '#/definitions/comment.UpdateCommentRequest'
       produces:
       - application/json
@@ -927,8 +932,11 @@ paths:
               type: object
       security:
       - BearerAuth: []
+      security:
+      - BearerAuth: []
       summary: Update a comment
       tags:
+      - comment
       - comment
   /comment/{id}/reaction:
     delete:
@@ -973,6 +981,7 @@ paths:
               type: object
         "404":
           description: Comment or reaction not found
+          description: Comment or reaction not found
           schema:
             allOf:
             - $ref: '#/definitions/http.Response'
@@ -991,12 +1000,16 @@ paths:
               type: object
       security:
       - BearerAuth: []
+      security:
+      - BearerAuth: []
       summary: Remove a reaction from a comment
       tags:
+      - comment
       - comment
     post:
       consumes:
       - application/json
+      description: Adds a reaction (like/dislike) to a comment
       description: Adds a reaction (like/dislike) to a comment
       parameters:
       - description: Comment ID (UUID)
@@ -1009,6 +1022,7 @@ paths:
         name: reaction
         required: true
         schema:
+          $ref: '#/definitions/comment.ReactionRequest'
           $ref: '#/definitions/comment.ReactionRequest'
       produces:
       - application/json
@@ -1060,8 +1074,11 @@ paths:
               type: object
       security:
       - BearerAuth: []
+      security:
+      - BearerAuth: []
       summary: Add a reaction to a comment
       tags:
+      - comment
       - comment
   /comment/{id}/replies:
     get:
@@ -1272,6 +1289,7 @@ paths:
         required: true
         schema:
           $ref: '#/definitions/comment.CreateCommentRequest'
+          $ref: '#/definitions/comment.CreateCommentRequest'
       produces:
       - application/json
       responses:
@@ -1313,6 +1331,7 @@ paths:
               type: object
       summary: Create a new comment
       tags:
+      - comment
       - comment
   /video/{id}/comments:
     get:
@@ -1369,6 +1388,7 @@ paths:
               type: object
       summary: Get comments for a video
       tags:
+      - comment
       - comment
   /video/{id}/status:
     get:
@@ -1519,6 +1539,6 @@ tags:
 - description: Video management endpoints
   name: video
 - description: Comment management endpoints
-  name: comments
+  name: comment
 - description: Health check endpoints
   name: health

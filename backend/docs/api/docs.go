@@ -667,6 +667,11 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Updates the content of an existing comment",
                 "consumes": [
                     "application/json"
@@ -675,6 +680,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
+                    "comment"
                     "comment"
                 ],
                 "summary": "Update a comment",
@@ -692,6 +698,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
+                            "$ref": "#/definitions/comment.UpdateCommentRequest"
                             "$ref": "#/definitions/comment.UpdateCommentRequest"
                         }
                     }
@@ -796,6 +803,12 @@ const docTemplate = `{
                     }
                 ],
                 "description": "Deletes an existing comment",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Deletes an existing comment",
                 "consumes": [
                     "application/json"
                 ],
@@ -803,6 +816,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
+                    "comment"
                     "comment"
                 ],
                 "summary": "Delete a comment",
@@ -917,6 +931,12 @@ const docTemplate = `{
                     }
                 ],
                 "description": "Adds a reaction (like/dislike) to a comment",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Adds a reaction (like/dislike) to a comment",
                 "consumes": [
                     "application/json"
                 ],
@@ -924,6 +944,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
+                    "comment"
                     "comment"
                 ],
                 "summary": "Add a reaction to a comment",
@@ -941,6 +962,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
+                            "$ref": "#/definitions/comment.ReactionRequest"
                             "$ref": "#/definitions/comment.ReactionRequest"
                         }
                     }
@@ -1044,6 +1066,11 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Removes a user's reaction from a comment",
                 "consumes": [
                     "application/json"
@@ -1052,6 +1079,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
+                    "comment"
                     "comment"
                 ],
                 "summary": "Remove a reaction from a comment",
@@ -1121,6 +1149,7 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Comment or reaction not found",
+                        "description": "Comment or reaction not found",
                         "schema": {
                             "allOf": [
                                 {
@@ -1168,6 +1197,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
+                    "comment"
                     "comment"
                 ],
                 "summary": "Get replies to a comment",
@@ -1562,7 +1592,9 @@ const docTemplate = `{
                 ],
                 "tags": [
                     "comment"
+                    "comment"
                 ],
+                "summary": "Create a new comment",
                 "summary": "Create a new comment",
                 "parameters": [
                     {
@@ -1585,6 +1617,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
+                            "$ref": "#/definitions/comment.CreateCommentRequest"
                             "$ref": "#/definitions/comment.CreateCommentRequest"
                         }
                     }
@@ -1675,6 +1708,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
+                    "comment"
                     "comment"
                 ],
                 "summary": "Get comments for a video",
@@ -2529,7 +2563,7 @@ const docTemplate = `{
         },
         {
             "description": "Comment management endpoints",
-            "name": "comments"
+            "name": "comment"
         },
         {
             "description": "Health check endpoints",

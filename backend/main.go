@@ -40,7 +40,7 @@ import (
 // @tag.name video
 // @tag.description Video management endpoints
 
-// @tag.name comments
+// @tag.name comment
 // @tag.description Comment management endpoints
 
 // @tag.name health

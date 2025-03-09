@@ -661,6 +661,11 @@
                         "BearerAuth": []
                     }
                 ],
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Updates the content of an existing comment",
                 "consumes": [
                     "application/json"
@@ -790,6 +795,12 @@
                     }
                 ],
                 "description": "Deletes an existing comment",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Deletes an existing comment",
                 "consumes": [
                     "application/json"
                 ],
@@ -905,6 +916,12 @@
         },
         "/comment/{id}/reaction": {
             "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Adds a reaction (like/dislike) to a comment",
                 "security": [
                     {
                         "BearerAuth": []
@@ -1038,6 +1055,11 @@
                         "BearerAuth": []
                     }
                 ],
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Removes a user's reaction from a comment",
                 "consumes": [
                     "application/json"
@@ -1114,6 +1136,7 @@
                         }
                     },
                     "404": {
+                        "description": "Comment or reaction not found",
                         "description": "Comment or reaction not found",
                         "schema": {
                             "allOf": [
@@ -1557,6 +1580,7 @@
                 "tags": [
                     "comment"
                 ],
+                "summary": "Create a new comment",
                 "summary": "Create a new comment",
                 "parameters": [
                     {
@@ -2523,7 +2547,7 @@
         },
         {
             "description": "Comment management endpoints",
-            "name": "comments"
+            "name": "comment"
         },
         {
             "description": "Health check endpoints",
