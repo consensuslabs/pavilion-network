@@ -3,12 +3,14 @@ package comment
 import (
 	"errors"
 	"fmt"
+	"fmt"
 	"net/http"
 	"strconv"
 	"time"
 
 	"github.com/consensuslabs/pavilion-network/backend/internal/auth"
 	httpHandler "github.com/consensuslabs/pavilion-network/backend/internal/http"
+	"github.com/consensuslabs/pavilion-network/backend/internal/video"
 	"github.com/consensuslabs/pavilion-network/backend/internal/video"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -19,13 +21,16 @@ type Handler struct {
 	service  Service
 	response httpHandler.ResponseHandler
 	logger   video.Logger
+	logger   video.Logger
 }
 
 // NewHandler creates a new comment handler
 func NewHandler(service Service, response httpHandler.ResponseHandler, logger video.Logger) *Handler {
+func NewHandler(service Service, response httpHandler.ResponseHandler, logger video.Logger) *Handler {
 	return &Handler{
 		service:  service,
 		response: response,
+		logger:   logger,
 		logger:   logger,
 	}
 }
@@ -131,55 +136,105 @@ func (h *Handler) GetRepliesByCommentID(c *gin.Context) {
 
 // @Summary Create a new comment
 // @Description Creates a new comment for a video
-// @Tags Comment
+// @Tags comment
 // @Accept json
 // @Produce json
 // @Param id path string true "Video ID"
 // @Param Authorization header string true "Bearer token"
 // @Param comment body CreateCommentRequest true "Comment data"
-// @Success 200 {object} response.SuccessResponse{data=Comment} "Comment created successfully"
-// @Failure 400 {object} response.ErrorResponse "Invalid video ID format or invalid comment"
-// @Failure 401 {object} response.ErrorResponse "User not authenticated"
-// @Failure 500 {object} response.ErrorResponse "Failed to create comment"
+// @Success 200 {object} httpHandler.APIResponse{data=Comment} "Comment created successfully"
+// @Failure 400 {object} httpHandler.APIResponse{error=httpHandler.APIError} "Invalid video ID format or invalid comment"
+// @Failure 401 {object} httpHandler.APIResponse{error=httpHandler.APIError} "User not authenticated"
+// @Failure 500 {object} httpHandler.APIResponse{error=httpHandler.APIError} "Failed to create comment"
 // @Router /video/{id}/comment [post]
 func (h *Handler) CreateComment(c *gin.Context) {
+	fmt.Printf("DEBUG HANDLER: Starting CreateComment handler\n")
+
+	// Try-catch equivalent to prevent panics from bringing down the server
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Printf("DEBUG HANDLER: PANIC RECOVERED in CreateComment: %v\n", r)
+			h.response.InternalErrorResponse(c, "Internal server error", fmt.Errorf("panic: %v", r))
+		}
+	}()
+
 	videoIDStr := c.Param("id")
+	fmt.Printf("DEBUG HANDLER: Video ID string: %s\n", videoIDStr)
+
 	videoID, err := uuid.Parse(videoIDStr)
 	if err != nil {
+		fmt.Printf("DEBUG HANDLER: Failed to parse video ID: %v\n", err)
 		h.response.ErrorResponse(c, http.StatusBadRequest, "invalid_video_id", "Invalid video ID format", err)
 		return
 	}
+	fmt.Printf("DEBUG HANDLER: Parsed video ID: %s\n", videoID.String())
 
 	// Get user ID from context (set by auth middleware)
-	userID, exists := c.Get("userID")
+	userIDRaw, exists := c.Get("userID")
+	fmt.Printf("DEBUG HANDLER: User ID exists: %v, userIDRaw: %v, type: %T\n", exists, userIDRaw, userIDRaw)
+
 	if !exists {
+		fmt.Printf("DEBUG HANDLER: User not authenticated\n")
 		h.response.UnauthorizedResponse(c, "User not authenticated")
 		return
 	}
 
+	// Check the type and try to convert userID
+	fmt.Printf("DEBUG HANDLER: Attempting to convert userID from type %T\n", userIDRaw)
+	var userID uuid.UUID
+
+	switch v := userIDRaw.(type) {
+	case string:
+		fmt.Printf("DEBUG HANDLER: userID is string: %s\n", v)
+		parsedID, parseErr := uuid.Parse(v)
+		if parseErr != nil {
+			fmt.Printf("DEBUG HANDLER: Failed to parse userID string: %v\n", parseErr)
+			h.response.InternalErrorResponse(c, "Invalid user ID format", parseErr)
+			return
+		}
+		userID = parsedID
+	case uuid.UUID:
+		fmt.Printf("DEBUG HANDLER: userID is already UUID\n")
+		userID = v
+	default:
+		fmt.Printf("DEBUG HANDLER: userID is unknown type: %T\n", v)
+		h.response.InternalErrorResponse(c, "Invalid user ID type", fmt.Errorf("unexpected user ID type: %T", v))
+		return
+	}
+
+	fmt.Printf("DEBUG HANDLER: Final userID: %s\n", userID.String())
+
 	// Parse request body
 	var req CreateCommentRequest
+	fmt.Printf("DEBUG HANDLER: About to bind JSON request\n")
 
 	if err := c.ShouldBindJSON(&req); err != nil {
 		// Include full error details in the response
+		fmt.Printf("DEBUG HANDLER: JSON binding error: %v\n", err)
 		h.response.ErrorResponse(c, http.StatusBadRequest, "binding_error",
 			fmt.Sprintf("JSON binding error: %v", err), err)
 		return
 	}
 
-	// Create comment
-	comment := NewComment(videoID, userID.(uuid.UUID), req.Content, req.ParentID)
+	fmt.Printf("DEBUG HANDLER: JSON bound successfully, content: %s, parentID: %v\n",
+		req.Content, req.ParentID)
 
-	fmt.Printf("DEBUG: Attempting to create comment - VideoID: %s, UserID: %s, Content length: %d\n",
-		videoID.String(), userID.(uuid.UUID).String(), len(req.Content))
+	// Create comment
+	comment := NewComment(videoID, userID, req.Content, req.ParentID)
+	fmt.Printf("DEBUG HANDLER: Comment created, about to save: ID=%s\n", comment.ID.String())
+
+	fmt.Printf("DEBUG HANDLER: Attempting to create comment - VideoID: %s, UserID: %s, Content length: %d\n",
+		videoID.String(), userID.String(), len(req.Content))
 
 	if err := h.service.CreateComment(c.Request.Context(), comment); err != nil {
 		// Include full error details in the response
+		fmt.Printf("DEBUG HANDLER: Service.CreateComment failed: %v\n", err)
 		h.response.ErrorResponse(c, http.StatusInternalServerError, "create_comment_error",
 			fmt.Sprintf("Failed to create comment: %v", err), err)
 		return
 	}
 
+	fmt.Printf("DEBUG HANDLER: Comment created successfully\n")
 	h.response.SuccessResponse(c, comment, "Comment created successfully")
 }
 
@@ -189,6 +244,8 @@ func (h *Handler) CreateComment(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param id path string true "Comment ID (UUID)"
+// @Security BearerAuth
+// @Param comment body UpdateCommentRequest true "Updated comment data"
 // @Security BearerAuth
 // @Param comment body UpdateCommentRequest true "Updated comment data"
 // @Success 200 {object} http.Response{message=string} "Comment updated successfully"
@@ -206,6 +263,7 @@ func (h *Handler) UpdateComment(c *gin.Context) {
 	}
 
 	// Parse request body
+	var req UpdateCommentRequest
 	var req UpdateCommentRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -228,10 +286,12 @@ func (h *Handler) UpdateComment(c *gin.Context) {
 
 // @Summary Delete a comment
 // @Description Deletes an existing comment
+// @Description Deletes an existing comment
 // @Tags comment
 // @Accept json
 // @Produce json
 // @Param id path string true "Comment ID (UUID)"
+// @Security BearerAuth
 // @Security BearerAuth
 // @Success 200 {object} http.Response{message=string} "Comment deleted successfully"
 // @Failure 400 {object} http.Response{error=http.Error} "Invalid comment ID format"
@@ -262,10 +322,13 @@ func (h *Handler) DeleteComment(c *gin.Context) {
 
 // @Summary Add a reaction to a comment
 // @Description Adds a reaction (like/dislike) to a comment
+// @Description Adds a reaction (like/dislike) to a comment
 // @Tags comment
 // @Accept json
 // @Produce json
 // @Param id path string true "Comment ID (UUID)"
+// @Security BearerAuth
+// @Param reaction body ReactionRequest true "Reaction data"
 // @Security BearerAuth
 // @Param reaction body ReactionRequest true "Reaction data"
 // @Success 200 {object} http.Response{message=string} "Reaction added successfully"
@@ -284,12 +347,14 @@ func (h *Handler) AddReaction(c *gin.Context) {
 
 	// Get user ID from context (set by auth middleware)
 	userID, exists := c.Get("userID")
+	userID, exists := c.Get("userID")
 	if !exists {
 		h.response.UnauthorizedResponse(c, "User not authenticated")
 		return
 	}
 
 	// Parse request body
+	var req ReactionRequest
 	var req ReactionRequest
 
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -300,7 +365,9 @@ func (h *Handler) AddReaction(c *gin.Context) {
 	// Validate reaction type
 	var reactionType Type
 	if req.Type == string(TypeLike) {
+	if req.Type == string(TypeLike) {
 		reactionType = TypeLike
+	} else if req.Type == string(TypeDislike) {
 	} else if req.Type == string(TypeDislike) {
 		reactionType = TypeDislike
 	} else {
@@ -336,9 +403,11 @@ func (h *Handler) AddReaction(c *gin.Context) {
 // @Produce json
 // @Param id path string true "Comment ID (UUID)"
 // @Security BearerAuth
+// @Security BearerAuth
 // @Success 200 {object} http.Response{message=string} "Reaction removed successfully"
 // @Failure 400 {object} http.Response{error=http.Error} "Invalid comment ID format"
 // @Failure 401 {object} http.Response{error=http.Error} "Unauthorized - user not authenticated"
+// @Failure 404 {object} http.Response{error=http.Error} "Comment or reaction not found"
 // @Failure 404 {object} http.Response{error=http.Error} "Comment or reaction not found"
 // @Failure 500 {object} http.Response{error=http.Error} "Internal server error"
 // @Router /comment/{id}/reaction [delete]
@@ -351,6 +420,7 @@ func (h *Handler) RemoveReaction(c *gin.Context) {
 	}
 
 	// Get user ID from context (set by auth middleware)
+	userID, exists := c.Get("userID")
 	userID, exists := c.Get("userID")
 	if !exists {
 		h.response.UnauthorizedResponse(c, "User not authenticated")

@@ -104,3 +104,29 @@ auth:
     secret: test-secret-key  # Will be overridden by JWT_SECRET
     accessTokenTTL: 168h
     refreshTokenTTL: 168h 
+
+pulsar:
+  url: "pulsar://localhost:6650"
+  web_service_url: "http://localhost:8083"
+  tls_enabled: false
+  tls_cert_path: ""
+  operation_timeout: "30s"
+  connection_timeout: "30s"
+  namespace: "pavilion/notifications"
+  auth_token: ""  # Will be overridden by PULSAR_AUTH_TOKEN
+
+notification:
+  enabled: true
+  video_events_topic: "persistent://pavilion/notifications/video-events"
+  comment_events_topic: "persistent://pavilion/notifications/comment-events"
+  user_events_topic: "persistent://pavilion/notifications/user-events"
+  dead_letter_topic: "persistent://pavilion/notifications/dead-letter"
+  retry_queue_topic: "persistent://pavilion/notifications/retry-queue"
+  retention_time_hours: 48
+  deduplication_enabled: true
+  deduplication_window: "2h"
+  retry_enabled: true
+  max_retries: 5
+  backoff_initial: "1s"
+  backoff_max: "60s"
+  backoff_multiplier: 2.0

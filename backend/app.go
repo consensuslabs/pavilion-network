@@ -17,6 +17,7 @@ import (
 	"github.com/consensuslabs/pavilion-network/backend/internal/health"
 	httpHandler "github.com/consensuslabs/pavilion-network/backend/internal/http"
 	"github.com/consensuslabs/pavilion-network/backend/internal/logger"
+	"github.com/consensuslabs/pavilion-network/backend/internal/notification"
 	"github.com/consensuslabs/pavilion-network/backend/internal/storage"
 	"github.com/consensuslabs/pavilion-network/backend/internal/storage/ipfs"
 	"github.com/consensuslabs/pavilion-network/backend/internal/storage/s3"
@@ -34,25 +35,27 @@ import (
 
 // App holds all application dependencies
 type App struct {
-	ctx            context.Context
-	Config         *config.Config
-	db             *gorm.DB
-	dbService      database.Service
-	cache          cache.Service
-	router         *gin.Engine
-	auth           *auth.Service
-	jwtService     auth.TokenService
-	refreshTokens  auth.RefreshTokenService
-	logger         logger.Logger
-	ipfsService    storage.IPFSService
-	s3Service      storage.S3Service
-	videoHandler   *video.VideoHandler
-	healthHandler  *health.Handler
-	httpHandler    httpHandler.ResponseHandler
-	authHandler    *auth.Handler
-	commentHandler *comment.Handler
-	scyllaSession  *gocql.Session
-	scyllaManager  *scylladb.SchemaManager
+	ctx                 context.Context
+	Config              *config.Config
+	db                  *gorm.DB
+	dbService           database.Service
+	cache               cache.Service
+	router              *gin.Engine
+	auth                *auth.Service
+	jwtService          auth.TokenService
+	refreshTokens       auth.RefreshTokenService
+	logger              logger.Logger
+	ipfsService         storage.IPFSService
+	s3Service           storage.S3Service
+	videoHandler        *video.VideoHandler
+	healthHandler       *health.Handler
+	httpHandler         httpHandler.ResponseHandler
+	authHandler         *auth.Handler
+	commentHandler      *comment.Handler
+	notificationService notification.NotificationService
+	notificationHandler *notification.Handler
+	scyllaSession       *gocql.Session
+	scyllaManager       *scylladb.SchemaManager
 }
 
 // NewApp creates a new application instance
@@ -210,10 +213,11 @@ func NewApp(ctx context.Context, cfg *config.Config) (*App, error) {
 				Resolutions: cfg.Ffmpeg.Resolutions,
 			},
 		},
-		Logger:          video.NewLoggerAdapter(loggerService),
-		IPFS:            ipfsAdapter,
-		ResponseHandler: responseHandler,
-		Video:           videoService,
+		Logger:              video.NewLoggerAdapter(loggerService),
+		IPFS:                ipfsAdapter,
+		ResponseHandler:     responseHandler,
+		Video:               videoService,
+		NotificationService: nil, // Will be set later after notification service is initialized
 	}
 
 	// Initialize video handler
@@ -311,7 +315,43 @@ func NewApp(ctx context.Context, cfg *config.Config) (*App, error) {
 	// Initialize comment handler
 	app.commentHandler = comment.NewHandler(commentService, responseHandler, loggerAdapter)
 
-	loggerService.LogInfo("ScyllaDB and comment service initialized successfully", nil)
+	// Initialize notification repository
+	notificationRepo := scylladb.NewNotificationRepository(app.scyllaSession, loggerService)
+
+	// Initialize notification schema manager
+	notificationSchemaManager := notification.NewSchemaManager(app.scyllaSession, scyllaConfig.Keyspace, loggerService)
+
+	// Initialize notification schema if auto-migrate is enabled
+	if migrationConfig.ShouldAutoMigrate() {
+		loggerService.LogInfo("Auto-migrate enabled, initializing notification schema", nil)
+		if err := notificationSchemaManager.CreateTables(); err != nil {
+			loggerService.LogError(fmt.Errorf("failed to initialize notification schema: %w", err), "Notification schema error")
+			loggerService.LogWarn("Continuing without notification service", nil)
+		}
+	}
+
+	// Initialize notification service config
+	notificationConfig := notification.NewServiceConfigFromConfig(cfg)
+
+	// Initialize notification service
+	notificationService, err := notification.NewService(ctx, notificationConfig, loggerService, notificationRepo)
+	if err != nil {
+		loggerService.LogError(fmt.Errorf("failed to initialize notification service: %w", err), "Notification service error")
+		loggerService.LogWarn("Continuing without notification service", nil)
+	} else {
+		app.notificationService = notificationService
+		
+		// Initialize notification handler only if service is successfully created
+		app.notificationHandler = notification.NewHandler(notificationService, responseHandler, loggerService)
+		
+		// Create adapter and inject notification service into video app for video events
+		notificationAdapter := notification.NewVideoNotificationAdapter(notificationService)
+		videoApp.NotificationService = notificationAdapter
+		
+		loggerService.LogInfo("Notification service and handler initialized successfully", nil)
+	}
+
+	loggerService.LogInfo("ScyllaDB, comment and notification services initialized successfully", nil)
 
 	return app, nil
 }
@@ -496,6 +536,15 @@ func (a *App) Shutdown() error {
 	if a.ipfsService != nil {
 		if err := a.ipfsService.Close(); err != nil {
 			a.logger.LogWarn("Error closing IPFS connections", map[string]interface{}{
+				"error": err.Error(),
+			})
+		}
+	}
+
+	// Close notification service connections if any
+	if a.notificationService != nil {
+		if err := a.notificationService.Close(); err != nil {
+			a.logger.LogWarn("Error closing notification service connections", map[string]interface{}{
 				"error": err.Error(),
 			})
 		}

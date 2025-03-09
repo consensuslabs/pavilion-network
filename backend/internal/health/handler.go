@@ -16,7 +16,12 @@ func NewHandler(responseHandler ResponseHandler) *Handler {
 	}
 }
 
-// HandleHealthCheck handles the health check endpoint
+// @Summary Health check endpoint
+// @Description Checks if the API server is running properly
+// @Tags health
+// @Produce json
+// @Success 200 {object} interface{} "Health check successful"
+// @Router /health [get]
 func (h *Handler) HandleHealthCheck(c *gin.Context) {
 	h.responseHandler.SuccessResponse(c, nil, "Health check successful")
 }

@@ -24,6 +24,339 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/api/v1/notifications/": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Retrieve a paginated list of notifications for the authenticated user",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "notifications"
+                ],
+                "summary": "Get user notifications",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Number of notifications to return (default: 10)",
+                        "name": "limit",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page number for pagination (default: 1)",
+                        "name": "page",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Notifications retrieved successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/http.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/definitions/notification.Notification"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/http.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "$ref": "#/definitions/http.APIError"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/http.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "$ref": "#/definitions/http.APIError"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/notifications/read-all": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Mark all notifications as read for the authenticated user",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "notifications"
+                ],
+                "summary": "Mark all notifications as read",
+                "responses": {
+                    "200": {
+                        "description": "All notifications marked as read",
+                        "schema": {
+                            "$ref": "#/definitions/http.APIResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/http.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "$ref": "#/definitions/http.APIError"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/http.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "$ref": "#/definitions/http.APIError"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/notifications/unread-count": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Get the count of unread notifications for the authenticated user",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "notifications"
+                ],
+                "summary": "Get unread notification count",
+                "responses": {
+                    "200": {
+                        "description": "Unread count retrieved successfully",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/http.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "additionalProperties": {
+                                                "type": "integer"
+                                            }
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/http.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "$ref": "#/definitions/http.APIError"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/http.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "$ref": "#/definitions/http.APIError"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/notifications/{id}/read": {
+            "put": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Mark a specific notification as read",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "notifications"
+                ],
+                "summary": "Mark notification as read",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Notification ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Notification marked as read",
+                        "schema": {
+                            "$ref": "#/definitions/http.APIResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid notification ID",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/http.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "$ref": "#/definitions/http.APIError"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/http.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "$ref": "#/definitions/http.APIError"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "404": {
+                        "description": "Notification not found",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/http.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "$ref": "#/definitions/http.APIError"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "500": {
+                        "description": "Internal server error",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/http.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "$ref": "#/definitions/http.APIError"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    }
+                }
+            }
+        },
         "/auth/login": {
             "post": {
                 "description": "Authenticate user and return JWT tokens",
@@ -334,6 +667,11 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Updates the content of an existing comment",
                 "consumes": [
                     "application/json"
@@ -342,6 +680,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
+                    "comment"
                     "comment"
                 ],
                 "summary": "Update a comment",
@@ -359,6 +698,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
+                            "$ref": "#/definitions/comment.UpdateCommentRequest"
                             "$ref": "#/definitions/comment.UpdateCommentRequest"
                         }
                     }
@@ -463,6 +803,12 @@ const docTemplate = `{
                     }
                 ],
                 "description": "Deletes an existing comment",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Deletes an existing comment",
                 "consumes": [
                     "application/json"
                 ],
@@ -470,6 +816,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
+                    "comment"
                     "comment"
                 ],
                 "summary": "Delete a comment",
@@ -584,6 +931,12 @@ const docTemplate = `{
                     }
                 ],
                 "description": "Adds a reaction (like/dislike) to a comment",
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Adds a reaction (like/dislike) to a comment",
                 "consumes": [
                     "application/json"
                 ],
@@ -591,6 +944,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
+                    "comment"
                     "comment"
                 ],
                 "summary": "Add a reaction to a comment",
@@ -608,6 +962,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
+                            "$ref": "#/definitions/comment.ReactionRequest"
                             "$ref": "#/definitions/comment.ReactionRequest"
                         }
                     }
@@ -711,6 +1066,11 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Removes a user's reaction from a comment",
                 "consumes": [
                     "application/json"
@@ -719,6 +1079,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
+                    "comment"
                     "comment"
                 ],
                 "summary": "Remove a reaction from a comment",
@@ -788,6 +1149,7 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Comment or reaction not found",
+                        "description": "Comment or reaction not found",
                         "schema": {
                             "allOf": [
                                 {
@@ -835,6 +1197,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
+                    "comment"
                     "comment"
                 ],
                 "summary": "Get replies to a comment",
@@ -913,6 +1276,24 @@ const docTemplate = `{
                                 }
                             ]
                         }
+                    }
+                }
+            }
+        },
+        "/health": {
+            "get": {
+                "description": "Checks if the API server is running properly",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "health"
+                ],
+                "summary": "Health check endpoint",
+                "responses": {
+                    "200": {
+                        "description": "Health check successful",
+                        "schema": {}
                     }
                 }
             }
@@ -1202,12 +1583,7 @@ const docTemplate = `{
         },
         "/video/{id}/comment": {
             "post": {
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Creates a new comment on a video",
+                "description": "Creates a new comment for a video",
                 "consumes": [
                     "application/json"
                 ],
@@ -1216,14 +1592,23 @@ const docTemplate = `{
                 ],
                 "tags": [
                     "comment"
+                    "comment"
                 ],
+                "summary": "Create a new comment",
                 "summary": "Create a new comment",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Video ID (UUID)",
+                        "description": "Video ID",
                         "name": "id",
                         "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Bearer token",
+                        "name": "Authorization",
+                        "in": "header",
                         "required": true
                     },
                     {
@@ -1233,16 +1618,17 @@ const docTemplate = `{
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/comment.CreateCommentRequest"
+                            "$ref": "#/definitions/comment.CreateCommentRequest"
                         }
                     }
                 ],
                 "responses": {
-                    "201": {
+                    "200": {
                         "description": "Comment created successfully",
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/http.Response"
+                                    "$ref": "#/definitions/http.APIResponse"
                                 },
                                 {
                                     "type": "object",
@@ -1256,17 +1642,17 @@ const docTemplate = `{
                         }
                     },
                     "400": {
-                        "description": "Invalid video ID format or invalid comment data",
+                        "description": "Invalid video ID format or invalid comment",
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/http.Response"
+                                    "$ref": "#/definitions/http.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "error": {
-                                            "$ref": "#/definitions/http.Error"
+                                            "$ref": "#/definitions/http.APIError"
                                         }
                                     }
                                 }
@@ -1274,17 +1660,17 @@ const docTemplate = `{
                         }
                     },
                     "401": {
-                        "description": "Unauthorized - user not authenticated",
+                        "description": "User not authenticated",
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/http.Response"
+                                    "$ref": "#/definitions/http.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "error": {
-                                            "$ref": "#/definitions/http.Error"
+                                            "$ref": "#/definitions/http.APIError"
                                         }
                                     }
                                 }
@@ -1292,17 +1678,17 @@ const docTemplate = `{
                         }
                     },
                     "500": {
-                        "description": "Internal server error",
+                        "description": "Failed to create comment",
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/http.Response"
+                                    "$ref": "#/definitions/http.APIResponse"
                                 },
                                 {
                                     "type": "object",
                                     "properties": {
                                         "error": {
-                                            "$ref": "#/definitions/http.Error"
+                                            "$ref": "#/definitions/http.APIError"
                                         }
                                     }
                                 }
@@ -1322,6 +1708,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
+                    "comment"
                     "comment"
                 ],
                 "summary": "Get comments for a video",
@@ -1761,6 +2148,7 @@ const docTemplate = `{
             }
         },
         "comment.CreateCommentRequest": {
+            "description": "Request body for creating a new comment",
             "type": "object",
             "required": [
                 "content"
@@ -1768,11 +2156,12 @@ const docTemplate = `{
             "properties": {
                 "content": {
                     "type": "string",
-                    "example": "This is a comment"
+                    "example": "This is a great video!"
                 },
                 "parent_id": {
                     "type": "string",
-                    "example": "null"
+                    "format": "uuid",
+                    "example": "123e4567-e89b-12d3-a456-426614174003"
                 }
             }
         },
@@ -1809,6 +2198,7 @@ const docTemplate = `{
             }
         },
         "comment.ReactionRequest": {
+            "description": "Request body for adding a reaction to a comment",
             "type": "object",
             "required": [
                 "type"
@@ -1816,7 +2206,11 @@ const docTemplate = `{
             "properties": {
                 "type": {
                     "type": "string",
-                    "example": "like"
+                    "enum": [
+                        "LIKE",
+                        "DISLIKE"
+                    ],
+                    "example": "LIKE"
                 }
             }
         },
@@ -1835,6 +2229,7 @@ const docTemplate = `{
             ]
         },
         "comment.UpdateCommentRequest": {
+            "description": "Request body for updating a comment",
             "type": "object",
             "required": [
                 "content"
@@ -1842,7 +2237,7 @@ const docTemplate = `{
             "properties": {
                 "content": {
                     "type": "string",
-                    "example": "Updated comment content"
+                    "example": "This is an updated comment."
                 }
             }
         },
@@ -1920,6 +2315,78 @@ const docTemplate = `{
                 },
                 "success": {
                     "type": "boolean"
+                }
+            }
+        },
+        "notification.EventType": {
+            "description": "Type of notification event (e.g. VIDEO_UPLOADED, COMMENT_CREATED)",
+            "type": "string",
+            "enum": [
+                "VIDEO_UPLOADED",
+                "VIDEO_PROCESSED",
+                "VIDEO_UPDATED",
+                "VIDEO_DELETED",
+                "COMMENT_CREATED",
+                "COMMENT_REPLIED",
+                "COMMENT_REACTION",
+                "USER_FOLLOWED",
+                "USER_MENTIONED",
+                "AUTH_EVENT"
+            ],
+            "x-enum-varnames": [
+                "VideoUploaded",
+                "VideoProcessed",
+                "VideoUpdated",
+                "VideoDeleted",
+                "CommentCreated",
+                "CommentReplied",
+                "CommentReaction",
+                "UserFollowed",
+                "UserMentioned",
+                "AuthEvent"
+            ]
+        },
+        "notification.Notification": {
+            "description": "A notification entity with metadata and status information",
+            "type": "object",
+            "properties": {
+                "content": {
+                    "description": "Human-readable notification content",
+                    "type": "string",
+                    "example": "Your video 'My awesome video' has been uploaded successfully"
+                },
+                "createdAt": {
+                    "description": "When the notification was created",
+                    "type": "string",
+                    "example": "2025-03-05T21:26:06Z"
+                },
+                "id": {
+                    "description": "Unique identifier for the notification",
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "metadata": {
+                    "description": "Additional metadata about the notification",
+                    "type": "object",
+                    "additionalProperties": true
+                },
+                "readAt": {
+                    "description": "When the notification was marked as read (null if unread)",
+                    "type": "string"
+                },
+                "type": {
+                    "description": "Type of notification (VIDEO_UPLOADED, COMMENT_CREATED, etc.)",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/notification.EventType"
+                        }
+                    ],
+                    "example": "VIDEO_UPLOADED"
+                },
+                "userId": {
+                    "description": "User ID who should receive this notification",
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440001"
                 }
             }
         },

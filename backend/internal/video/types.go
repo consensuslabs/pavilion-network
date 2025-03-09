@@ -1,14 +1,19 @@
 package video
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 // App represents the application context needed by video handlers
 type App struct {
-	Config          *Config
-	Logger          Logger
-	Video           VideoService
-	IPFS            IPFSService
-	ResponseHandler ResponseHandler
+	Config              *Config
+	Logger              Logger
+	Video               VideoService
+	IPFS                IPFSService
+	ResponseHandler     ResponseHandler
+	NotificationService NotificationService
 }
 
 // Config represents the configuration for video handling
@@ -123,4 +128,14 @@ type TranscodeSegmentInfo struct {
 type VideoUpdateRequest struct {
 	Title       *string `json:"title,omitempty"`
 	Description *string `json:"description,omitempty"`
+}
+
+// VideoEvent represents the structure of a video event for notifications
+type VideoEvent struct {
+	ID       uuid.UUID              `json:"id"`
+	Type     string                 `json:"type"`
+	VideoID  uuid.UUID              `json:"videoId"`
+	UserID   uuid.UUID              `json:"userId"`
+	Title    string                 `json:"title,omitempty"`
+	Metadata map[string]interface{} `json:"metadata,omitempty"`
 }

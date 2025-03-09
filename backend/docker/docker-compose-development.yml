@@ -1,7 +1,7 @@
 services:
 
   cockroachdb-1:
-    image: cockroachdb/cockroach:v22.1.12
+    image: cockroachdb/cockroach:v25.1.0
     command: start-single-node --insecure
     ports:
       - "26257:26257"
@@ -37,6 +37,37 @@ services:
     volumes:
       - redis_data:/data
 
+  pulsar:
+    image: apachepulsar/pulsar:4.0.3
+    container_name: pavilion-pulsar
+    ports:
+      - "6650:6650" # Pulsar protocol port
+      - "6651:6651" # Pulsar SSL protocol port
+      - "8083:8080" # Pulsar web UI port
+    environment:
+      PULSAR_MEM: "-Xms512m -Xmx512m"
+    command: >
+      /bin/bash -c " bin/apply-config-from-env.py conf/standalone.conf && bin/pulsar standalone"
+    volumes:
+      - pulsar_data:/pulsar/data
+      - pulsar_conf:/pulsar/conf
+      - ./init-pulsar.sh:/pulsar/init-pulsar.sh
+    healthcheck:
+      test: [ "CMD", "bin/pulsar-admin", "brokers", "healthcheck" ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  pulsar-init:
+    image: apachepulsar/pulsar:4.0.3
+    container_name: pavilion-pulsar-init
+    depends_on:
+      pulsar:
+        condition: service_healthy
+    volumes:
+      - ./init-pulsar.sh:/pulsar/init-pulsar.sh
+    entrypoint: [ "sh", "-c", "chmod +x /pulsar/init-pulsar.sh && /pulsar/init-pulsar.sh" ]
+
   ipfs:
     image: ipfs/go-ipfs
     container_name: pavilion-ipfs
@@ -53,3 +84,5 @@ volumes:
   redis_data:
   ipfs_data:
   scylla_data:
+  pulsar_data:
+  pulsar_conf:

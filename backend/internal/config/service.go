@@ -98,6 +98,9 @@ func (s *ConfigService) Load(path string) (*Config, error) {
 	// Bind ScyllaDB password only
 	viper.BindEnv("scylladb.password", "SCYLLA_PASSWORD")
 
+	// Bind Pulsar auth token
+	viper.BindEnv("pulsar.auth_token", "PULSAR_AUTH_TOKEN")
+
 	// Bind JWT configuration
 	viper.BindEnv("auth.jwt.secret", "JWT_SECRET")
 

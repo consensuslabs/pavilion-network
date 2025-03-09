@@ -3,6 +3,8 @@ package logger
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"time"
 
 	"go.uber.org/zap"
@@ -36,11 +38,26 @@ func NewLogger(config *Config) (Logger, error) {
 	zapConfig.Encoding = config.Format
 
 	// Configure output paths
-	if config.Output == "both" && config.File.Enabled {
-		// Send logs to both stdout and file
-		zapConfig.OutputPaths = []string{"stdout", config.File.Path}
-	} else if config.File.Enabled {
-		zapConfig.OutputPaths = []string{config.File.Path}
+	if config.File.Enabled {
+		// Ensure log directory exists
+		logDir := filepath.Dir(config.File.Path)
+		if err := os.MkdirAll(logDir, 0755); err != nil {
+			return nil, fmt.Errorf("failed to create log directory %s: %v", logDir, err)
+		}
+		
+		// Make sure the log file exists and is writable
+		logFile, err := os.OpenFile(config.File.Path, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create or open log file %s: %v", config.File.Path, err)
+		}
+		logFile.Close() // Just checking if we can create it, not keeping it open
+		
+		if config.Output == "both" {
+			// Send logs to both stdout and file
+			zapConfig.OutputPaths = []string{"stdout", config.File.Path}
+		} else {
+			zapConfig.OutputPaths = []string{config.File.Path}
+		}
 	} else {
 		zapConfig.OutputPaths = []string{config.Output}
 	}

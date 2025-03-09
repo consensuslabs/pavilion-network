@@ -47,6 +47,93 @@ All API endpoints follow a standard response format:
 
 ## Endpoints
 
+### Notifications
+
+#### GET /api/v1/notifications/
+Retrieve paginated list of notifications for the authenticated user.
+
+**Query Parameters:**
+- `limit`: Number of notifications to return (default: 10)
+- `page`: Page number for pagination (default: 1)
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "userId": "550e8400-e29b-41d4-a716-446655440001",
+      "type": "VIDEO_UPLOADED",
+      "content": "Your video 'My awesome video' has been uploaded successfully",
+      "metadata": {
+        "videoId": "550e8400-e29b-41d4-a716-446655440002",
+        "title": "My awesome video",
+        "duration": "2m30s"
+      },
+      "createdAt": "2025-03-05T21:26:06Z"
+    },
+    {
+      "id": "660e8400-e29b-41d4-a716-446655440000",
+      "userId": "550e8400-e29b-41d4-a716-446655440001",
+      "type": "COMMENT_CREATED",
+      "content": "Someone commented on your video",
+      "metadata": {
+        "commentId": "770e8400-e29b-41d4-a716-446655440000",
+        "videoId": "550e8400-e29b-41d4-a716-446655440002",
+        "contentPreview": "Great video!"
+      },
+      "readAt": "2025-03-05T21:30:00Z",
+      "createdAt": "2025-03-05T21:20:00Z"
+    }
+  ],
+  "message": "Notifications retrieved successfully"
+}
+```
+
+#### GET /api/v1/notifications/unread-count
+Get count of unread notifications for the authenticated user.
+
+**Response:**
+```json
+{
+  "success": true,
+  "data": {
+    "count": 5
+  },
+  "message": "Unread count retrieved successfully"
+}
+```
+
+#### PUT /api/v1/notifications/:id/read
+Mark a specific notification as read.
+
+**Path Parameters:**
+- `id`: Notification ID (UUID)
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Notification marked as read"
+}
+```
+
+**Error Responses:**
+- `NOT_FOUND`: Notification not found
+- `INVALID_ID`: Invalid notification ID format
+
+#### PUT /api/v1/notifications/read-all
+Mark all notifications as read for the authenticated user.
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "All notifications marked as read"
+}
+```
+
 ### Authentication
 
 #### POST /auth/login
