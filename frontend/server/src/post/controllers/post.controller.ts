@@ -216,26 +216,67 @@ export class PostController {
             ? `${S3_MEETING_RECORDING_DIR}${slug}/${postVideo.fileName}`
             : `${S3_VIDEO_POST_DIR}${postVideo.fileName}`,
       };
+
       const head = await s3HeadObject(creds);
-      const objectStream = s3.getObject(creds).createReadStream();
+      const { ContentLength, ContentType: contentType } = head;
 
+      if (!ContentLength) {
+        throw new BadRequestException(
+          ErrorTypes.NOT_VALID,
+          'Invalid content length',
+        );
+      }
+
+      const total = ContentLength;
+      let start = 0;
+      let end = total - 1;
+
+      // Handle range request
       const { range } = req.headers;
-      const total = head.ContentLength;
-      const parts = range?.replace(/bytes=/, '').split('-');
-      const [partialStart, partialEnd] = parts || [];
+      if (range) {
+        const parts = range.replace(/bytes=/, '').split('-');
+        start = parseInt(parts[0], 10);
+        end = parts[1] ? parseInt(parts[1], 10) : total - 1;
 
-      const start = Number.parseInt(partialStart, 10);
-      const end = partialEnd ? Number.parseInt(partialEnd, 10) : total;
+        if (start >= total) {
+          res.status(416).send('Requested range not satisfiable');
+          return;
+        }
 
-      res.setHeader('Content-Range', `bytes ${start}-${end}/${total}`);
-      res.setHeader('Accept-Ranges', 'bytes');
-      res.setHeader('Content-Disposition', `filename=${postVideo.fileName}`);
-      if (total) res.setHeader('Content-Length', total);
-      if (head.ContentType) res.setHeader('Content-Type', head.ContentType);
+        const chunksize = end - start + 1;
+        const stream = s3
+          .getObject({
+            ...creds,
+            Range: `bytes=${start}-${end}`,
+          })
+          .createReadStream();
 
-      return objectStream.pipe(res);
+        const headers = {
+          'Content-Range': `bytes ${start}-${end}/${total}`,
+          'Accept-Ranges': 'bytes',
+          'Content-Length': chunksize,
+          'Content-Type': contentType,
+          'Content-Disposition': `filename=${postVideo.fileName}`,
+        };
+
+        res.writeHead(206, headers);
+        stream.pipe(res);
+        return;
+      }
+
+      // Handle non-range request
+      const headers = {
+        'Content-Length': total,
+        'Content-Type': contentType,
+        'Content-Disposition': `filename=${postVideo.fileName}`,
+        'Accept-Ranges': 'bytes',
+      };
+
+      res.writeHead(200, headers);
+      const stream = s3.getObject(creds).createReadStream();
+      stream.pipe(res);
     } catch (err: any) {
-      return res.status(err.statusCode || 500).json(err);
+      res.status(err.statusCode || 500).json(err);
     }
   }
 
