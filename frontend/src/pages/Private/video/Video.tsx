@@ -259,6 +259,31 @@ const Video: FC = () => {
     };
   }, []);
 
+  useEffect(() => {
+    const handleSpacePress = (event: KeyboardEvent) => {
+      if (
+        event.code === 'Space' ||
+        event.code === 'Spacebar' ||
+        event.key === ' '
+      ) {
+        event.preventDefault();
+        if (player.current) {
+          if (player.current.paused()) {
+            player.current.play();
+          } else {
+            player.current.pause();
+          }
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleSpacePress);
+
+    return () => {
+      document.removeEventListener('keydown', handleSpacePress);
+    };
+  }, []);
+
   return (
     <PrivatePageLayout
       rightComponentWithoutOverflow={!showSettings}
