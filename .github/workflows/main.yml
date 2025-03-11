@@ -8,7 +8,6 @@ on:
 jobs:
   deploy-frontend:
     runs-on: self-hosted
-    working-directory: ./frontend
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -19,21 +18,23 @@ jobs:
           node-version: '16' # Change this if you're using a different version of Node.js
 
       - name: Install dependencies (Frontend)
+        working-directory: ./frontend # Set working-directory for this step
         run: |
           yarn install
 
       - name: Build frontend
+        working-directory: ./frontend # Set working-directory for this step
         run: |
           yarn build
 
       - name: Replace build folder
+        working-directory: ./frontend # Set working-directory for this step
         run: |
           sudo rm -rf /var/www/purpie/build
           sudo cp -r ./build /var/www/purpie/
 
   deploy-backend:
     runs-on: self-hosted
-    working-directory: ./backend
     needs: deploy-frontend # Ensures frontend job runs before the backend
     steps:
       - name: Checkout code
@@ -45,6 +46,7 @@ jobs:
           node-version: '18' # Change this if you're using a different version of Node.js
 
       - name: Install dependencies (Backend)
+        working-directory: ./backend # Set working-directory for this step
         run: |
           yarn install
 
