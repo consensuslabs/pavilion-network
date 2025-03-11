@@ -1,7 +1,8 @@
-import React, { FC, useEffect } from 'react';
+import React, { FC, useEffect, useState } from 'react';
 import { useHistory } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { Box, Form, FormField, Image, Main, Text, TextInput } from 'grommet';
+import { Hide, View } from 'grommet-icons';
 import { useTranslation } from 'react-i18next';
 import { AppState } from '../../store/reducers/root.reducer';
 import LogoHorizontalColor from '../../assets/purpie-logo/logo-horizontal-color.svg';
@@ -21,6 +22,10 @@ const InitializeUser: FC = () => {
   } = useSelector((state: AppState) => state.auth);
   const dispatch = useDispatch();
   const { t } = useTranslation();
+  const [revealPassword, setRevealPassword] = useState({
+    password: false,
+    confirmPassword: false,
+  });
 
   const history = useHistory();
 
@@ -111,7 +116,37 @@ const InitializeUser: FC = () => {
                 validators.minLength(t('common.password'), 6),
               ]}
             >
-              <TextInput id="passwordInput" name="password" type="password" />
+              <Box
+                direction="row"
+                justify="between"
+                align="center"
+                gap="small"
+                round="small"
+              >
+                <TextInput
+                  id="passwordInput"
+                  name="password"
+                  type={revealPassword.password ? 'text' : 'password'}
+                  plain
+                  focusIndicator={false}
+                />
+                <Box
+                  focusIndicator={false}
+                  pad={{ right: 'small' }}
+                  onClick={() =>
+                    setRevealPassword({
+                      ...revealPassword,
+                      password: !revealPassword.password,
+                    })
+                  }
+                >
+                  {revealPassword.password ? (
+                    <View size="medium" />
+                  ) : (
+                    <Hide size="medium" />
+                  )}
+                </Box>
+              </Box>
             </FormField>
             <FormField
               label={t('common.confirmPassword')}
@@ -122,7 +157,37 @@ const InitializeUser: FC = () => {
                 validators.equalsField('password', t('common.passwords')),
               ]}
             >
-              <TextInput id="password1Input" name="password1" type="password" />
+              <Box
+                direction="row"
+                justify="between"
+                align="center"
+                gap="small"
+                round="small"
+              >
+                <TextInput
+                  id="password1Input"
+                  name="password1"
+                  type={revealPassword.confirmPassword ? 'text' : 'password'}
+                  plain
+                  focusIndicator={false}
+                />
+                <Box
+                  focusIndicator={false}
+                  pad={{ right: 'small' }}
+                  onClick={() =>
+                    setRevealPassword({
+                      ...revealPassword,
+                      confirmPassword: !revealPassword.confirmPassword,
+                    })
+                  }
+                >
+                  {revealPassword.confirmPassword ? (
+                    <View size="medium" />
+                  ) : (
+                    <Hide size="medium" />
+                  )}
+                </Box>
+              </Box>
             </FormField>
             <AuthFormButton
               primary

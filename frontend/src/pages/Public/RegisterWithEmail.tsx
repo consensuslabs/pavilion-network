@@ -1,5 +1,6 @@
-import React, { FC } from 'react';
-import { Form, FormField, Image, TextInput } from 'grommet';
+import React, { FC, useState } from 'react';
+import { Form, FormField, Image, TextInput, Box } from 'grommet';
+import { Hide, View } from 'grommet-icons';
 import { useDispatch, useSelector } from 'react-redux';
 import { useHistory } from 'react-router-dom';
 
@@ -18,6 +19,10 @@ const RegisterWithEmail: FC = () => {
   const dispatch = useDispatch();
   const history = useHistory();
   const { t } = useTranslation();
+  const [revealPassword, setRevealPassword] = useState({
+    password: false,
+    confirmPassword: false,
+  });
 
   const {
     register: { loading },
@@ -90,7 +95,37 @@ const RegisterWithEmail: FC = () => {
               validators.minLength(t('common.password'), 6),
             ]}
           >
-            <TextInput id="passwordInput" name="password" type="password" />
+            <Box
+              direction="row"
+              justify="between"
+              align="center"
+              gap="small"
+              round="small"
+            >
+              <TextInput
+                id="passwordInput"
+                name="password"
+                type={revealPassword.password ? 'text' : 'password'}
+                plain
+                focusIndicator={false}
+              />
+              <Box
+                focusIndicator={false}
+                pad={{ right: 'small' }}
+                onClick={() =>
+                  setRevealPassword({
+                    ...revealPassword,
+                    password: !revealPassword.password,
+                  })
+                }
+              >
+                {revealPassword.password ? (
+                  <View size="medium" />
+                ) : (
+                  <Hide size="medium" />
+                )}
+              </Box>
+            </Box>
           </FormField>
           <FormField
             name="password1"
@@ -101,7 +136,37 @@ const RegisterWithEmail: FC = () => {
               validators.equalsField('password', t('common.passwords')),
             ]}
           >
-            <TextInput id="password1Input" name="password1" type="password" />
+            <Box
+              direction="row"
+              justify="between"
+              align="center"
+              gap="small"
+              round="small"
+            >
+              <TextInput
+                id="password1Input"
+                name="password1"
+                type={revealPassword.confirmPassword ? 'text' : 'password'}
+                plain
+                focusIndicator={false}
+              />
+              <Box
+                focusIndicator={false}
+                pad={{ right: 'small' }}
+                onClick={() =>
+                  setRevealPassword({
+                    ...revealPassword,
+                    confirmPassword: !revealPassword.confirmPassword,
+                  })
+                }
+              >
+                {revealPassword.confirmPassword ? (
+                  <View size="medium" />
+                ) : (
+                  <Hide size="medium" />
+                )}
+              </Box>
+            </Box>
           </FormField>
           <AuthFormButton
             primary

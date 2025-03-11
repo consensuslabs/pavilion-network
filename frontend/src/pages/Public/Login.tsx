@@ -1,8 +1,9 @@
 import { Box, Form, FormField, Image, Text, TextInput } from 'grommet';
-import React, { FC } from 'react';
+import React, { FC, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useHistory } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import { Hide, View } from 'grommet-icons';
 import { AnchorLink } from '../../components/utils/AnchorLink';
 import { validators } from '../../helpers/validators';
 import { FormSubmitEvent } from '../../models/form-submit-event';
@@ -20,6 +21,7 @@ const Login: FC = () => {
   const dispatch = useDispatch();
   const history = useHistory();
   const { t } = useTranslation();
+  const [revealPassword, setRevealPassword] = useState(false);
 
   const {
     login: { loading },
@@ -77,7 +79,32 @@ const Login: FC = () => {
               validators.minLength(t('common.password'), 6),
             ]}
           >
-            <TextInput id="passwordInput" name="password" type="password" />
+            <Box
+              direction="row"
+              justify="between"
+              align="center"
+              gap="small"
+              round="small"
+            >
+              <TextInput
+                id="passwordInput"
+                name="password"
+                type={revealPassword ? 'text' : 'password'}
+                plain
+                focusIndicator={false}
+              />
+              <Box
+                focusIndicator={false}
+                pad={{ right: 'small' }}
+                onClick={() => setRevealPassword(!revealPassword)}
+              >
+                {revealPassword ? (
+                  <View size="medium" />
+                ) : (
+                  <Hide size="medium" />
+                )}
+              </Box>
+            </Box>
           </FormField>
           <Box
             direction="row"
