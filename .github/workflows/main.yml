@@ -17,18 +17,22 @@ jobs:
         with:
           node-version: '16' # Change this if you're using a different version of Node.js
 
+      - name: Copy frontend .env file
+        run: |
+          cp ~/consensus-runner/_work/env-files/frontend.env ./frontend/.env
+
       - name: Install dependencies (Frontend)
-        working-directory: ./frontend # Set working-directory for this step
+        working-directory: ./frontend
         run: |
           yarn install
 
       - name: Build frontend
-        working-directory: ./frontend # Set working-directory for this step
+        working-directory: ./frontend
         run: |
           yarn build
 
       - name: Replace build folder
-        working-directory: ./frontend # Set working-directory for this step
+        working-directory: ./frontend
         run: |
           sudo rm -rf /var/www/purpie/build
           sudo cp -r ./build /var/www/purpie/
@@ -45,8 +49,12 @@ jobs:
         with:
           node-version: '18' # Change this if you're using a different version of Node.js
 
+      - name: Copy backend .env file
+        run: |
+          cp ~/consensus-runner/_work/env-files/backend.env ./backend/.env
+
       - name: Install dependencies (Backend)
-        working-directory: ./backend # Set working-directory for this step
+        working-directory: ./backend
         run: |
           yarn install
 
