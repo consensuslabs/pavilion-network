@@ -1,9 +1,8 @@
-import { Form, FormField, Image, TextInput, Box } from 'grommet';
+import { Form, FormField, Image } from 'grommet';
 import React, { FC, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { useTranslation } from 'react-i18next';
-import { Hide, View } from 'grommet-icons';
 import { resetPasswordAction } from '../../store/actions/auth.action';
 import { AppState } from '../../store/reducers/root.reducer';
 import AuthLayout from '../../components/layouts/AuthLayout';
@@ -11,6 +10,7 @@ import { validators } from '../../helpers/validators';
 import Figure from '../../assets/forgotten-password-bg/figure.svg';
 import Banner from '../../assets/forgotten-password-bg/banner.svg';
 import AuthFormButton from '../../components/auth/AuthFormButton';
+import PasswordInput from '../../components/auth/PasswordInput';
 
 interface Params {
   token: string;
@@ -70,37 +70,17 @@ const ResetPassword: FC = () => {
               validators.minLength(t('common.password'), 6),
             ]}
           >
-            <Box
-              direction="row"
-              justify="between"
-              align="center"
-              gap="small"
-              round="small"
-            >
-              <TextInput
-                id="passwordInput"
-                name="password"
-                type={revealPassword.password ? 'text' : 'password'}
-                plain
-                focusIndicator={false}
-              />
-              <Box
-                focusIndicator={false}
-                pad={{ right: 'small' }}
-                onClick={() =>
-                  setRevealPassword({
-                    ...revealPassword,
-                    password: !revealPassword.password,
-                  })
-                }
-              >
-                {revealPassword.password ? (
-                  <View size="medium" />
-                ) : (
-                  <Hide size="medium" />
-                )}
-              </Box>
-            </Box>
+            <PasswordInput
+              id="passwordInput"
+              name="password"
+              revealed={revealPassword.password}
+              onToggleReveal={() =>
+                setRevealPassword({
+                  ...revealPassword,
+                  password: !revealPassword.password,
+                })
+              }
+            />
           </FormField>
           <FormField
             name="password1"
@@ -111,37 +91,17 @@ const ResetPassword: FC = () => {
               validators.equalsField('password', t('common.passwords')),
             ]}
           >
-            <Box
-              direction="row"
-              justify="between"
-              align="center"
-              gap="small"
-              round="small"
-            >
-              <TextInput
-                id="password1Input"
-                name="password1"
-                type={revealPassword.confirmPassword ? 'text' : 'password'}
-                plain
-                focusIndicator={false}
-              />
-              <Box
-                focusIndicator={false}
-                pad={{ right: 'small' }}
-                onClick={() =>
-                  setRevealPassword({
-                    ...revealPassword,
-                    confirmPassword: !revealPassword.confirmPassword,
-                  })
-                }
-              >
-                {revealPassword.confirmPassword ? (
-                  <View size="medium" />
-                ) : (
-                  <Hide size="medium" />
-                )}
-              </Box>
-            </Box>
+            <PasswordInput
+              id="password1Input"
+              name="password1"
+              revealed={revealPassword.confirmPassword}
+              onToggleReveal={() =>
+                setRevealPassword({
+                  ...revealPassword,
+                  confirmPassword: !revealPassword.confirmPassword,
+                })
+              }
+            />
           </FormField>
           <AuthFormButton
             primary
