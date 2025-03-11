@@ -8,6 +8,7 @@ on:
 jobs:
   deploy-frontend:
     runs-on: self-hosted
+    working-directory: ./frontend
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -32,6 +33,7 @@ jobs:
 
   deploy-backend:
     runs-on: self-hosted
+    working-directory: ./backend
     needs: deploy-frontend # Ensures frontend job runs before the backend
     steps:
       - name: Checkout code
