@@ -111,7 +111,7 @@ const CreateVideo: FC<CreateVideoProps> = ({ onDismiss }) => {
               <FormField
                 name="description"
                 label={t('common.description')}
-                validate={[validators.maxLength(5000)]}
+                validate={[validators.maxLength(4096)]}
               >
                 <TextInput
                   value={description}
