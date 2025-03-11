@@ -1,0 +1,67 @@
+name: Deploy App
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy-frontend:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '16' # Change this if you're using a different version of Node.js
+
+      - name: Install dependencies (Frontend)
+        run: |
+          yarn install
+
+      - name: Build frontend
+        run: |
+          yarn build
+
+      - name: Replace build folder
+        run: |
+          sudo rm -rf /var/www/purpie/build
+          sudo cp -r ./build /var/www/purpie/
+
+  deploy-backend:
+    runs-on: self-hosted
+    needs: deploy-frontend # Ensures frontend job runs before the backend
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: '18' # Change this if you're using a different version of Node.js
+
+      - name: Install dependencies (Backend)
+        run: |
+          yarn install
+
+      - name: Stop and delete existing backend PM2 process (if any)
+        run: |
+          pm2 delete pavilion-network || echo "No existing process to stop"
+
+      - name: Start backend server with PM2
+        run: |
+          pm2 start yarn --name "pavilion-network" -- start
+
+      - name: Save PM2 process list
+        run: |
+          pm2 save
+
+      - name: Verify the backend server is running
+        run: |
+          curl --silent --fail http://localhost:8000 || exit 1
+
+      - name: Reload Nginx
+        run: |
+          sudo systemctl reload nginx
