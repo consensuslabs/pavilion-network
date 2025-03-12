@@ -1,3 +1,4 @@
+import { AxiosProgressEvent } from 'axios';
 import {
   ADD_POST_SUCCESS,
   CLOSE_CREATE_VIDEO_LAYER,
@@ -134,7 +135,7 @@ export const getPostDetailAction = (postId: string): PostAction => {
 
 export const createVideoAction = (
   payload: CreateVideoPayload,
-  onUploadProgress: (progressEvent: ProgressEvent<XMLHttpRequestUpload>) => void
+  onUploadProgress: (progressEvent: AxiosProgressEvent) => void
 ): PostAction => {
   return async (dispatch) => {
     dispatch({

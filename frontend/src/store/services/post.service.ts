@@ -1,4 +1,5 @@
 import { serialize } from 'object-to-formdata';
+import { AxiosProgressEvent } from 'axios';
 import { http } from '../../config/http';
 import { PaginatedResponse } from '../../models/paginated-response';
 import {
@@ -28,7 +29,7 @@ export const updatePostDetail = (payload: EditVideoPayload): Promise<Post> =>
 
 export const createVideo = (
   data: CreateVideoPayload,
-  onUploadProgress: (progressEvent: ProgressEvent<XMLHttpRequestUpload>) => void
+  onUploadProgress: (progressEvent: AxiosProgressEvent) => void
 ): Promise<Post> =>
   http
     .post('video/create/', serialize(data), { onUploadProgress })
