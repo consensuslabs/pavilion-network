@@ -11,6 +11,7 @@ import {
   Select,
   Spinner,
   Text,
+  TextArea,
   TextInput,
 } from 'grommet';
 import { Close } from 'grommet-icons';
@@ -21,6 +22,10 @@ import { AppState } from '../../store/reducers/root.reducer';
 import { CreateVideoPayload } from '../../store/types/post.types';
 import { createVideoAction } from '../../store/actions/post.action';
 import Switch from '../../components/utils/Switch';
+import {
+  VIDEO_TITLE_MAX_LENGTH,
+  VIDEO_DESCRIPTION_MAX_LENGTH,
+} from '../../helpers/constants';
 
 interface CreateVideoProps {
   onDismiss: () => void;
@@ -100,24 +105,43 @@ const CreateVideo: FC<CreateVideoProps> = ({ onDismiss }) => {
                 required
                 name="title"
                 label={t('CreateVideo.videoTitle')}
-                validate={[validators.maxLength(64)]}
+                validate={[validators.maxLength(VIDEO_TITLE_MAX_LENGTH)]}
               >
                 <TextInput
                   value={title}
-                  onChange={(e) => setTitle(e.target.value)}
+                  onChange={(e) => {
+                    const { value } = e.target;
+                    if (value.length <= VIDEO_TITLE_MAX_LENGTH) {
+                      setTitle(value);
+                    }
+                  }}
                   name="title"
                 />
               </FormField>
               <FormField
                 name="description"
                 label={t('common.description')}
-                validate={[validators.maxLength(4096)]}
+                validate={[validators.maxLength(VIDEO_DESCRIPTION_MAX_LENGTH)]}
               >
-                <TextInput
+                <TextArea
                   value={description}
-                  onChange={(e) => setDescription(e.target.value)}
+                  onChange={(e) => {
+                    const { value } = e.target;
+                    if (value.length <= VIDEO_DESCRIPTION_MAX_LENGTH) {
+                      setDescription(value);
+                    }
+                  }}
                   name="description"
                 />
+                <Text
+                  size="small"
+                  color="dark-6"
+                  alignSelf="end"
+                  margin={{ right: 'small', bottom: 'xsmall' }}
+                >
+                  {description ? description.length : 0} /{' '}
+                  {VIDEO_DESCRIPTION_MAX_LENGTH}
+                </Text>
               </FormField>
               <FormField name="channelId" label={t('common.channel')}>
                 <Select
@@ -179,7 +203,7 @@ const CreateVideo: FC<CreateVideoProps> = ({ onDismiss }) => {
           >
             <Button
               type="submit"
-              disabled={notValid || uploading}
+              disabled={notValid || uploading || !channelId}
               primary
               icon={uploading ? <Spinner color="white" /> : undefined}
               label={(() => {
