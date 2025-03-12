@@ -1,4 +1,4 @@
-import { Form, FormField, Image, TextInput } from 'grommet';
+import { Form, FormField, Image } from 'grommet';
 import React, { FC } from 'react';
 import { useParams } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
@@ -10,6 +10,7 @@ import { validators } from '../../helpers/validators';
 import Figure from '../../assets/forgotten-password-bg/figure.svg';
 import Banner from '../../assets/forgotten-password-bg/banner.svg';
 import AuthFormButton from '../../components/auth/AuthFormButton';
+import PasswordInput from '../../components/auth/PasswordInput';
 
 interface Params {
   token: string;
@@ -65,7 +66,7 @@ const ResetPassword: FC = () => {
               validators.minLength(t('common.password'), 6),
             ]}
           >
-            <TextInput id="passwordInput" name="password" type="password" />
+            <PasswordInput id="passwordInput" name="password" />
           </FormField>
           <FormField
             name="password1"
@@ -76,7 +77,7 @@ const ResetPassword: FC = () => {
               validators.equalsField('password', t('common.passwords')),
             ]}
           >
-            <TextInput id="password1Input" name="password1" type="password" />
+            <PasswordInput id="password1Input" name="password1" />
           </FormField>
           <AuthFormButton
             primary

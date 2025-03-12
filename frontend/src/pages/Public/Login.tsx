@@ -15,6 +15,7 @@ import Figure from '../../assets/login-bg/figure.svg';
 import Banner from '../../assets/login-bg/banner.svg';
 import AuthFormButton from '../../components/auth/AuthFormButton';
 import ThirdPartyAuthButtons from '../../components/auth/ThirdPartyAuthButtons';
+import PasswordInput from '../../components/auth/PasswordInput';
 
 const Login: FC = () => {
   const dispatch = useDispatch();
@@ -77,7 +78,7 @@ const Login: FC = () => {
               validators.minLength(t('common.password'), 6),
             ]}
           >
-            <TextInput id="passwordInput" name="password" type="password" />
+            <PasswordInput id="passwordInput" name="password" />
           </FormField>
           <Box
             direction="row"

@@ -13,6 +13,7 @@ import { initializeUserAction } from '../../store/actions/auth.action';
 import { RegisterPayload } from '../../store/types/auth.types';
 import AuthFormButton from '../../components/auth/AuthFormButton';
 import { USER_NAME_CONSTRAINT } from '../../helpers/constants';
+import PasswordInput from '../../components/auth/PasswordInput';
 
 const InitializeUser: FC = () => {
   const {
@@ -111,7 +112,7 @@ const InitializeUser: FC = () => {
                 validators.minLength(t('common.password'), 6),
               ]}
             >
-              <TextInput id="passwordInput" name="password" type="password" />
+              <PasswordInput id="passwordInput" name="password" />
             </FormField>
             <FormField
               label={t('common.confirmPassword')}
@@ -122,7 +123,7 @@ const InitializeUser: FC = () => {
                 validators.equalsField('password', t('common.passwords')),
               ]}
             >
-              <TextInput id="password1Input" name="password1" type="password" />
+              <PasswordInput id="password1Input" name="password1" />
             </FormField>
             <AuthFormButton
               primary

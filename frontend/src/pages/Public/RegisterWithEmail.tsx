@@ -2,7 +2,6 @@ import React, { FC } from 'react';
 import { Form, FormField, Image, TextInput } from 'grommet';
 import { useDispatch, useSelector } from 'react-redux';
 import { useHistory } from 'react-router-dom';
-
 import { useTranslation } from 'react-i18next';
 import { RegisterPayload } from '../../store/types/auth.types';
 import { registerAction } from '../../store/actions/auth.action';
@@ -13,6 +12,7 @@ import { validators } from '../../helpers/validators';
 import Figure from '../../assets/register-bg/figure.svg';
 import Banner from '../../assets/register-bg/banner.svg';
 import AuthFormButton from '../../components/auth/AuthFormButton';
+import PasswordInput from '../../components/auth/PasswordInput';
 
 const RegisterWithEmail: FC = () => {
   const dispatch = useDispatch();
@@ -90,7 +90,7 @@ const RegisterWithEmail: FC = () => {
               validators.minLength(t('common.password'), 6),
             ]}
           >
-            <TextInput id="passwordInput" name="password" type="password" />
+            <PasswordInput id="passwordInput" name="password" />
           </FormField>
           <FormField
             name="password1"
@@ -101,7 +101,7 @@ const RegisterWithEmail: FC = () => {
               validators.equalsField('password', t('common.passwords')),
             ]}
           >
-            <TextInput id="password1Input" name="password1" type="password" />
+            <PasswordInput id="password1Input" name="password1" />
           </FormField>
           <AuthFormButton
             primary
