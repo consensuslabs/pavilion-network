@@ -1,5 +1,5 @@
 import { Form, FormField, Image } from 'grommet';
-import React, { FC, useState } from 'react';
+import React, { FC } from 'react';
 import { useParams } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { useTranslation } from 'react-i18next';
@@ -20,10 +20,6 @@ const ResetPassword: FC = () => {
   const dispatch = useDispatch();
   const { token } = useParams<Params>();
   const { t } = useTranslation();
-  const [revealPassword, setRevealPassword] = useState({
-    password: false,
-    confirmPassword: false,
-  });
 
   const {
     resetPassword: { loading },
@@ -70,17 +66,7 @@ const ResetPassword: FC = () => {
               validators.minLength(t('common.password'), 6),
             ]}
           >
-            <PasswordInput
-              id="passwordInput"
-              name="password"
-              revealed={revealPassword.password}
-              onToggleReveal={() =>
-                setRevealPassword({
-                  ...revealPassword,
-                  password: !revealPassword.password,
-                })
-              }
-            />
+            <PasswordInput id="passwordInput" name="password" />
           </FormField>
           <FormField
             name="password1"
@@ -91,17 +77,7 @@ const ResetPassword: FC = () => {
               validators.equalsField('password', t('common.passwords')),
             ]}
           >
-            <PasswordInput
-              id="password1Input"
-              name="password1"
-              revealed={revealPassword.confirmPassword}
-              onToggleReveal={() =>
-                setRevealPassword({
-                  ...revealPassword,
-                  confirmPassword: !revealPassword.confirmPassword,
-                })
-              }
-            />
+            <PasswordInput id="password1Input" name="password1" />
           </FormField>
           <AuthFormButton
             primary

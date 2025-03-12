@@ -1,4 +1,4 @@
-import React, { FC, useState } from 'react';
+import React, { FC } from 'react';
 import { Form, FormField, Image, TextInput } from 'grommet';
 import { useDispatch, useSelector } from 'react-redux';
 import { useHistory } from 'react-router-dom';
@@ -18,10 +18,6 @@ const RegisterWithEmail: FC = () => {
   const dispatch = useDispatch();
   const history = useHistory();
   const { t } = useTranslation();
-  const [revealPassword, setRevealPassword] = useState({
-    password: false,
-    confirmPassword: false,
-  });
 
   const {
     register: { loading },
@@ -94,17 +90,7 @@ const RegisterWithEmail: FC = () => {
               validators.minLength(t('common.password'), 6),
             ]}
           >
-            <PasswordInput
-              id="passwordInput"
-              name="password"
-              revealed={revealPassword.password}
-              onToggleReveal={() =>
-                setRevealPassword({
-                  ...revealPassword,
-                  password: !revealPassword.password,
-                })
-              }
-            />
+            <PasswordInput id="passwordInput" name="password" />
           </FormField>
           <FormField
             name="password1"
@@ -115,17 +101,7 @@ const RegisterWithEmail: FC = () => {
               validators.equalsField('password', t('common.passwords')),
             ]}
           >
-            <PasswordInput
-              id="password1Input"
-              name="password1"
-              revealed={revealPassword.confirmPassword}
-              onToggleReveal={() =>
-                setRevealPassword({
-                  ...revealPassword,
-                  confirmPassword: !revealPassword.confirmPassword,
-                })
-              }
-            />
+            <PasswordInput id="password1Input" name="password1" />
           </FormField>
           <AuthFormButton
             primary

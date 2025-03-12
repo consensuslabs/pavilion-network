@@ -1,5 +1,5 @@
 import { Box, Form, FormField, Image, Text, TextInput } from 'grommet';
-import React, { FC, useState } from 'react';
+import React, { FC } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useHistory } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -21,7 +21,6 @@ const Login: FC = () => {
   const dispatch = useDispatch();
   const history = useHistory();
   const { t } = useTranslation();
-  const [revealPassword, setRevealPassword] = useState(false);
 
   const {
     login: { loading },
@@ -79,12 +78,7 @@ const Login: FC = () => {
               validators.minLength(t('common.password'), 6),
             ]}
           >
-            <PasswordInput
-              id="passwordInput"
-              name="password"
-              revealed={revealPassword}
-              onToggleReveal={() => setRevealPassword(!revealPassword)}
-            />
+            <PasswordInput id="passwordInput" name="password" />
           </FormField>
           <Box
             direction="row"

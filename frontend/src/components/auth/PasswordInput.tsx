@@ -1,20 +1,17 @@
-import React, { FC } from 'react';
+import React, { FC, useState } from 'react';
 import { Box, TextInput } from 'grommet';
 import { Hide, View } from 'grommet-icons';
 
 interface PasswordInputProps {
   id?: string;
   name: string;
-  revealed: boolean;
-  onToggleReveal: () => void;
 }
 
-const PasswordInput: FC<PasswordInputProps> = ({
-  id,
-  name,
-  revealed,
-  onToggleReveal,
-}) => {
+const PasswordInput: FC<PasswordInputProps> = ({ id, name }) => {
+  const [revealed, setRevealed] = useState(false);
+  const onToggleReveal = () => {
+    setRevealed(!revealed);
+  };
   return (
     <Box
       direction="row"
