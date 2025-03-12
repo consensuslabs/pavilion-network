@@ -365,6 +365,9 @@ const Video: FC = () => {
                         : 'video/mp4',
                     },
                   ],
+                  userActions: {
+                    hotkeys: true,
+                  },
                 }}
               />
 
