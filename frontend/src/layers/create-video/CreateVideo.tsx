@@ -16,6 +16,7 @@ import {
 import { Close } from 'grommet-icons';
 import { useDispatch, useSelector } from 'react-redux';
 import { useTranslation } from 'react-i18next';
+import { AxiosProgressEvent } from 'axios';
 import { validators } from '../../helpers/validators';
 import { AppState } from '../../store/reducers/root.reducer';
 import { CreateVideoPayload } from '../../store/types/post.types';
@@ -44,9 +45,7 @@ const CreateVideo: FC<CreateVideoProps> = ({ onDismiss }) => {
   const [uploadStarted, setUploadStarted] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
 
-  const handleUploadProgress = (
-    progressEvent: ProgressEvent<XMLHttpRequestUpload>
-  ) => {
+  const handleUploadProgress = (progressEvent: AxiosProgressEvent) => {
     if (progressEvent.loaded && progressEvent.total) {
       setUploadProgress(
         Math.round((progressEvent.loaded * 100) / progressEvent.total)
