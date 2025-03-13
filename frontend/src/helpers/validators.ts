@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/explicit-module-boundary-types */
+import isEmail from 'validator/lib/isEmail';
 import i18n from '../config/i18n/i18n-config';
 
 const isExisty = (value: any) => value !== null && value !== undefined;
@@ -9,8 +10,7 @@ const required = (value: any) => isExisty(value) && !isEmpty(value);
 const matchRegexp = (value: any, regexp: RegExp) =>
   !isExisty(value) || isEmpty(value) || regexp.test(value);
 const notEmptyString = (value: any) => !isEmpty(value);
-const isEmail = (value: any) =>
-  matchRegexp(value, /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,4}$/i);
+
 const isUrl = (value: any) =>
   matchRegexp(
     value,
