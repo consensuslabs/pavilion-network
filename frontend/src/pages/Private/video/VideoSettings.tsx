@@ -7,6 +7,7 @@ import {
   FormField,
   TextArea,
   TextInput,
+  Text,
 } from 'grommet';
 import { useDispatch, useSelector } from 'react-redux';
 import { useTranslation } from 'react-i18next';
@@ -16,6 +17,10 @@ import { AppState } from '../../../store/reducers/root.reducer';
 import VideoSettingsTheme from './video-settings-theme';
 import Switch from '../../../components/utils/Switch';
 import { EditVideoPayload } from '../../../store/types/post.types';
+import {
+  VIDEO_TITLE_MAX_LENGTH,
+  VIDEO_DESCRIPTION_MAX_LENGTH,
+} from '../../../helpers/constants';
 
 interface VideoSettingsProps {
   setShowSettings: (settings: boolean) => void;
@@ -79,7 +84,7 @@ const VideoSettings: FC<VideoSettingsProps> = ({
             label={t('VideoSettings.videoName')}
             validate={[
               validators.required(t('VideoSettings.videoName')),
-              validators.maxLength(64),
+              validators.maxLength(VIDEO_TITLE_MAX_LENGTH),
             ]}
           >
             <TextInput
@@ -88,6 +93,13 @@ const VideoSettings: FC<VideoSettingsProps> = ({
               autoFocus
               plain="full"
               type="text"
+              maxLength={VIDEO_TITLE_MAX_LENGTH}
+              onChange={(event) => {
+                setValue({
+                  ...value,
+                  title: event.target.value,
+                });
+              }}
               placeholder={t('VideoSettings.videoNamePlaceholder')}
             />
           </FormField>
@@ -96,13 +108,25 @@ const VideoSettings: FC<VideoSettingsProps> = ({
             htmlFor="videoDescription"
             flex={{ shrink: 0 }}
             label={t('VideoSettings.videoDescription')}
-            validate={[validators.maxLength(4096)]}
+            validate={[validators.maxLength(VIDEO_DESCRIPTION_MAX_LENGTH)]}
           >
             <TextArea
               id="videoDescription"
               placeholder={t('VideoSettings.videoDescriptionPlaceholder')}
               name="description"
+              value={value.description}
+              maxLength={VIDEO_DESCRIPTION_MAX_LENGTH}
+              onChange={(event) => {
+                setValue({
+                  ...value,
+                  description: event.target.value,
+                });
+              }}
             />
+            <Text size="small" color="dark-6" alignSelf="end">
+              {value.description ? value.description.length : 0} /{' '}
+              {VIDEO_DESCRIPTION_MAX_LENGTH}
+            </Text>
           </FormField>
           <Box
             border={{ color: 'status-disabled-light' }}
