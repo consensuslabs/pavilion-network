@@ -108,13 +108,9 @@ const CreateVideo: FC<CreateVideoProps> = ({ onDismiss }) => {
                 validate={[validators.maxLength(VIDEO_TITLE_MAX_LENGTH)]}
               >
                 <TextInput
+                  maxLength={VIDEO_TITLE_MAX_LENGTH}
                   value={title}
-                  onChange={(e) => {
-                    const { value } = e.target;
-                    if (value.length <= VIDEO_TITLE_MAX_LENGTH) {
-                      setTitle(value);
-                    }
-                  }}
+                  onChange={(e) => setTitle(e.target.value)}
                   name="title"
                 />
               </FormField>
@@ -124,13 +120,9 @@ const CreateVideo: FC<CreateVideoProps> = ({ onDismiss }) => {
                 validate={[validators.maxLength(VIDEO_DESCRIPTION_MAX_LENGTH)]}
               >
                 <TextArea
+                  maxLength={VIDEO_DESCRIPTION_MAX_LENGTH}
                   value={description}
-                  onChange={(e) => {
-                    const { value } = e.target;
-                    if (value.length <= VIDEO_DESCRIPTION_MAX_LENGTH) {
-                      setDescription(value);
-                    }
-                  }}
+                  onChange={(e) => setDescription(e.target.value)}
                   name="description"
                 />
                 <Text

@@ -93,6 +93,13 @@ const VideoSettings: FC<VideoSettingsProps> = ({
               autoFocus
               plain="full"
               type="text"
+              maxLength={VIDEO_TITLE_MAX_LENGTH}
+              onChange={(event) => {
+                setValue({
+                  ...value,
+                  title: event.target.value,
+                });
+              }}
               placeholder={t('VideoSettings.videoNamePlaceholder')}
             />
           </FormField>
@@ -108,11 +115,12 @@ const VideoSettings: FC<VideoSettingsProps> = ({
               placeholder={t('VideoSettings.videoDescriptionPlaceholder')}
               name="description"
               value={value.description}
+              maxLength={VIDEO_DESCRIPTION_MAX_LENGTH}
               onChange={(event) => {
-                const newValue = event.target.value;
-                if (newValue.length <= VIDEO_DESCRIPTION_MAX_LENGTH) {
-                  setValue((prev) => ({ ...prev, description: newValue }));
-                }
+                setValue({
+                  ...value,
+                  description: event.target.value,
+                });
               }}
             />
             <Text size="small" color="dark-6" alignSelf="end">
