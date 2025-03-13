@@ -5,6 +5,7 @@ export class EditPostDto {
   @ApiPropertyOptional()
   @IsString()
   @IsOptional()
+  @MaxLength(128)
   title: string;
 
   @ApiPropertyOptional()

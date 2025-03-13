@@ -9,9 +9,9 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 
 export class CreateVideoDto {
-  @ApiPropertyOptional({ maxLength: 64 })
+  @ApiPropertyOptional({ maxLength: 128 })
   @IsString()
-  @MaxLength(64)
+  @MaxLength(128)
   title: string;
 
   @ApiPropertyOptional()
