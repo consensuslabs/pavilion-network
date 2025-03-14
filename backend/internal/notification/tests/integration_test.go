@@ -26,8 +26,11 @@ func TestProducerConsumerIntegration(t *testing.T) {
 	// Create configuration
 	config := notification.DefaultConfig()
 
+	// Create a mock repository
+	repository := NewMockRepository()
+
 	// Create the notification service (producer)
-	service, err := notification.NewService(ctx, config, logger)
+	service, err := notification.NewService(ctx, config, logger, repository)
 	require.NoError(t, err)
 	defer service.Close()
 
