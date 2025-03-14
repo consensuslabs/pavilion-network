@@ -44,7 +44,8 @@ func (r *CommentRepository) GetByID(ctx context.Context, id uuid.UUID) (*comment
 	var parentIDBytes []byte
 	parentIDBytes = nil // Initialize as nil to properly handle NULL values
 
-	err := r.session.Query(query, idBytes).WithContext(ctx).Scan(
+	// Use consistency level ONE (1)
+	err := r.session.Query(query, idBytes).WithContext(ctx).Consistency(1).Scan(
 		&c.ID, &c.VideoID, &c.UserID, &c.Content,
 		&c.CreatedAt, &c.UpdatedAt, &c.DeletedAt,
 		&parentIDBytes, &c.Likes, &c.Dislikes, &status,
@@ -93,49 +94,71 @@ func (r *CommentRepository) GetByVideoID(ctx context.Context, options comment.Co
 	// Calculate offset
 	offset := (options.Page - 1) * options.Limit
 
-	// Query to get comments by video ID
-	query := `
-		SELECT c.id, c.video_id, c.user_id, c.content, c.created_at, c.updated_at, 
-			   c.deleted_at, c.parent_id, c.likes, c.dislikes, c.status
-		FROM comments c
-		JOIN comments_by_video cv ON c.id = cv.comment_id
-		WHERE cv.video_id = ? AND c.parent_id IS NULL AND c.deleted_at IS NULL
+	// Convert UUID to binary for ScyllaDB
+	videoIDBytes, err := options.VideoID.MarshalBinary()
+	if err != nil {
+		r.logger.LogError("Error marshaling video ID", map[string]interface{}{"error": err.Error()})
+		return result, err
+	}
+
+	// Step 1: Get comment IDs from comments_by_video table
+	// This table is a denormalized index that allows us to find comments by video ID
+	commentIDsQuery := `
+		SELECT comment_id
+		FROM comments_by_video
+		WHERE video_id = ?
 		LIMIT ?
 	`
 
-	// Execute query
-	iter := r.session.Query(query, options.VideoID, options.Limit).WithContext(ctx).PageSize(options.Limit).PageState(nil).Iter()
+	// Execute query to get comment IDs with consistency level ONE (1)
+	query := r.session.Query(commentIDsQuery, videoIDBytes, options.Limit).WithContext(ctx)
+	query = query.Consistency(1) // Use consistency level ONE (1) instead of QUORUM
+	commentIDsIter := query.PageSize(options.Limit).PageState(nil).Iter()
 
 	// Skip to the desired page
-	for i := 0; i < offset && iter.Scanner().Next(); i++ {
+	for i := 0; i < offset && commentIDsIter.Scanner().Next(); i++ {
 		// Skip records
 	}
 
-	// Process results
-	for iter.Scanner().Next() {
-		var c comment.Comment
-		var status string
-		var parentID *uuid.UUID
+	// Collect comment IDs
+	var commentIDs []uuid.UUID
+	for commentIDsIter.Scanner().Next() {
+		var commentIDBytes []byte
+		if err := commentIDsIter.Scanner().Scan(&commentIDBytes); err != nil {
+			r.logger.LogError("Error scanning comment ID", map[string]interface{}{"error": err.Error()})
+			return result, err
+		}
+		
+		// Convert binary to UUID
+		var commentID uuid.UUID
+		if err := commentID.UnmarshalBinary(commentIDBytes); err != nil {
+			r.logger.LogError("Error unmarshaling comment ID", map[string]interface{}{"error": err.Error()})
+			return result, err
+		}
+		
+		commentIDs = append(commentIDs, commentID)
+	}
 
-		err := iter.Scanner().Scan(
-			&c.ID, &c.VideoID, &c.UserID, &c.Content,
-			&c.CreatedAt, &c.UpdatedAt, &c.DeletedAt,
-			&parentID, &c.Likes, &c.Dislikes, &status,
-		)
+	if err := commentIDsIter.Close(); err != nil {
+		r.logger.LogError("Error closing comment IDs iterator", map[string]interface{}{"error": err.Error()})
+		return result, err
+	}
+
+	// Step 2: Fetch full comment data for each comment ID
+	for _, commentID := range commentIDs {
+		comment, err := r.GetByID(ctx, commentID)
 		if err != nil {
-			r.logger.LogError("Error scanning comment", map[string]interface{}{"error": err.Error()})
+			r.logger.LogError("Error fetching comment by ID", map[string]interface{}{
+				"error": err.Error(),
+				"commentID": commentID,
+			})
 			return result, err
 		}
 
-		c.Status = comment.Status(status)
-		c.ParentID = parentID
-
-		result.Comments = append(result.Comments, c)
-	}
-
-	if err := iter.Close(); err != nil {
-		r.logger.LogError("Error closing iterator", map[string]interface{}{"error": err.Error()})
-		return result, err
+		// Only include non-deleted comments and top-level comments (no parent)
+		if comment != nil && comment.DeletedAt == nil && comment.ParentID == nil {
+			result.Comments = append(result.Comments, *comment)
+		}
 	}
 
 	// Get total count
@@ -166,52 +189,73 @@ func (r *CommentRepository) GetReplies(ctx context.Context, options comment.Comm
 		return result, fmt.Errorf("parent comment ID is required")
 	}
 
+	// Convert UUID to binary for ScyllaDB
+	parentIDBytes, err := options.ParentID.MarshalBinary()
+	if err != nil {
+		r.logger.LogError("Error marshaling parent ID", map[string]interface{}{"error": err.Error()})
+		return result, err
+	}
+
 	// Calculate offset
 	offset := (options.Page - 1) * options.Limit
 
-	// Query to get replies
-	query := `
-		SELECT c.id, c.video_id, c.user_id, c.content, c.created_at, c.updated_at, 
-			   c.deleted_at, c.parent_id, c.likes, c.dislikes, c.status
-		FROM comments c
-		JOIN replies r ON c.id = r.comment_id
-		WHERE r.parent_id = ? AND c.deleted_at IS NULL
+	// Step 1: Get reply comment IDs from replies table
+	repliesQuery := `
+		SELECT comment_id
+		FROM replies
+		WHERE parent_id = ?
 		LIMIT ?
 	`
 
-	// Execute query
-	iter := r.session.Query(query, options.ParentID, options.Limit).WithContext(ctx).PageSize(options.Limit).PageState(nil).Iter()
+	// Execute query to get reply IDs with consistency level ONE (1)
+	query := r.session.Query(repliesQuery, parentIDBytes, options.Limit).WithContext(ctx)
+	query = query.Consistency(1) // Use consistency level ONE (1) instead of QUORUM
+	repliesIter := query.PageSize(options.Limit).PageState(nil).Iter()
 
 	// Skip to the desired page
-	for i := 0; i < offset && iter.Scanner().Next(); i++ {
+	for i := 0; i < offset && repliesIter.Scanner().Next(); i++ {
 		// Skip records
 	}
 
-	// Process results
-	for iter.Scanner().Next() {
-		var c comment.Comment
-		var status string
-		var parentID *uuid.UUID
+	// Collect reply IDs
+	var replyIDs []uuid.UUID
+	for repliesIter.Scanner().Next() {
+		var replyIDBytes []byte
+		if err := repliesIter.Scanner().Scan(&replyIDBytes); err != nil {
+			r.logger.LogError("Error scanning reply ID", map[string]interface{}{"error": err.Error()})
+			return result, err
+		}
+		
+		// Convert binary to UUID
+		var replyID uuid.UUID
+		if err := replyID.UnmarshalBinary(replyIDBytes); err != nil {
+			r.logger.LogError("Error unmarshaling reply ID", map[string]interface{}{"error": err.Error()})
+			return result, err
+		}
+		
+		replyIDs = append(replyIDs, replyID)
+	}
 
-		err := iter.Scanner().Scan(
-			&c.ID, &c.VideoID, &c.UserID, &c.Content,
-			&c.CreatedAt, &c.UpdatedAt, &c.DeletedAt,
-			&parentID, &c.Likes, &c.Dislikes, &status,
-		)
+	if err := repliesIter.Close(); err != nil {
+		r.logger.LogError("Error closing replies iterator", map[string]interface{}{"error": err.Error()})
+		return result, err
+	}
+
+	// Step 2: Fetch full comment data for each reply ID
+	for _, replyID := range replyIDs {
+		reply, err := r.GetByID(ctx, replyID)
 		if err != nil {
-			r.logger.LogError("Error scanning reply", map[string]interface{}{"error": err.Error()})
+			r.logger.LogError("Error fetching reply by ID", map[string]interface{}{
+				"error": err.Error(),
+				"replyID": replyID,
+			})
 			return result, err
 		}
 
-		c.Status = comment.Status(status)
-		c.ParentID = parentID
-
-		result.Comments = append(result.Comments, c)
-	}
-
-	if err := iter.Close(); err != nil {
-		r.logger.LogError("Error closing iterator", map[string]interface{}{"error": err.Error()})
-		return result, err
+		// Only include non-deleted replies
+		if reply != nil && reply.DeletedAt == nil {
+			result.Comments = append(result.Comments, *reply)
+		}
 	}
 
 	// Count total replies
@@ -222,7 +266,8 @@ func (r *CommentRepository) GetReplies(ctx context.Context, options comment.Comm
 	`
 
 	var count int
-	if err := r.session.Query(countQuery, options.ParentID).WithContext(ctx).Scan(&count); err != nil {
+	// Use consistency level ONE (1) for count query
+	if err := r.session.Query(countQuery, parentIDBytes).WithContext(ctx).Consistency(1).Scan(&count); err != nil {
 		r.logger.LogError("Error counting replies", map[string]interface{}{
 			"error":     err.Error(),
 			"commentID": *options.ParentID,
@@ -291,6 +336,7 @@ func (r *CommentRepository) Create(ctx context.Context, c *comment.Comment) erro
 
 	// Create batch to insert comment and update indexes
 	batch := r.session.NewBatch(gocql.LoggedBatch)
+	batch.SetConsistency(1) // Set consistency level to ONE (1)
 
 	// Insert comment
 	commentQuery := `
@@ -332,9 +378,6 @@ func (r *CommentRepository) Create(ctx context.Context, c *comment.Comment) erro
 			"commentID": c.ID.String(),
 			"videoID":   c.VideoID.String(),
 			"errorType": fmt.Sprintf("%T", err),
-			"commentID": c.ID.String(),
-			"videoID":   c.VideoID.String(),
-			"errorType": fmt.Sprintf("%T", err),
 		})
 		fmt.Printf("DEBUG REPO: Batch execution failed: %v (type: %T)\n", err, err)
 		return fmt.Errorf("failed to execute batch: %w", err)
@@ -358,7 +401,7 @@ func (r *CommentRepository) Update(ctx context.Context, id uuid.UUID, content st
 		WHERE id = ?
 	`
 
-	if err := r.session.Query(query, content, now, id).WithContext(ctx).Exec(); err != nil {
+	if err := r.session.Query(query, content, now, id).WithContext(ctx).Consistency(1).Exec(); err != nil {
 		r.logger.LogError("Error updating comment", map[string]interface{}{
 			"error":     err.Error(),
 			"commentID": id,
@@ -379,7 +422,7 @@ func (r *CommentRepository) Delete(ctx context.Context, id uuid.UUID) error {
 		WHERE id = ?
 	`
 
-	if err := r.session.Query(query, now, string(comment.StatusHidden), id).WithContext(ctx).Exec(); err != nil {
+	if err := r.session.Query(query, now, string(comment.StatusHidden), id).WithContext(ctx).Consistency(1).Exec(); err != nil {
 		r.logger.LogError("Error soft deleting comment", map[string]interface{}{
 			"error":     err.Error(),
 			"commentID": id,
@@ -392,6 +435,13 @@ func (r *CommentRepository) Delete(ctx context.Context, id uuid.UUID) error {
 
 // Count gets total number of comments for a video
 func (r *CommentRepository) Count(ctx context.Context, videoID uuid.UUID) (int, error) {
+	// Convert UUID to binary for ScyllaDB
+	videoIDBytes, err := videoID.MarshalBinary()
+	if err != nil {
+		r.logger.LogError("Error marshaling video ID", map[string]interface{}{"error": err.Error()})
+		return 0, err
+	}
+
 	query := `
 		SELECT COUNT(*)
 		FROM comments_by_video
@@ -399,7 +449,8 @@ func (r *CommentRepository) Count(ctx context.Context, videoID uuid.UUID) (int, 
 	`
 
 	var count int
-	if err := r.session.Query(query, videoID).WithContext(ctx).Scan(&count); err != nil {
+	// Use consistency level ONE (1)
+	if err := r.session.Query(query, videoIDBytes).WithContext(ctx).Consistency(1).Scan(&count); err != nil {
 		r.logger.LogError("Error counting comments", map[string]interface{}{
 			"error":   err.Error(),
 			"videoID": videoID,
@@ -432,8 +483,8 @@ func (r *CommentRepository) GetReactions(ctx context.Context, options comment.Re
 	query += " LIMIT ?"
 	args = append(args, options.Limit)
 
-	// Execute query
-	iter := r.session.Query(query, args...).WithContext(ctx).PageSize(options.Limit).PageState(nil).Iter()
+	// Execute query with consistency level ONE (1)
+	iter := r.session.Query(query, args...).WithContext(ctx).Consistency(1).PageSize(options.Limit).PageState(nil).Iter()
 
 	// Skip to the desired page
 	for i := 0; i < offset && iter.Scanner().Next(); i++ {
@@ -485,7 +536,7 @@ func (r *CommentRepository) GetReactions(ctx context.Context, options comment.Re
 	}
 
 	var count int
-	if err := r.session.Query(countQuery, countArgs...).WithContext(ctx).Scan(&count); err != nil {
+	if err := r.session.Query(countQuery, countArgs...).WithContext(ctx).Consistency(1).Scan(&count); err != nil {
 		r.logger.LogError("Error counting reactions", map[string]interface{}{
 			"error":     err.Error(),
 			"commentID": options.CommentID,
@@ -507,7 +558,7 @@ func (r *CommentRepository) GetReactionByUser(ctx context.Context, commentID, us
 	var reaction comment.Reaction
 	var typeStr string
 
-	err := r.session.Query(query, commentID, userID).WithContext(ctx).Scan(
+	err := r.session.Query(query, commentID, userID).WithContext(ctx).Consistency(1).Scan(
 		&reaction.CommentID, &reaction.UserID, &typeStr,
 		&reaction.CreatedAt, &reaction.UpdatedAt,
 	)
@@ -538,6 +589,7 @@ func (r *CommentRepository) CreateOrUpdateReaction(ctx context.Context, reaction
 
 	now := time.Now().UTC()
 	batch := r.session.NewBatch(gocql.LoggedBatch)
+	batch.SetConsistency(1) // Set consistency level to ONE (1)
 
 	// Set default values
 	if reaction.CreatedAt.IsZero() {
@@ -605,6 +657,7 @@ func (r *CommentRepository) DeleteReaction(ctx context.Context, commentID, userI
 	}
 
 	batch := r.session.NewBatch(gocql.LoggedBatch)
+	batch.SetConsistency(1) // Set consistency level to ONE (1)
 
 	// Delete from reactions table
 	deleteQuery := `
@@ -646,7 +699,7 @@ func (r *CommentRepository) GetReactionCounts(ctx context.Context, commentID uui
 	`
 
 	var likes, dislikes int
-	if err := r.session.Query(query, commentID).WithContext(ctx).Scan(&likes, &dislikes); err != nil {
+	if err := r.session.Query(query, commentID).WithContext(ctx).Consistency(1).Scan(&likes, &dislikes); err != nil {
 		r.logger.LogError("Error getting reaction counts", map[string]interface{}{
 			"error":     err.Error(),
 			"commentID": commentID,
@@ -656,3 +709,5 @@ func (r *CommentRepository) GetReactionCounts(ctx context.Context, commentID uui
 
 	return likes, dislikes, nil
 }
+
+

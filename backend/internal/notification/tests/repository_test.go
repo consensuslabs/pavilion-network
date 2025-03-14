@@ -1,7 +1,7 @@
 package tests
 
 import (
-	"context"
+	"encoding/json"
 	"testing"
 	"time"
 
@@ -39,42 +39,40 @@ func TestNotificationModel(t *testing.T) {
 	// Create a notification
 	id := uuid.New()
 	userID := uuid.New()
-	now := time.Now().Truncate(time.Millisecond) // Truncate to avoid precision issues
+	now := time.Now().UTC()
 	
-	notification := &notification.Notification{
+	notif := &notification.Notification{
 		ID:        id,
 		UserID:    userID,
 		Type:      notification.VideoUploaded,
 		Content:   "Test notification",
-		Metadata: map[string]interface{}{
-			"key1": "value1",
-			"key2": 123,
-		},
+		Metadata:  map[string]interface{}{"key": "value"},
 		CreatedAt: now,
 	}
 	
 	// Test ID
-	assert.Equal(t, id, notification.ID)
+	assert.Equal(t, id, notif.ID)
 	
-	// Test JSON conversion
-	data, err := notification.ToJSON()
+	// Test marshalling
+	data, err := notif.ToJSON()
 	require.NoError(t, err)
 	assert.NotEmpty(t, data)
 	
 	// Test unmarshalling
-	unmarshalled, err := notification.FromJSON(data)
+	var unmarshalled notification.Notification
+	err = json.Unmarshal(data, &unmarshalled)
 	require.NoError(t, err)
-	assert.Equal(t, notification.ID, unmarshalled.ID)
-	assert.Equal(t, notification.UserID, unmarshalled.UserID)
-	assert.Equal(t, notification.Type, unmarshalled.Type)
-	assert.Equal(t, notification.Content, unmarshalled.Content)
+	assert.Equal(t, notif.ID, unmarshalled.ID)
+	assert.Equal(t, notif.UserID, unmarshalled.UserID)
+	assert.Equal(t, notif.Type, unmarshalled.Type)
+	assert.Equal(t, notif.Content, unmarshalled.Content)
 	assert.Equal(t, now.Unix(), unmarshalled.CreatedAt.Unix())
 	
 	// Test read status
-	assert.False(t, notification.IsRead())
+	assert.False(t, notif.IsRead())
 	
 	// Now mark as read
 	readTime := time.Now()
-	notification.ReadAt = &readTime
-	assert.True(t, notification.IsRead())
+	notif.ReadAt = &readTime
+	assert.True(t, notif.IsRead())
 }

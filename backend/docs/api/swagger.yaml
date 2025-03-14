@@ -159,14 +159,12 @@ definitions:
         type: string
     type: object
   comment.CreateCommentRequest:
-    description: Request body for creating a new comment
     properties:
       content:
-        example: This is a great video!
+        example: This is a comment
         type: string
       parent_id:
-        example: 123e4567-e89b-12d3-a456-426614174003
-        format: uuid
+        example: ""
         type: string
     required:
     - content
@@ -195,13 +193,9 @@ definitions:
         type: integer
     type: object
   comment.ReactionRequest:
-    description: Request body for adding a reaction to a comment
     properties:
       type:
-        enum:
-        - LIKE
-        - DISLIKE
-        example: LIKE
+        example: like
         type: string
     required:
     - type
@@ -218,10 +212,9 @@ definitions:
     - StatusFlagged
     - StatusHidden
   comment.UpdateCommentRequest:
-    description: Request body for updating a comment
     properties:
       content:
-        example: This is an updated comment.
+        example: Updated comment content
         type: string
     required:
     - content
@@ -802,7 +795,6 @@ paths:
       consumes:
       - application/json
       description: Deletes an existing comment
-      description: Deletes an existing comment
       parameters:
       - description: Comment ID (UUID)
         in: path
@@ -859,11 +851,8 @@ paths:
               type: object
       security:
       - BearerAuth: []
-      security:
-      - BearerAuth: []
       summary: Delete a comment
       tags:
-      - comment
       - comment
     put:
       consumes:
@@ -880,7 +869,6 @@ paths:
         name: comment
         required: true
         schema:
-          $ref: '#/definitions/comment.UpdateCommentRequest'
           $ref: '#/definitions/comment.UpdateCommentRequest'
       produces:
       - application/json
@@ -932,11 +920,8 @@ paths:
               type: object
       security:
       - BearerAuth: []
-      security:
-      - BearerAuth: []
       summary: Update a comment
       tags:
-      - comment
       - comment
   /comment/{id}/reaction:
     delete:
@@ -981,7 +966,6 @@ paths:
               type: object
         "404":
           description: Comment or reaction not found
-          description: Comment or reaction not found
           schema:
             allOf:
             - $ref: '#/definitions/http.Response'
@@ -1000,17 +984,13 @@ paths:
               type: object
       security:
       - BearerAuth: []
-      security:
-      - BearerAuth: []
       summary: Remove a reaction from a comment
       tags:
-      - comment
       - comment
     post:
       consumes:
       - application/json
-      description: Adds a reaction (like/dislike) to a comment
-      description: Adds a reaction (like/dislike) to a comment
+      description: Adds a like or dislike reaction to a comment
       parameters:
       - description: Comment ID (UUID)
         in: path
@@ -1022,7 +1002,6 @@ paths:
         name: reaction
         required: true
         schema:
-          $ref: '#/definitions/comment.ReactionRequest'
           $ref: '#/definitions/comment.ReactionRequest'
       produces:
       - application/json
@@ -1074,11 +1053,8 @@ paths:
               type: object
       security:
       - BearerAuth: []
-      security:
-      - BearerAuth: []
       summary: Add a reaction to a comment
       tags:
-      - comment
       - comment
   /comment/{id}/replies:
     get:
@@ -1278,17 +1254,11 @@ paths:
         name: id
         required: true
         type: string
-      - description: Bearer token
-        in: header
-        name: Authorization
-        required: true
-        type: string
       - description: Comment data
         in: body
         name: comment
         required: true
         schema:
-          $ref: '#/definitions/comment.CreateCommentRequest'
           $ref: '#/definitions/comment.CreateCommentRequest'
       produces:
       - application/json
@@ -1329,9 +1299,10 @@ paths:
                 error:
                   $ref: '#/definitions/http.APIError'
               type: object
+      security:
+      - BearerAuth: []
       summary: Create a new comment
       tags:
-      - comment
       - comment
   /video/{id}/comments:
     get:
@@ -1388,7 +1359,6 @@ paths:
               type: object
       summary: Get comments for a video
       tags:
-      - comment
       - comment
   /video/{id}/status:
     get:

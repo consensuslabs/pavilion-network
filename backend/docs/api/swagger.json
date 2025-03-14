@@ -661,11 +661,6 @@
                         "BearerAuth": []
                     }
                 ],
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "description": "Updates the content of an existing comment",
                 "consumes": [
                     "application/json"
@@ -795,12 +790,6 @@
                     }
                 ],
                 "description": "Deletes an existing comment",
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Deletes an existing comment",
                 "consumes": [
                     "application/json"
                 ],
@@ -921,13 +910,7 @@
                         "BearerAuth": []
                     }
                 ],
-                "description": "Adds a reaction (like/dislike) to a comment",
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Adds a reaction (like/dislike) to a comment",
+                "description": "Adds a like or dislike reaction to a comment",
                 "consumes": [
                     "application/json"
                 ],
@@ -1055,11 +1038,6 @@
                         "BearerAuth": []
                     }
                 ],
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "description": "Removes a user's reaction from a comment",
                 "consumes": [
                     "application/json"
@@ -1136,7 +1114,6 @@
                         }
                     },
                     "404": {
-                        "description": "Comment or reaction not found",
                         "description": "Comment or reaction not found",
                         "schema": {
                             "allOf": [
@@ -1570,6 +1547,11 @@
         },
         "/video/{id}/comment": {
             "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Creates a new comment for a video",
                 "consumes": [
                     "application/json"
@@ -1581,20 +1563,12 @@
                     "comment"
                 ],
                 "summary": "Create a new comment",
-                "summary": "Create a new comment",
                 "parameters": [
                     {
                         "type": "string",
                         "description": "Video ID",
                         "name": "id",
                         "in": "path",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Bearer token",
-                        "name": "Authorization",
-                        "in": "header",
                         "required": true
                     },
                     {
@@ -2132,7 +2106,6 @@
             }
         },
         "comment.CreateCommentRequest": {
-            "description": "Request body for creating a new comment",
             "type": "object",
             "required": [
                 "content"
@@ -2140,12 +2113,11 @@
             "properties": {
                 "content": {
                     "type": "string",
-                    "example": "This is a great video!"
+                    "example": "This is a comment"
                 },
                 "parent_id": {
                     "type": "string",
-                    "format": "uuid",
-                    "example": "123e4567-e89b-12d3-a456-426614174003"
+                    "example": ""
                 }
             }
         },
@@ -2182,7 +2154,6 @@
             }
         },
         "comment.ReactionRequest": {
-            "description": "Request body for adding a reaction to a comment",
             "type": "object",
             "required": [
                 "type"
@@ -2190,11 +2161,7 @@
             "properties": {
                 "type": {
                     "type": "string",
-                    "enum": [
-                        "LIKE",
-                        "DISLIKE"
-                    ],
-                    "example": "LIKE"
+                    "example": "like"
                 }
             }
         },
@@ -2213,7 +2180,6 @@
             ]
         },
         "comment.UpdateCommentRequest": {
-            "description": "Request body for updating a comment",
             "type": "object",
             "required": [
                 "content"
@@ -2221,7 +2187,7 @@
             "properties": {
                 "content": {
                     "type": "string",
-                    "example": "This is an updated comment."
+                    "example": "Updated comment content"
                 }
             }
         },

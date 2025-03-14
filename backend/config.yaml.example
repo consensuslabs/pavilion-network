@@ -22,7 +22,7 @@ scylladb:
   keyspace: "pavilion_db"
   username: "root"
   password: ""
-  consistency: "quorum"
+  consistency: "quorum"  # Options: "one", "quorum", "all", "local_quorum", "each_quorum" - Use "one" for development, "quorum" or higher for production
   replication:
     class: "SimpleStrategy"
     replicationFactor: 3

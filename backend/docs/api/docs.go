@@ -667,11 +667,6 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "description": "Updates the content of an existing comment",
                 "consumes": [
                     "application/json"
@@ -680,7 +675,6 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "comment"
                     "comment"
                 ],
                 "summary": "Update a comment",
@@ -698,7 +692,6 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/comment.UpdateCommentRequest"
                             "$ref": "#/definitions/comment.UpdateCommentRequest"
                         }
                     }
@@ -803,12 +796,6 @@ const docTemplate = `{
                     }
                 ],
                 "description": "Deletes an existing comment",
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Deletes an existing comment",
                 "consumes": [
                     "application/json"
                 ],
@@ -816,7 +803,6 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "comment"
                     "comment"
                 ],
                 "summary": "Delete a comment",
@@ -930,13 +916,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Adds a reaction (like/dislike) to a comment",
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
-                "description": "Adds a reaction (like/dislike) to a comment",
+                "description": "Adds a like or dislike reaction to a comment",
                 "consumes": [
                     "application/json"
                 ],
@@ -944,7 +924,6 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "comment"
                     "comment"
                 ],
                 "summary": "Add a reaction to a comment",
@@ -962,7 +941,6 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/comment.ReactionRequest"
                             "$ref": "#/definitions/comment.ReactionRequest"
                         }
                     }
@@ -1066,11 +1044,6 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "security": [
-                    {
-                        "BearerAuth": []
-                    }
-                ],
                 "description": "Removes a user's reaction from a comment",
                 "consumes": [
                     "application/json"
@@ -1079,7 +1052,6 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "comment"
                     "comment"
                 ],
                 "summary": "Remove a reaction from a comment",
@@ -1149,7 +1121,6 @@ const docTemplate = `{
                     },
                     "404": {
                         "description": "Comment or reaction not found",
-                        "description": "Comment or reaction not found",
                         "schema": {
                             "allOf": [
                                 {
@@ -1197,7 +1168,6 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "comment"
                     "comment"
                 ],
                 "summary": "Get replies to a comment",
@@ -1583,6 +1553,11 @@ const docTemplate = `{
         },
         "/video/{id}/comment": {
             "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Creates a new comment for a video",
                 "consumes": [
                     "application/json"
@@ -1592,9 +1567,7 @@ const docTemplate = `{
                 ],
                 "tags": [
                     "comment"
-                    "comment"
                 ],
-                "summary": "Create a new comment",
                 "summary": "Create a new comment",
                 "parameters": [
                     {
@@ -1605,19 +1578,11 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "type": "string",
-                        "description": "Bearer token",
-                        "name": "Authorization",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "description": "Comment data",
                         "name": "comment",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/comment.CreateCommentRequest"
                             "$ref": "#/definitions/comment.CreateCommentRequest"
                         }
                     }
@@ -1708,7 +1673,6 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "comment"
                     "comment"
                 ],
                 "summary": "Get comments for a video",
@@ -2148,7 +2112,6 @@ const docTemplate = `{
             }
         },
         "comment.CreateCommentRequest": {
-            "description": "Request body for creating a new comment",
             "type": "object",
             "required": [
                 "content"
@@ -2156,12 +2119,11 @@ const docTemplate = `{
             "properties": {
                 "content": {
                     "type": "string",
-                    "example": "This is a great video!"
+                    "example": "This is a comment"
                 },
                 "parent_id": {
                     "type": "string",
-                    "format": "uuid",
-                    "example": "123e4567-e89b-12d3-a456-426614174003"
+                    "example": ""
                 }
             }
         },
@@ -2198,7 +2160,6 @@ const docTemplate = `{
             }
         },
         "comment.ReactionRequest": {
-            "description": "Request body for adding a reaction to a comment",
             "type": "object",
             "required": [
                 "type"
@@ -2206,11 +2167,7 @@ const docTemplate = `{
             "properties": {
                 "type": {
                     "type": "string",
-                    "enum": [
-                        "LIKE",
-                        "DISLIKE"
-                    ],
-                    "example": "LIKE"
+                    "example": "like"
                 }
             }
         },
@@ -2229,7 +2186,6 @@ const docTemplate = `{
             ]
         },
         "comment.UpdateCommentRequest": {
-            "description": "Request body for updating a comment",
             "type": "object",
             "required": [
                 "content"
@@ -2237,7 +2193,7 @@ const docTemplate = `{
             "properties": {
                 "content": {
                     "type": "string",
-                    "example": "This is an updated comment."
+                    "example": "Updated comment content"
                 }
             }
         },
