@@ -42,7 +42,7 @@ help:
 .PHONY: dev
 dev:
 	@echo "$(COLOR_GREEN)Starting backend in development mode...$(COLOR_RESET)"
-	@cd $(BACKEND_DIR) && go run cmd/server/main.go
+	@cd $(BACKEND_DIR) && go run .
 
 # Testing commands
 .PHONY: test test-unit test-integration test-e2e test-video-e2e

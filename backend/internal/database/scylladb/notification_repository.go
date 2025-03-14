@@ -37,10 +37,24 @@ func (r *NotificationRepository) SaveNotification(ctx context.Context, notificat
 		return fmt.Errorf("failed to serialize notification metadata: %w", err)
 	}
 
+	// Convert notification ID to binary for ScyllaDB
+	idBytes, err := notification.ID.MarshalBinary()
+	if err != nil {
+		r.logger.LogError(err, "Error marshaling notification ID")
+		return fmt.Errorf("error marshaling notification ID: %w", err)
+	}
+
+	// Convert user ID to binary for ScyllaDB
+	userIDBytes, err := notification.UserID.MarshalBinary()
+	if err != nil {
+		r.logger.LogError(err, "Error marshaling user ID")
+		return fmt.Errorf("error marshaling user ID: %w", err)
+	}
+
 	// Execute the query
 	if err := r.session.Query(query,
-		notification.ID,
-		notification.UserID,
+		idBytes,
+		userIDBytes,
 		notification.Type,
 		notification.Content,
 		metadataBytes,
@@ -55,11 +69,18 @@ func (r *NotificationRepository) SaveNotification(ctx context.Context, notificat
 
 // GetNotificationsByUserID retrieves notifications for a user
 func (r *NotificationRepository) GetNotificationsByUserID(ctx context.Context, userID uuid.UUID, limit, offset int) ([]*notification.Notification, error) {
+	// Convert UUID to binary for ScyllaDB
+	userIDBytes, err := userID.MarshalBinary()
+	if err != nil {
+		r.logger.LogError(err, "Error marshaling user ID")
+		return nil, fmt.Errorf("error marshaling user ID: %w", err)
+	}
+
 	query := `SELECT id, user_id, type, content, metadata, read_at, created_at FROM notifications 
 			WHERE user_id = ? ORDER BY created_at DESC LIMIT ?`
 
-	// Execute the query
-	scanner := r.session.Query(query, userID, limit+offset).WithContext(ctx).Iter().Scanner()
+	// Execute the query with consistency level ONE
+	scanner := r.session.Query(query, userIDBytes, limit+offset).WithContext(ctx).Consistency(1).Iter().Scanner()
 	
 	notifications := make([]*notification.Notification, 0)
 	
@@ -123,10 +144,17 @@ func (r *NotificationRepository) GetNotificationsByUserID(ctx context.Context, u
 
 // GetUnreadCount gets the count of unread notifications for a user
 func (r *NotificationRepository) GetUnreadCount(ctx context.Context, userID uuid.UUID) (int, error) {
+	// Convert UUID to binary for ScyllaDB
+	userIDBytes, err := userID.MarshalBinary()
+	if err != nil {
+		r.logger.LogError(err, "Error marshaling user ID")
+		return 0, fmt.Errorf("error marshaling user ID: %w", err)
+	}
+
 	query := `SELECT COUNT(*) FROM notifications WHERE user_id = ? AND read_at IS NULL`
 
 	var count int
-	if err := r.session.Query(query, userID).WithContext(ctx).Scan(&count); err != nil {
+	if err := r.session.Query(query, userIDBytes).WithContext(ctx).Consistency(1).Scan(&count); err != nil {
 		r.logger.LogError(err, "Failed to get unread count")
 		return 0, fmt.Errorf("failed to get unread count: %w", err)
 	}
@@ -136,10 +164,17 @@ func (r *NotificationRepository) GetUnreadCount(ctx context.Context, userID uuid
 
 // MarkAsRead marks a notification as read
 func (r *NotificationRepository) MarkAsRead(ctx context.Context, notificationID uuid.UUID) error {
+	// Convert notification ID to binary for ScyllaDB
+	notificationIDBytes, err := notificationID.MarshalBinary()
+	if err != nil {
+		r.logger.LogError(err, "Error marshaling notification ID")
+		return fmt.Errorf("error marshaling notification ID: %w", err)
+	}
+
 	// First check if the notification exists
 	checkQuery := `SELECT id FROM notifications WHERE id = ?`
-	var id uuid.UUID
-	if err := r.session.Query(checkQuery, notificationID).WithContext(ctx).Scan(&id); err != nil {
+	var idBytes []byte
+	if err := r.session.Query(checkQuery, notificationIDBytes).WithContext(ctx).Scan(&idBytes); err != nil {
 		if err == gocql.ErrNotFound {
 			return fmt.Errorf("notification not found")
 		}
@@ -150,7 +185,7 @@ func (r *NotificationRepository) MarkAsRead(ctx context.Context, notificationID 
 	// Update the notification
 	query := `UPDATE notifications SET read_at = ? WHERE id = ?`
 	now := time.Now()
-	if err := r.session.Query(query, gocql.UUIDFromTime(now), notificationID).WithContext(ctx).Exec(); err != nil {
+	if err := r.session.Query(query, gocql.UUIDFromTime(now), notificationIDBytes).WithContext(ctx).Exec(); err != nil {
 		r.logger.LogError(err, "Failed to mark notification as read")
 		return fmt.Errorf("failed to mark notification as read: %w", err)
 	}
@@ -160,9 +195,16 @@ func (r *NotificationRepository) MarkAsRead(ctx context.Context, notificationID 
 
 // MarkAllAsRead marks all notifications for a user as read
 func (r *NotificationRepository) MarkAllAsRead(ctx context.Context, userID uuid.UUID) error {
+	// Convert UUID to binary for ScyllaDB
+	userIDBytes, err := userID.MarshalBinary()
+	if err != nil {
+		r.logger.LogError(err, "Error marshaling user ID")
+		return fmt.Errorf("error marshaling user ID: %w", err)
+	}
+
 	query := `UPDATE notifications SET read_at = ? WHERE user_id = ? AND read_at IS NULL`
 	now := time.Now()
-	if err := r.session.Query(query, gocql.UUIDFromTime(now), userID).WithContext(ctx).Exec(); err != nil {
+	if err := r.session.Query(query, gocql.UUIDFromTime(now), userIDBytes).WithContext(ctx).Consistency(1).Exec(); err != nil {
 		r.logger.LogError(err, "Failed to mark all notifications as read")
 		return fmt.Errorf("failed to mark all notifications as read: %w", err)
 	}

@@ -28,7 +28,7 @@ scylladb:
   keyspace: "pavilion_db"
   username: "root"
   password: "" # Will be overridden by SCYLLA_PASSWORD
-  consistency: "quorum"
+  consistency: "one"  # Changed from "quorum" to "one" for development environment
   replication:
     class: "SimpleStrategy"
     replicationFactor: 3

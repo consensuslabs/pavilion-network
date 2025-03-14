@@ -1,13 +1,13 @@
 services:
 
-  cockroachdb-1:
+  cockroachdb:
     image: cockroachdb/cockroach:v25.1.0
     command: start-single-node --insecure
     ports:
       - "26257:26257"
       - "8082:8080"
     volumes:
-      - cockroach_data_1:/cockroach/cockroach-data
+      - cockroach_data:/cockroach/cockroach-data
 
   scylladb:
     image: scylladb/scylla:latest
@@ -80,7 +80,7 @@ services:
 
 volumes:
   # pgdata:
-  cockroach_data_1:
+  cockroach_data:
   redis_data:
   ipfs_data:
   scylla_data:
