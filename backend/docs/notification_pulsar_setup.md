@@ -27,9 +27,9 @@ The Pulsar setup includes:
 
 ## Retention and Deduplication
 
-- Default retention policy: 48 hours (as specified in the notification system spec)
+- Default retention policy: 7 days (configurable via `RetentionDays` in `ServiceConfig`)
 - Message size retention: 1024 MB (expandable as needed)
-- Deduplication is enabled at the namespace level with a 2-hour window
+- Deduplication is enabled at the namespace level with a configurable window (via `DeduplicationWindow` in `ServiceConfig`)
 
 ## Starting the Environment
 
@@ -57,21 +57,55 @@ docker exec -it pavilion-pulsar bin/pulsar-admin topics list pavilion/notificati
 
 ## Connecting to Pulsar from Go Code
 
-Use the following connection string in your Go application:
+The notification system uses a structured configuration approach with the `ServiceConfig` type:
+
+```go
+type ServiceConfig struct {
+    // General settings
+    Enabled bool
+    
+    // Pulsar connection settings
+    BrokerURL         string
+    OperationTimeout  time.Duration
+    ConnectionTimeout time.Duration
+    
+    // Security settings
+    TLSEnabled  bool
+    TLSCertPath string
+    TLSKeyPath  string
+    
+    // Topic configuration
+    Topics struct {
+        VideoEvents   string
+        CommentEvents string
+        UserEvents    string
+        DeadLetter    string
+        RetryQueue    string
+    }
+    
+    // Other settings...
+}
+```
+
+For local development, you can use:
 
 ```go
 pulsarClient, err := pulsar.NewClient(pulsar.ClientOptions{
-    URL: "pulsar://localhost:6650",
+    URL: config.BrokerURL,
+    OperationTimeout: config.OperationTimeout,
+    ConnectionTimeout: config.ConnectionTimeout,
 })
 ```
 
-For local development, you don't need to use TLS. For production, you would use:
+For production with TLS:
 
 ```go
 pulsarClient, err := pulsar.NewClient(pulsar.ClientOptions{
-    URL: "pulsar+ssl://pulsar-host:6651",
+    URL: config.BrokerURL,
     TLSAllowInsecureConnection: false,
-    TLSTrustCertsFilePath: "/path/to/cert",
+    TLSTrustCertsFilePath: config.TLSCertPath,
+    OperationTimeout: config.OperationTimeout,
+    ConnectionTimeout: config.ConnectionTimeout,
 })
 ```
 
@@ -101,4 +135,11 @@ If you encounter issues with the topic initialization:
    ```bash
    docker logs pavilion-pulsar
    docker logs pavilion-pulsar-init
+   ```
+
+4. Verify the notification service is enabled in your configuration:
+   ```go
+   if !config.Enabled {
+       return notification.ErrServiceDisabled
+   }
    ``` 

@@ -126,6 +126,18 @@ type ScyllaDBConfig struct {
 	} `mapstructure:"replication" yaml:"replication"`
 	Timeout        time.Duration `mapstructure:"timeout" yaml:"timeout"`
 	ConnectTimeout time.Duration `mapstructure:"connectTimeout" yaml:"connectTimeout"`
+	
+	// Connection pool settings
+	Pool struct {
+		MaxConnections     int `mapstructure:"maxConnections" yaml:"maxConnections"`
+		MaxIdleConnections int `mapstructure:"maxIdleConnections" yaml:"maxIdleConnections"`
+	} `mapstructure:"pool" yaml:"pool"`
+	
+	// Retry settings for database operations
+	Retry struct {
+		MaxRetries    int           `mapstructure:"maxRetries" yaml:"maxRetries"`
+		RetryInterval time.Duration `mapstructure:"retryInterval" yaml:"retryInterval"`
+	} `mapstructure:"retry" yaml:"retry"`
 }
 
 // PulsarConfig represents Apache Pulsar configuration settings
@@ -143,6 +155,13 @@ type PulsarConfig struct {
 // NotificationConfig represents notification system configuration settings
 type NotificationConfig struct {
 	Enabled            bool          `mapstructure:"enabled" yaml:"enabled"`
+	ConsumersEnabled   bool          `mapstructure:"consumers_enabled" yaml:"consumers_enabled"`
+	PulsarURL          string        `mapstructure:"pulsar_url" yaml:"pulsar_url"`
+	TLSEnabled         bool          `mapstructure:"tls_enabled" yaml:"tls_enabled"`
+	TLSCertPath        string        `mapstructure:"tls_cert_path" yaml:"tls_cert_path"`
+	AuthToken          string        `mapstructure:"auth_token" yaml:"auth_token"`
+	OperationTimeout   time.Duration `mapstructure:"operation_timeout" yaml:"operation_timeout"`
+	ConnectionTimeout  time.Duration `mapstructure:"connection_timeout" yaml:"connection_timeout"`
 	VideoEventsTopic   string        `mapstructure:"video_events_topic" yaml:"video_events_topic"`
 	CommentEventsTopic string        `mapstructure:"comment_events_topic" yaml:"comment_events_topic"`
 	UserEventsTopic    string        `mapstructure:"user_events_topic" yaml:"user_events_topic"`

@@ -48,7 +48,7 @@ func (m *SchemaManager) createNotificationsTable() error {
 			user_id uuid,
 			type text,
 			content text,
-			metadata blob,
+			metadata map<text, text>,
 			read_at timeuuid,
 			created_at timestamp,
 			PRIMARY KEY ((user_id), created_at, id)

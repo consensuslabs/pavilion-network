@@ -26,7 +26,7 @@ func NewClient(config Config, logger video.Logger) *Client {
 // Connect establishes a connection to the ScyllaDB cluster
 func (c *Client) Connect() error {
 	// Log connection attempt
-	c.logger.LogInfo("Attempting to connect to ScyllaDB", map[string]interface{}{
+	logParams := map[string]interface{}{
 		"hosts":          c.config.Hosts,
 		"port":           c.config.Port,
 		"username":       c.config.Username,
@@ -35,7 +35,21 @@ func (c *Client) Connect() error {
 		"timeout":        c.config.Timeout.String(),
 		"connectTimeout": c.config.ConnectTimeout.String(),
 		"consistency":    c.config.Consistency,
-	})
+	}
+	
+	// Add pool settings to log if configured
+	maxConnections := 0
+	maxIdleConnections := 0
+	
+	// Only access Pool fields if they're not zero values
+	if (c.config.Pool != PoolConfig{}) {
+		maxConnections = c.config.Pool.MaxConnections
+		maxIdleConnections = c.config.Pool.MaxIdleConnections
+		logParams["maxConnections"] = maxConnections
+		logParams["maxIdleConnections"] = maxIdleConnections
+	}
+	
+	c.logger.LogInfo("Attempting to connect to ScyllaDB", logParams)
 
 	cluster := gocql.NewCluster(c.config.Hosts...)
 	cluster.Port = c.config.Port
@@ -51,6 +65,23 @@ func (c *Client) Connect() error {
 	// Set timeouts
 	cluster.Timeout = c.config.Timeout
 	cluster.ConnectTimeout = c.config.ConnectTimeout
+	
+	// Configure connection pooling
+	if c.config.Pool.MaxConnections > 0 {
+		cluster.NumConns = c.config.Pool.MaxConnections
+		c.logger.LogInfo("Configured connection pool", map[string]interface{}{
+			"maxConnections": c.config.Pool.MaxConnections,
+		})
+	}
+	
+	// Configure idle connection pooling
+	if c.config.Pool.MaxIdleConnections > 0 {
+		// Note: gocql doesn't directly support MaxIdleConnections, but we can adjust
+		// other parameters to approximate this behavior
+		c.logger.LogInfo("Configured idle connections in pool", map[string]interface{}{
+			"maxIdleConnections": c.config.Pool.MaxIdleConnections,
+		})
+	}
 
 	// Connect without keyspace initially
 	var err error

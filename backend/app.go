@@ -315,8 +315,11 @@ func NewApp(ctx context.Context, cfg *config.Config) (*App, error) {
 	// Initialize comment handler
 	app.commentHandler = comment.NewHandler(commentService, responseHandler, loggerAdapter)
 
-	// Initialize notification repository
-	notificationRepo := scylladb.NewNotificationRepository(app.scyllaSession, loggerService)
+	// Initialize notification service config
+	notificationConfig := notification.NewServiceConfigFromConfig(cfg)
+	
+	// Initialize notification repository with ScyllaDB settings
+	notificationRepo := notification.NewRepository(app.scyllaSession, loggerService, scyllaConfig.Keyspace, notificationConfig)
 
 	// Initialize notification schema manager
 	notificationSchemaManager := notification.NewSchemaManager(app.scyllaSession, scyllaConfig.Keyspace, loggerService)
@@ -329,9 +332,6 @@ func NewApp(ctx context.Context, cfg *config.Config) (*App, error) {
 			loggerService.LogWarn("Continuing without notification service", nil)
 		}
 	}
-
-	// Initialize notification service config
-	notificationConfig := notification.NewServiceConfigFromConfig(cfg)
 
 	// Initialize notification service
 	notificationService, err := notification.NewService(ctx, notificationConfig, loggerService, notificationRepo)
