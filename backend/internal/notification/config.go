@@ -4,104 +4,105 @@ import (
 	"time"
 
 	"github.com/consensuslabs/pavilion-network/backend/internal/config"
+	"github.com/consensuslabs/pavilion-network/backend/internal/notification/types"
 )
 
-// ServiceConfig contains configuration for the notification service
-type ServiceConfig struct {
-	// Pulsar connection settings
-	PulsarURL          string
-	PulsarWebServiceURL string
-	TLSEnabled         bool
-	TLSCertPath        string
-	AuthToken          string
-	OperationTimeout   time.Duration
-	ConnectionTimeout  time.Duration
-	Namespace          string
-	
-	// Enabled flag
-	Enabled             bool
-	
-	// Topic names
-	VideoEventsTopic    string
-	CommentEventsTopic  string
-	UserEventsTopic     string
-	DeadLetterTopic     string
-	RetryQueueTopic     string
-	
-	// Retention settings
-	RetentionTimeHours int
-	
-	// Deduplication
-	DeduplicationEnabled bool
-	DeduplicationWindow  time.Duration
-	
-	// Resilience
-	RetryEnabled      bool
-	MaxRetries        int
-	BackoffInitial    time.Duration
-	BackoffMax        time.Duration
-	BackoffMultiplier float64
-}
-
 // NewServiceConfigFromConfig creates a notification service config from the application config
-func NewServiceConfigFromConfig(cfg *config.Config) *ServiceConfig {
-	return &ServiceConfig{
+func NewServiceConfigFromConfig(cfg *config.Config) *types.ServiceConfig {
+	svcConfig := &types.ServiceConfig{
+		// General settings
+		Enabled:          cfg.Notification.Enabled,
+		ConsumersEnabled: cfg.Notification.ConsumersEnabled,
+
 		// Pulsar settings
-		PulsarURL:           cfg.Pulsar.URL,
-		PulsarWebServiceURL: cfg.Pulsar.WebServiceURL,
-		TLSEnabled:          cfg.Pulsar.TLSEnabled,
-		TLSCertPath:         cfg.Pulsar.TLSCertPath,
-		AuthToken:           cfg.Pulsar.AuthToken, // Auth token from config (sourced from .env)
-		OperationTimeout:    cfg.Pulsar.OperationTimeout,
-		ConnectionTimeout:   cfg.Pulsar.ConnectionTimeout,
-		Namespace:           cfg.Pulsar.Namespace,
+		PulsarURL:         cfg.Notification.PulsarURL,
+		OperationTimeout:  cfg.Notification.OperationTimeout,
+		ConnectionTimeout: cfg.Notification.ConnectionTimeout,
 		
-		// Notification settings
-		Enabled:             cfg.Notification.Enabled,
-		VideoEventsTopic:    cfg.Notification.VideoEventsTopic,
-		CommentEventsTopic:  cfg.Notification.CommentEventsTopic,
-		UserEventsTopic:     cfg.Notification.UserEventsTopic,
-		DeadLetterTopic:     cfg.Notification.DeadLetterTopic,
-		RetryQueueTopic:     cfg.Notification.RetryQueueTopic,
-		RetentionTimeHours:  cfg.Notification.RetentionTimeHours,
+		// Security settings
+		TLSEnabled:        cfg.Notification.TLSEnabled,
+		TLSCertPath:       cfg.Notification.TLSCertPath,
+		AuthToken:         cfg.Notification.AuthToken,
+		
+		// Retention settings
+		RetentionTimeHours: cfg.Notification.RetentionTimeHours,
+		
+		// Deduplication
 		DeduplicationEnabled: cfg.Notification.DeduplicationEnabled,
-		DeduplicationWindow: cfg.Notification.DeduplicationWindow,
-		RetryEnabled:        cfg.Notification.RetryEnabled,
-		MaxRetries:          cfg.Notification.MaxRetries,
-		BackoffInitial:      cfg.Notification.BackoffInitial,
-		BackoffMax:          cfg.Notification.BackoffMax,
-		BackoffMultiplier:   cfg.Notification.BackoffMultiplier,
+		DeduplicationWindow:  cfg.Notification.DeduplicationWindow,
+		
+		// Resilience
+		RetryEnabled:      cfg.Notification.RetryEnabled,
+		MaxRetries:        cfg.Notification.MaxRetries,
+		BackoffInitial:    cfg.Notification.BackoffInitial,
+		BackoffMax:        cfg.Notification.BackoffMax,
+		BackoffMultiplier: cfg.Notification.BackoffMultiplier,
 	}
+	
+	// Topic configuration
+	svcConfig.Topics.VideoEvents = cfg.Notification.VideoEventsTopic
+	svcConfig.Topics.CommentEvents = cfg.Notification.CommentEventsTopic
+	svcConfig.Topics.UserEvents = cfg.Notification.UserEventsTopic
+	svcConfig.Topics.DeadLetter = cfg.Notification.DeadLetterTopic
+	svcConfig.Topics.RetryQueue = cfg.Notification.RetryQueueTopic
+	
+	// ScyllaDB configuration
+	svcConfig.ScyllaDB.MaxConnections = cfg.ScyllaDB.Pool.MaxConnections
+	svcConfig.ScyllaDB.MaxIdleConnections = cfg.ScyllaDB.Pool.MaxIdleConnections
+	svcConfig.ScyllaDB.ConnectTimeout = cfg.ScyllaDB.ConnectTimeout
+	svcConfig.ScyllaDB.Timeout = cfg.ScyllaDB.Timeout
+	svcConfig.ScyllaDB.MaxRetries = cfg.ScyllaDB.Retry.MaxRetries
+	svcConfig.ScyllaDB.RetryInterval = cfg.ScyllaDB.Retry.RetryInterval
+	
+	return svcConfig
 }
 
-// DefaultConfig returns default configuration values
-func DefaultConfig() *ServiceConfig {
-	return &ServiceConfig{
-		PulsarURL:           "pulsar://localhost:6650",
-		PulsarWebServiceURL: "http://localhost:8083",
-		TLSEnabled:          false,
-		TLSCertPath:         "",
-		AuthToken:           "", // No default auth token, should be loaded from env
-		OperationTimeout:    30 * time.Second, 
-		ConnectionTimeout:   30 * time.Second,
-		Namespace:           "pavilion/notifications",
+// DefaultConfig returns a default configuration for the notification service
+func DefaultConfig() *types.ServiceConfig {
+	svcConfig := &types.ServiceConfig{
+		// General settings
+		Enabled:          true,
+		ConsumersEnabled: true,
 		
-		Enabled:             true,
-		VideoEventsTopic:    "persistent://pavilion/notifications/video-events",
-		CommentEventsTopic:  "persistent://pavilion/notifications/comment-events",
-		UserEventsTopic:     "persistent://pavilion/notifications/user-events",
-		DeadLetterTopic:     "persistent://pavilion/notifications/dead-letter",
-		RetryQueueTopic:     "persistent://pavilion/notifications/retry-queue",
+		// Pulsar connection settings
+		PulsarURL:        "pulsar://localhost:6650",
+		OperationTimeout:  30 * time.Second,
+		ConnectionTimeout: 30 * time.Second,
 		
+		// Security settings
+		TLSEnabled:        false,
+		TLSCertPath:       "",
+		AuthToken:         "",
+		
+		// Retention settings
 		RetentionTimeHours:  48,
 		
+		// Deduplication
 		DeduplicationEnabled: true,
 		DeduplicationWindow:  2 * time.Hour,
 		
+		// Resilience
 		RetryEnabled:        true,
 		MaxRetries:          5,
 		BackoffInitial:      1 * time.Second,
 		BackoffMax:          60 * time.Second,
 		BackoffMultiplier:   2.0,
 	}
+	
+	// Topic configuration
+	svcConfig.Topics.VideoEvents = "persistent://pavilion/notifications/video-events"
+	svcConfig.Topics.CommentEvents = "persistent://pavilion/notifications/comment-events"
+	svcConfig.Topics.UserEvents = "persistent://pavilion/notifications/user-events"
+	svcConfig.Topics.DeadLetter = "persistent://pavilion/notifications/dead-letter"
+	svcConfig.Topics.RetryQueue = "persistent://pavilion/notifications/retry-queue"
+	
+	// ScyllaDB connection pool settings
+	svcConfig.ScyllaDB.MaxConnections = 20
+	svcConfig.ScyllaDB.MaxIdleConnections = 5
+	svcConfig.ScyllaDB.ConnectTimeout = 10 * time.Second
+	svcConfig.ScyllaDB.Timeout = 5 * time.Second
+	svcConfig.ScyllaDB.MaxRetries = 3
+	svcConfig.ScyllaDB.RetryInterval = 500 * time.Millisecond
+	
+	return svcConfig
 }

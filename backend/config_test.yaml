@@ -20,7 +20,7 @@ scylladb:
   hosts: 
     - "localhost"
   port: 9042
-  keyspace: "pavilion_db"
+  keyspace: "pavilion_test"
   username: "root"
   password: ""
   consistency: "one"  # Changed from "quorum" to "one" for development environment
@@ -29,6 +29,12 @@ scylladb:
     replicationFactor: 3
   timeout: "5s"
   connectTimeout: "10s"
+  pool:
+    maxConnections: 20
+    maxIdleConnections: 5
+  retry:
+    maxRetries: 3
+    retryInterval: "500ms"
 
 redis:
   addr: "localhost:6379"
@@ -112,7 +118,7 @@ pulsar:
   tls_cert_path: ""
   operation_timeout: "30s"
   connection_timeout: "30s"
-  namespace: "pavilion/notifications"
+  namespace: "pavilion_test/notifications"
   auth_token: ""  # Will be overridden by PULSAR_AUTH_TOKEN
 
 notification:

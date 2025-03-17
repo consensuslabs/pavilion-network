@@ -1,289 +1,275 @@
-# Pavilion Network - Notification System Specification
+# Pavilion Network Notification System
 
 ## 1. Overview
-This document outlines the technical specification for the Pavilion Network notification system, designed to provide real-time notifications for video, comment, and user interactions using Apache Pulsar and a hybrid storage approach. The system ensures scalability, resilience, and extensibility, with enhancements for production-grade performance and user experience.
+The Pavilion Network notification system is designed to provide real-time notifications for various events occurring within the platform. It follows a domain-driven design approach with clear separation of concerns and standardized interfaces.
 
-## 2. System Architecture
+## 2. Architecture
 
 ### 2.1 Components
-1. **Apache Pulsar**
-   - Primary event streaming platform
-   - Short-term notification storage (48-hour retention)
-   - Real-time notification delivery
-2. **Notification Service**
-   - Event processing and routing
-   - Notification state management
-   - Delivery orchestration (WebSocket, push, API)
-3. **Storage Layer**
-   - Hybrid approach: Pulsar for real-time, ScyllaDB (optional) for historical data
-   - Fallback to Pulsar with extended retention if ScyllaDB is unavailable
-4. **Resilience Layer**
-   - Asynchronous retry queues for failed operations
-   - Dead letter queue (DLQ) for unprocessable messages
-   - Circuit breakers for external dependencies
+1. **Event Streaming**: Apache Pulsar for reliable, scalable event distribution
+2. **Notification Service**: Core service for processing events and managing notifications
+3. **Hybrid Storage**: Redis for recent notifications + ScyllaDB for historical data
+4. **Delivery Mechanisms**: WebSocket for real-time delivery and REST API for history
 
-### 2.2 Event Types
+### 2.2 Flow Diagram
+```
+┌────────────┐    ┌─────────┐    ┌──────────────┐    ┌──────────────┐
+│ Application │───►│ Producer │───►│ Apache Pulsar │───►│  Consumers   │
+└────────────┘    └─────────┘    └──────────────┘    └──────┬───────┘
+                                                            │
+                                                            ▼
+┌────────────┐    ┌─────────────┐    ┌──────────────┐    ┌──────────────┐
+│   Client    │◄───│ WebSocket/  │◄───│ Notification  │◄───│  Repository  │
+└────────────┘    │  REST API   │    │   Service     │    └──────────────┘
+                  └─────────────┘    └──────────────┘
+```
 
-#### Video Events
-- `VIDEO_UPLOADED`: New video upload completed
-- `VIDEO_PROCESSED`: Video processing finished
-- `VIDEO_UPDATED`: Video metadata updated
-- `VIDEO_DELETED`: Video removed
+## 3. Event Types
 
-#### Comment Events
-- `COMMENT_CREATED`: New comment on video
-- `COMMENT_REPLIED`: Reply to comment
-- `COMMENT_REACTION`: Reaction added to comment
+### 3.1 Video Events
+- **VideoUploaded**: When a new video is uploaded
+- **VideoLiked**: When a video receives a like
+- **VideoShared**: When a video is shared
+- **VideoCommented**: When a video receives a comment
 
-#### User Events
-- `USER_FOLLOWED`: New follower added
-- `USER_MENTIONED`: User mentioned in comment
-- `AUTH_EVENT`: Security-related notifications
+### 3.2 Comment Events
+- **CommentCreated**: When a comment is posted
+- **CommentReplied**: When a reply is added to a comment
+- **CommentLiked**: When a comment receives a like
 
-### 2.3 Event Flow
-[Source Services] → [Pulsar Topics] → [Notification Service] → [Delivery]
-     ↓                   ↓                    ↓                   ↓
-Video Service    video-events-topic    Event Processing    Real-time WebSocket
-Comment Service  comment-events-topic  State Management    Push Notifications
-User Service     user-events-topic     Storage Decisions   API Endpoints
-                                            ↓
-                                      [Resilience Layer]
-                                            ↓
-                                     Retry Queue → DLQ
+### 3.3 User Events
+- **UserFollowed**: When a user is followed
+- **UserMentioned**: When a user is mentioned in a comment or video description
+- **UserTagged**: When a user is tagged in a video
 
-## 3. Technical Implementation
+## 4. Technical Implementation
 
-### 3.1 Apache Pulsar Configuration
-pulsar:
-  url: "pulsar+ssl://localhost:6651"
-  topics:
-    video_events: "pavilion/notifications/video-events"
-    comment_events: "pavilion/notifications/comment-events"
-    user_events: "pavilion/notifications/user-events"
-    dead_letter: "pavilion/notifications/dead-letter"
-    retry_queue: "pavilion/notifications/retry-queue"
-  retention:
-    time: 48h  # Extendable to 7d with backup strategy
-    size: 1024MB
-  subscriptions:
-    type: "shared"
-    name: "notification-processor"
-  deduplication:
-    enabled: true
-    time_window: 2h
-  tls:
-    cert_file: "/path/to/cert"
+### 4.1 Configuration
+The notification system uses a structured configuration approach with the `ServiceConfig` type:
 
-### 3.2 Storage Strategy
-
-#### Hybrid Storage Approach
-1. **Real-time Layer (Pulsar)**
-   - Recent notifications (48 hours default, configurable)
-   - Real-time event streaming
-   - Temporary storage with retention
-2. **Historical Layer (ScyllaDB, Optional)**
-   - Long-term storage for notification history
-   - Complex query support (e.g., by user, time range)
-   - Fallback: Extended Pulsar retention (7 days) if ScyllaDB unavailable
-
-#### Data Consistency Mechanisms
-- Idempotent event processing with distributed deduplication (e.g., Redis)
-- Transaction log for cross-storage operations
-- Periodic reconciliation cron job
-
-### 3.3 Core Service Structure
-type NotificationService struct {
-    pulsarClient pulsar.Client
-    config       *Config
-    retryQueue   pulsar.Producer
-    dlqProducer  pulsar.Producer
-    deduplicator *Deduplicator // Distributed (e.g., Redis-backed)
-    wsHub        *websocket.Hub
-}
-
-type Config struct {
-    PulsarRetentionHours    int
-    ArchiveThresholdHours   int
-    MaxNotificationsPerUser int
-    RetryQueueEnabled       bool
-    Resilience              ResilienceConfig
-}
-
-type ResilienceConfig struct {
-    MaxRetries       int
-    BackoffInitial   time.Duration
-    BackoffMax       time.Duration
-    BackoffFactor    float64
-}
-
-type NotificationEvent struct {
-    ID             uuid.UUID
-    Type           string
-    UserID         uuid.UUID
-    SourceID       uuid.UUID
-    Content        string
-    Metadata       map[string]interface{}
-    CreatedAt      time.Time
-    EventKey       string
-    SequenceNumber int64
-}
-
-### 3.4 Event Processing Pipeline
-func (s *NotificationService) HandleNotification(ctx context.Context, event NotificationEvent) error {
-    if err := s.validateEvent(event); err != nil {
-        return fmt.Errorf("invalid event: %w", err)
+```go
+type ServiceConfig struct {
+    // General settings
+    Enabled bool
+    
+    // Pulsar connection settings
+    BrokerURL     string
+    OperationTimeout time.Duration
+    ConnectionTimeout time.Duration
+    
+    // Security settings
+    TLSEnabled bool
+    TLSCertPath string
+    TLSKeyPath string
+    
+    // Topic configuration
+    Topics struct {
+        VideoEvents   string
+        CommentEvents string
+        UserEvents    string
+        DeadLetter    string
+        RetryQueue    string
     }
-
-    if s.deduplicator.IsDuplicate(ctx, event.ID.String(), event.EventKey) {
-        log.Printf("Duplicate event: %s", event.ID)
-        return nil
-    }
-
-    if err := s.publishToPulsar(ctx, event); err != nil {
-        return s.scheduleRetry(ctx, event, err)
-    }
-
-    return s.processForDelivery(ctx, event)
+    
+    // Retention settings
+    RetentionDays int
+    
+    // Deduplication settings
+    DeduplicationEnabled bool
+    DeduplicationWindow time.Duration
+    
+    // Resilience settings
+    MaxRetries     int
+    RetryDelay     time.Duration
+    BackoffFactor  float64
 }
+```
 
-func (s *NotificationService) scheduleRetry(ctx context.Context, event NotificationEvent, originalErr error) error {
-    if !s.config.RetryQueueEnabled || !s.isRetryableError(originalErr) {
-        return s.sendToDeadLetterQueue(ctx, event, originalErr)
-    }
+### 4.2 Error Handling
+The system uses standardized error types for consistent error handling:
 
-    retryMsg := pulsar.ProducerMessage{
-        Payload: serializeEvent(event),
-        Properties: map[string]string{
-            "attempt": "1",
-            "max_attempts": strconv.Itoa(s.config.Resilience.MaxRetries),
-            "backoff": s.config.Resilience.BackoffInitial.String(),
-        },
-    }
-    _, err := s.retryQueue.Send(ctx, &retryMsg)
-    return err
-}
-
-### 3.5 API Endpoints
-notifications := r.Group("/api/v1/notifications")
-{
-    notifications.GET("/", authMiddleware(), h.ListNotifications)
-    notifications.GET("/unread-count", authMiddleware(), h.GetUnreadCount)
-    notifications.PUT("/:id/read", authMiddleware(), h.MarkAsRead)
-    notifications.PUT("/read-all", authMiddleware(), h.MarkAllAsRead)
-}
-
-### 3.6 WebSocket Authentication
-func (h *WebSocketHandler) ServeWS(c *gin.Context) {
-    userID, err := h.authenticateUser(c) // JWT with refresh support
-    if err != nil {
-        c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-        return
-    }
-
-    conn, err := h.upgrader.Upgrade(c.Writer, c.Request, nil)
-    if err != nil {
-        log.Printf("Failed to upgrade: %v", err)
-        return
-    }
-
-    client := &Client{
-        hub:    h.hub,
-        conn:   conn,
-        send:   make(chan []byte, 256),
-        userID: userID,
-    }
-
-    h.hub.register <- client
-    go client.writePump()
-    go client.readPump()
-}
-
-## 4. Performance Considerations
-
-### 4.1 Scalability
-1. Horizontal scaling of consumers with dynamic adjustment
-2. Topic partitioning based on load
-3. Sharded storage for extreme scale
-
-### 4.2 Optimization Strategies
-1. **Batching**: Event and delivery batching
-2. **Caching**: Redis for recent notifications and unread counts
-3. **Grouping**: Consolidate related events for user delivery
-
-### 4.3 Resource Management
-1. **Pulsar**: Configurable TTL, consumer group scaling
-2. **Storage**: Compression, cleanup cron jobs
-
-### 4.4 Monitoring
+```go
 var (
-    notificationProcessingTime = prometheus.NewHistogramVec(
-        prometheus.HistogramOpts{
-            Name:    "notification_processing_time_seconds",
-            Buckets: prometheus.DefBuckets,
-        },
-        []string{"event_type"},
-    )
-    consumerLag = prometheus.NewGaugeVec(
-        prometheus.GaugeOpts{
-            Name: "consumer_lag_messages",
-            Help: "Messages pending in consumer backlog",
-        },
-        []string{"topic"},
-    )
+    ErrNotificationNotFound = errors.New("notification not found")
+    ErrInvalidNotification  = errors.New("invalid notification")
+    ErrInvalidEventType     = errors.New("invalid event type")
+    ErrServiceDisabled      = errors.New("notification service is disabled")
+    ErrConnectionFailed     = errors.New("failed to connect to message broker")
 )
 
-## 5. Implementation Phases
+type NotificationError struct {
+    Op      string
+    Err     error
+    Context map[string]interface{}
+}
+```
 
-### Phase 1: Core Infrastructure (Week 1-2)
-- [ ] Set up Pulsar with TLS
-- [ ] Configure topics and retention
-- [ ] Implement base service with retry queue
-- [ ] Set up Redis-backed deduplication
-- [ ] Deploy local dev environment (Docker Compose)
+### 4.3 Utility Functions
+The system includes utility functions for common operations:
 
-### Phase 2: Event Integration (Week 2-3)
-- [ ] Integrate video, comment, user services
-- [ ] Implement producers with retry logic
-- [ ] Add unit tests for producers
+```go
+// TruncateContent truncates a string to the specified length and adds ellipsis if needed
+func TruncateContent(content string, maxLength int) string {
+    if len(content) <= maxLength {
+        return content
+    }
+    return content[:maxLength] + "..."
+}
+```
 
-### Phase 3: Processing Pipeline (Week 3-4)
-- [ ] Implement consumers with graceful shutdown
-- [ ] Configure hybrid storage
-- [ ] Set up Prometheus monitoring and alerting
+### 4.4 Producers
+Producers are responsible for publishing events to Pulsar topics:
+
+```go
+type Producer interface {
+    PublishEvent(ctx context.Context, event Event) error
+    Close() error
+}
+```
+
+### 4.5 Consumers
+Consumers process events from Pulsar topics and create notifications:
+
+```go
+type Consumer interface {
+    Start(ctx context.Context) error
+    Stop() error
+}
+```
+
+### 4.6 Storage
+Hybrid storage approach:
+- Redis: Recent notifications (7 days)
+- ScyllaDB: Historical notifications
+
+#### 4.6.1 ScyllaDB Configuration
+```go
+// ScyllaDB settings for the notification repository
+type ScyllaDBConfig struct {
+    // Connection pool settings
+    MaxConnections     int           // Maximum number of connections in the pool
+    MaxIdleConnections int           // Maximum number of idle connections in the pool
+    ConnectTimeout     time.Duration // Timeout for establishing database connections
+    Timeout            time.Duration // Timeout for database operations
+    
+    // Retry settings
+    MaxRetries         int           // Maximum number of retry attempts
+    RetryInterval      time.Duration // Base interval between retry attempts
+}
+```
+
+#### 4.6.2 Connection Pooling
+The system maintains a pool of ScyllaDB connections to improve performance:
+- Multiple simultaneous connections reduce request latency
+- Connection reuse avoids the overhead of establishing new connections
+- Pool size is configurable to match system resources
+
+#### 4.6.3 Retry Mechanism
+Database operations are automatically retried when transient errors occur:
+- Intelligent classification of errors as retryable vs. non-retryable
+- Exponential backoff to prevent overwhelming the database during outages
+- Configurable retry limits and intervals
+
+### 4.7 Delivery
+- WebSocket for real-time notifications
+- REST API for notification history and management
+
+## 5. Performance Considerations
+
+### 5.1 Scalability
+- Horizontal scaling of consumers
+- Partitioned topics for parallel processing
+- Redis caching for frequently accessed data
+
+### 5.2 Resilience
+- Dead Letter Queue (DLQ) for failed messages
+- Retry mechanism with exponential backoff
+- Circuit breaker for external dependencies
+- Intelligent error classification for database operations
+- Connection pooling for improved database resilience
+
+#### 5.2.1 Error Classification
+The system classifies database errors to determine appropriate handling:
+
+```go
+// isRetryableError determines if an error is retryable
+func isRetryableError(err error) bool {
+    // Connection errors, timeouts, and temporary database errors are retryable
+    if err == gocql.ErrNoConnections || err == gocql.ErrTimeoutNoResponse || err == gocql.ErrConnectionClosed {
+        return true
+    }
+    
+    // Context cancellation or deadline exceeded
+    if err == context.DeadlineExceeded || err == context.Canceled {
+        return true
+    }
+    
+    // Other errors are considered non-retryable
+    return false
+}
+```
+
+### 5.3 Monitoring
+- Prometheus metrics for latency and throughput
+- Grafana dashboards for visualization
+- Alerting for error rates and consumer lag
+
+## 6. Implementation Phases
+
+### Phase 1: Core Infrastructure (Week 1)
+- [x] Set up Pulsar in development environment
+- [x] Define domain models and interfaces
+- [x] Implement basic producer and consumer
+
+### Phase 2: Storage and Service (Week 2)
+- [x] Implement notification repository
+- [x] Create notification service
+- [x] Set up basic error handling
+
+### Phase 3: Resilience (Week 3)
+- [x] Implement retry mechanism
+- [x] Add dead letter queue
+- [x] Implement deduplication
+- [x] Implement consumers with graceful shutdown
+- [x] Configure hybrid storage
+- [x] Set up Prometheus monitoring and alerting
+- [x] Implement ScyllaDB connection pooling
+- [x] Add intelligent retry with exponential backoff
+- [x] Add error classification (retryable vs. non-retryable)
 
 ### Phase 4: Delivery System (Week 4-5)
 - [ ] Implement REST API and WebSocket
-- [ ] Add push notification support (e.g., Firebase)
 - [ ] Test client reconnection handling
 
-## 6. Monitoring and Maintenance
+## 7. Monitoring and Maintenance
 
-### 6.1 Metrics to Track
+### 7.1 Metrics to Track
 1. Event processing latency
 2. Delivery success rate
 3. Consumer lag
 4. Retry queue depth
 5. DLQ volume
 
-### 6.2 Maintenance Tasks
+### 7.2 Maintenance Tasks
 1. Cleanup old notifications (cron job)
 2. Performance tuning
 3. Security patch updates
 4. Backup Pulsar snapshots weekly
 
-## 7. Security Considerations
+## 8. Security Considerations
 
-### 7.1 Data Protection
+### 8.1 Data Protection
 1. TLS for Pulsar and WebSocket
 2. Encrypted storage for sensitive metadata
 3. RBAC for API access
 
-### 7.2 Authentication & Authorization
+### 8.2 Authentication & Authorization
 1. JWT with refresh tokens for WebSocket
 2. Rate limiting on API endpoints
 3. User consent checks for notifications
 
-### 7.3 Development Environment
+### 8.3 Development Environment
+```yaml
 version: '3'
 services:
   pulsar:
@@ -298,31 +284,44 @@ services:
     image: redis:6.2
     ports:
       - "6379:6379"
+```
 
-## 8. Code Organization
+## 9. Code Organization
+```
 backend/
 ├── internal/
 │   ├── notification/
-│   │   ├── api/
-│   │   ├── config/
-│   │   ├── domain/
-│   │   ├── producer/
+│   │   ├── alias.go         # Type aliases and common imports
+│   │   ├── config.go        # Configuration structures
+│   │   ├── interfaces.go    # Core interfaces
+│   │   ├── service.go       # Service implementation
+│   │   ├── util.go          # Utility functions
+│   │   ├── types/
+│   │   │   ├── error.go     # Error types
+│   │   │   └── events.go    # Event definitions
 │   │   ├── consumer/
+│   │   │   ├── comment_consumer.go
+│   │   │   ├── user_consumer.go
+│   │   │   └── video_consumer.go
+│   │   ├── producer/
+│   │   │   ├── comment_producer.go
+│   │   │   ├── user_producer.go
+│   │   │   └── video_producer.go
+│   │   ├── repository/
 │   │   ├── delivery/
 │   │   │   ├── websocket/
-│   │   │   └── push/
-│   │   ├── repository/
-│   │   ├── service/
-│   │   ├── resilience/
+│   │   │   └── rest/
 │   │   └── tests/
 │   │       ├── unit/
 │   │       ├── integration/
 │   │       └── e2e/
 │   └── common/
+```
 
-### 8.1 Key Components
+### 9.1 Key Components
 
 #### Domain Models
+```go
 type Notification struct {
     ID        uuid.UUID
     UserID    uuid.UUID
@@ -332,8 +331,10 @@ type Notification struct {
     CreatedAt time.Time
     ReadAt    *time.Time
 }
+```
 
 #### Producers
+```go
 type VideoEventProducer struct {
     pulsarClient pulsar.Client
     topic        string
@@ -349,8 +350,10 @@ func (p *VideoEventProducer) PublishVideoUploaded(ctx context.Context, videoID u
     }
     return p.publish(ctx, event)
 }
+```
 
 #### Consumers
+```go
 func (c *VideoEventConsumer) Start(ctx context.Context) error {
     for {
         select {
@@ -374,8 +377,10 @@ func (c *VideoEventConsumer) Start(ctx context.Context) error {
         }
     }
 }
+```
 
 #### WebSocket Hub
+```go
 type Hub struct {
     clients    map[*Client]bool
     broadcast  chan Notification
@@ -399,14 +404,16 @@ func (h *Hub) Run() {
         }
     }
 }
+```
 
-## 9. Testing Strategy
+## 10. Testing Strategy
 1. **Unit Tests**: Core logic (e.g., `HandleNotification`)
 2. **Integration Tests**: Pulsar and Redis via Testcontainers
 3. **Load Tests**: Simulate high event rates with Locust
 4. **Chaos Tests**: Validate retries and DLQ under failure
 
-## 10. Deployment
+## 11. Deployment
+```yaml
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -418,21 +425,21 @@ spec:
       containers:
       - name: notification-service
         image: pavilion/notification-service:latest
+```
 
-## 11. Future Enhancements
+## 12. Future Enhancements
 
-### 11.1 Features
+### 12.1 Features
 1. ML-based relevance scoring
 2. Notification grouping and prioritization
-3. Multi-device sync with Firebase
 
-### 11.2 Scalability
+### 12.2 Scalability
 1. Dynamic consumer scaling
 2. Sharded storage with custom shard selector
 
-### 11.3 Resilience
+### 12.3 Resilience
 1. Circuit breakers for Pulsar
 2. Advanced retry policies with backoff
 
-## 12. Conclusion
-The system combines real-time performance with robust resilience and scalability, enhanced by asynchronous retries, detailed testing, and secure deployment options. It’s poised for high-scale notification delivery with a clear path for future growth.
+## 13. Conclusion
+The notification system combines domain-driven design principles with robust error handling and resilience mechanisms. It provides a scalable and maintainable solution for real-time notifications with clear interfaces and standardized components. The system is designed for future extensibility while maintaining high performance and reliability.

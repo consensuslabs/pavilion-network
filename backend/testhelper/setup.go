@@ -72,6 +72,24 @@ type Config struct {
 		Output      string `mapstructure:"output"`
 		Development bool   `mapstructure:"development"`
 	} `mapstructure:"logging"`
+	Auth struct {
+		JWT struct {
+			SigningKey string `mapstructure:"signingKey"`
+			ExpiryTime int    `mapstructure:"expiryTime"`
+		} `mapstructure:"jwt"`
+	} `mapstructure:"auth"`
+	Pulsar struct {
+		URL               string `mapstructure:"url"`
+		AdminURL          string `mapstructure:"adminUrl"`
+		OperationTimeout  int    `mapstructure:"operationTimeout"`
+		ConnectionTimeout int    `mapstructure:"connectionTimeout"`
+	} `mapstructure:"pulsar"`
+	ScyllaDB struct {
+		Hosts       []string `mapstructure:"hosts"`
+		Keyspace    string   `mapstructure:"keyspace"`
+		Consistency string   `mapstructure:"consistency"`
+		Timeout     string   `mapstructure:"timeout"`
+	} `mapstructure:"scylladb"`
 }
 
 // LoadTestConfig loads the test configuration from config_test.yaml.
@@ -186,27 +204,40 @@ func LoadTestConfig() (*Config, error) {
 		}
 	}
 
-	// Print all config paths for debugging
-	fmt.Println("Looking for config_test.yaml in these paths:")
-	// Viper doesn't expose a method to get all config paths, so we'll just list the ones we added
-	fmt.Println(" - Current directory")
-	fmt.Println(" - Parent directory (..)")
-	fmt.Println(" - Grandparent directory (../..)")
-	fmt.Println(" - Great-grandparent directory (../../..)")
-	fmt.Println(" - Great-great-grandparent directory (../../../..)")
-	fmt.Println(" - Project root (if found)")
-
-	if err := v.ReadInConfig(); err != nil {
+	if err := loadConfigFile(v); err != nil {
 		return nil, err
 	}
-
-	fmt.Println("Loaded config from:", v.ConfigFileUsed())
 
 	var cfg Config
 	if err := v.Unmarshal(&cfg); err != nil {
 		return nil, err
 	}
 	return &cfg, nil
+}
+
+func loadConfigFile(v *viper.Viper) error {
+	// Print the paths we're checking
+	fmt.Println("Looking for config_test.yaml in these paths:")
+	fmt.Println(" - Current directory")
+	fmt.Println(" - Parent directory (..)")
+	fmt.Println(" - Grandparent directory (../..)")
+	fmt.Println(" - Great-grandparent directory (../../..)")
+	fmt.Println(" - Great-great-grandparent directory (../../../..)")
+	fmt.Println(" - Project root (if found)")
+	
+	// Try to read the config file
+	if err := v.ReadInConfig(); err != nil {
+		if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+			return fmt.Errorf("config file not found: %w", err)
+		}
+		return fmt.Errorf("error reading config file: %w", err)
+	}
+	
+	// Print which config file was loaded
+	fmt.Printf("Loaded config from: %s\n", v.ConfigFileUsed())
+	
+	// Return nil for success
+	return nil
 }
 
 // SetupTestDB connects to the test database and runs migrations.

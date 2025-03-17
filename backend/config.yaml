@@ -34,6 +34,12 @@ scylladb:
     replicationFactor: 3
   timeout: "5s"
   connectTimeout: "10s"
+  pool:
+    maxConnections: 20
+    maxIdleConnections: 5
+  retry:
+    maxRetries: 3
+    retryInterval: "500ms"
 
 redis:
   addr: "localhost:6379"
@@ -122,6 +128,13 @@ pulsar:
 
 notification:
   enabled: true
+  consumers_enabled: true
+  pulsar_url: "pulsar://localhost:6650"
+  tls_enabled: false
+  tls_cert_path: ""
+  auth_token: ""  # Will be overridden by NOTIFICATION_AUTH_TOKEN
+  operation_timeout: "30s"
+  connection_timeout: "30s"
   video_events_topic: "persistent://pavilion/notifications/video-events"
   comment_events_topic: "persistent://pavilion/notifications/comment-events"
   user_events_topic: "persistent://pavilion/notifications/user-events"
