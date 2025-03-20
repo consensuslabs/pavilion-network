@@ -21,7 +21,8 @@ var (
 
 // serviceImpl implements the Service interface
 type serviceImpl struct {
-	repo Repository
+	repo               Repository
+	notificationService interface{}
 }
 
 // NewService creates a new comment service
@@ -29,6 +30,11 @@ func NewService(repo Repository) Service {
 	return &serviceImpl{
 		repo: repo,
 	}
+}
+
+// SetNotificationService sets the notification service
+func (s *serviceImpl) SetNotificationService(notificationService interface{}) {
+	s.notificationService = notificationService
 }
 
 // GetCommentByID retrieves a comment by its ID
@@ -134,6 +140,44 @@ func (s *serviceImpl) CreateComment(ctx context.Context, comment *Comment) error
 	if err != nil {
 		fmt.Printf("DEBUG SERVICE: Repository error: %v\n", err)
 		return fmt.Errorf("error creating comment in repository: %w", err)
+	}
+
+	// Publish notification event if notification service is available
+	if s.notificationService != nil {
+		fmt.Printf("DEBUG SERVICE: Publishing comment notification event\n")
+		
+		// Check if this is a reply or a new comment
+		if comment.ParentID != nil {
+			// This is a reply
+			if adapter, ok := s.notificationService.(interface {
+				PublishCommentReplyEvent(ctx context.Context, userID, videoID, commentID, parentID uuid.UUID, content string) error
+			}); ok {
+				// Get the parent comment to find the parent author
+				parentComment, err := s.repo.GetByID(ctx, *comment.ParentID)
+				if err == nil && parentComment != nil {
+					// Only notify if the parent comment author is different from the replier
+					if parentComment.UserID != comment.UserID {
+						if err := adapter.PublishCommentReplyEvent(ctx, parentComment.UserID, comment.VideoID, comment.ID, *comment.ParentID, comment.Content); err != nil {
+							fmt.Printf("DEBUG SERVICE: Error publishing comment reply notification: %v\n", err)
+							// Don't return error, just log it
+						}
+					}
+				}
+			}
+		} else {
+			// This is a new comment on a video
+			if adapter, ok := s.notificationService.(interface {
+				PublishCommentCreatedEvent(ctx context.Context, userID, videoID, commentID uuid.UUID, content string) error
+			}); ok {
+				// TODO: Get video owner ID from video service and only notify if the comment author is different from the video owner
+				// For now, use the comment user ID as a placeholder
+				// We'll need to fetch the video owner ID from the video service
+				if err := adapter.PublishCommentCreatedEvent(ctx, comment.UserID, comment.VideoID, comment.ID, comment.Content); err != nil {
+					fmt.Printf("DEBUG SERVICE: Error publishing comment created notification: %v\n", err)
+					// Don't return error, just log it
+				}
+			}
+		}
 	}
 
 	fmt.Printf("DEBUG SERVICE: Comment created successfully\n")
