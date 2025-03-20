@@ -26,6 +26,8 @@ import (
 	"github.com/consensuslabs/pavilion-network/backend/internal/video/ffmpeg"
 	"github.com/consensuslabs/pavilion-network/backend/internal/video/tempfile"
 	"github.com/consensuslabs/pavilion-network/backend/migrations"
+	cockroachdbMigrations "github.com/consensuslabs/pavilion-network/backend/migrations/cockroachdb"
+	scylladbMigrations "github.com/consensuslabs/pavilion-network/backend/migrations/scylladb"
 	"github.com/gin-gonic/gin"
 	"github.com/gocql/gocql"
 	swaggerFiles "github.com/swaggo/files"
@@ -103,11 +105,26 @@ func NewApp(ctx context.Context, cfg *config.Config) (*App, error) {
 		return nil, fmt.Errorf("failed to connect to database: %v", err)
 	}
 
-	// Run migrations
+	// Get migration config to check if we should run migrations
+	migrationConfig := dbService.GetMigrationConfig()
+
+	// Run standard database migrations
 	if err := migrations.RunMigrations(db, "up"); err != nil {
 		return nil, fmt.Errorf("failed to run migrations: %v", err)
 	}
-	loggerService.LogInfo("Database migrations completed successfully", nil)
+	loggerService.LogInfo("Standard database migrations completed successfully", nil)
+
+	// Run CockroachDB specific migrations if force migration is enabled
+	if migrationConfig.ShouldRunMigration() {
+		loggerService.LogInfo("Force migration enabled, running CockroachDB migrations", nil)
+		// Create the migration runner
+		cockroachMigrationRunner := cockroachdbMigrations.NewMigrationRunner(db, loggerService)
+		if err := cockroachMigrationRunner.RunMigrations(); err != nil {
+			loggerService.LogError(fmt.Errorf("failed to run CockroachDB migrations: %w", err), "CockroachDB migration error")
+			return nil, fmt.Errorf("failed to run CockroachDB migrations: %w", err)
+		}
+		loggerService.LogInfo("CockroachDB migrations completed successfully", nil)
+	}
 
 	// Initialize cache service
 	redisConfig := &cache.Config{
@@ -293,7 +310,19 @@ func NewApp(ctx context.Context, cfg *config.Config) (*App, error) {
 	app.scyllaManager = scylladb.NewSchemaManager(app.scyllaSession, scyllaConfig, loggerAdapter)
 
 	// Get migration config to check if we should auto-migrate
-	migrationConfig := app.dbService.GetMigrationConfig()
+	migrationConfig = app.dbService.GetMigrationConfig()
+
+	// Run ScyllaDB migrations if force migration is enabled
+	if migrationConfig.ShouldRunMigration() {
+		loggerService.LogInfo("Force migration enabled, running ScyllaDB migrations", nil)
+		// Create the migration runner
+		scyllaMigrationRunner := scylladbMigrations.NewMigrationRunner(app.scyllaSession, scyllaConfig.Keyspace, loggerService)
+		if err := scyllaMigrationRunner.RunMigrations(); err != nil {
+			loggerService.LogError(fmt.Errorf("failed to run ScyllaDB migrations: %w", err), "ScyllaDB migration error")
+			return nil, fmt.Errorf("failed to run ScyllaDB migrations: %w", err)
+		}
+		loggerService.LogInfo("ScyllaDB migrations completed successfully", nil)
+	}
 
 	// Initialize schema only if auto-migrate is enabled
 	if migrationConfig.ShouldAutoMigrate() {
@@ -301,6 +330,13 @@ func NewApp(ctx context.Context, cfg *config.Config) (*App, error) {
 		if err := app.scyllaManager.InitializeSchema(); err != nil {
 			loggerService.LogError(fmt.Errorf("failed to initialize ScyllaDB schema: %w", err), "ScyllaDB schema error")
 			return nil, fmt.Errorf("failed to initialize ScyllaDB schema: %w", err)
+		}
+
+		// Initialize migration tracking table
+		migrationSchemaManager := scylladbMigrations.NewMigrationSchemaManager(app.scyllaSession, scyllaConfig.Keyspace, loggerService)
+		if err := migrationSchemaManager.CreateTables(); err != nil {
+			loggerService.LogError(fmt.Errorf("failed to initialize migration tracking tables: %w", err), "Migration schema error")
+			loggerService.LogWarn("Continuing without migration tracking tables", nil)
 		}
 	} else {
 		loggerService.LogInfo("Auto-migrate disabled, skipping ScyllaDB schema initialization", nil)
@@ -345,8 +381,12 @@ func NewApp(ctx context.Context, cfg *config.Config) (*App, error) {
 		app.notificationHandler = notification.NewHandler(notificationService, responseHandler, loggerService)
 		
 		// Create adapter and inject notification service into video app for video events
-		notificationAdapter := notification.NewVideoNotificationAdapter(notificationService)
-		videoApp.NotificationService = notificationAdapter
+		videoNotificationAdapter := notification.NewVideoNotificationAdapter(notificationService)
+		videoApp.NotificationService = videoNotificationAdapter
+		
+		// Create adapter and inject notification service into comment service for comment events
+		commentNotificationAdapter := notification.NewCommentNotificationAdapter(notificationService)
+		commentService.SetNotificationService(commentNotificationAdapter)
 		
 		loggerService.LogInfo("Notification service and handler initialized successfully", nil)
 	}

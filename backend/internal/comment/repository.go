@@ -39,4 +39,7 @@ type Service interface {
 	GetUserReaction(ctx context.Context, commentID, userID uuid.UUID) (*Reaction, error)
 	AddReaction(ctx context.Context, reaction *Reaction) error
 	RemoveReaction(ctx context.Context, commentID, userID uuid.UUID) error
+	
+	// Set notification service
+	SetNotificationService(notificationService interface{})
 }

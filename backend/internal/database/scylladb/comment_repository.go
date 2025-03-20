@@ -122,9 +122,10 @@ func (r *CommentRepository) GetByVideoID(ctx context.Context, options comment.Co
 
 	// Collect comment IDs
 	var commentIDs []uuid.UUID
-	for commentIDsIter.Scanner().Next() {
+	scanner := commentIDsIter.Scanner()
+	for scanner.Next() {
 		var commentIDBytes []byte
-		if err := commentIDsIter.Scanner().Scan(&commentIDBytes); err != nil {
+		if err := scanner.Scan(&commentIDBytes); err != nil {
 			r.logger.LogError("Error scanning comment ID", map[string]interface{}{"error": err.Error()})
 			return result, err
 		}
@@ -142,6 +143,22 @@ func (r *CommentRepository) GetByVideoID(ctx context.Context, options comment.Co
 	if err := commentIDsIter.Close(); err != nil {
 		r.logger.LogError("Error closing comment IDs iterator", map[string]interface{}{"error": err.Error()})
 		return result, err
+	}
+
+	// If we don't have any comments, return empty result
+	if len(commentIDs) == 0 {
+		// Get total count to properly set pagination info
+		count, err := r.Count(ctx, options.VideoID)
+		if err != nil {
+			return result, err
+		}
+
+		// Calculate pagination info
+		result.TotalCount = count
+		result.TotalPages = int(math.Ceil(float64(count) / float64(options.Limit)))
+		result.HasNextPage = options.Page < result.TotalPages
+		result.HasPrevPage = options.Page > 1
+		return result, nil
 	}
 
 	// Step 2: Fetch full comment data for each comment ID
@@ -219,9 +236,10 @@ func (r *CommentRepository) GetReplies(ctx context.Context, options comment.Comm
 
 	// Collect reply IDs
 	var replyIDs []uuid.UUID
-	for repliesIter.Scanner().Next() {
+	scanner := repliesIter.Scanner()
+	for scanner.Next() {
 		var replyIDBytes []byte
-		if err := repliesIter.Scanner().Scan(&replyIDBytes); err != nil {
+		if err := scanner.Scan(&replyIDBytes); err != nil {
 			r.logger.LogError("Error scanning reply ID", map[string]interface{}{"error": err.Error()})
 			return result, err
 		}
@@ -239,6 +257,33 @@ func (r *CommentRepository) GetReplies(ctx context.Context, options comment.Comm
 	if err := repliesIter.Close(); err != nil {
 		r.logger.LogError("Error closing replies iterator", map[string]interface{}{"error": err.Error()})
 		return result, err
+	}
+
+	// If we don't have any replies, return empty result with proper pagination info
+	if len(replyIDs) == 0 {
+		// Count total replies
+		countQuery := `
+			SELECT COUNT(*)
+			FROM replies
+			WHERE parent_id = ?
+		`
+
+		var count int
+		// Use consistency level ONE (1) for count query
+		if err := r.session.Query(countQuery, parentIDBytes).WithContext(ctx).Consistency(1).Scan(&count); err != nil {
+			r.logger.LogError("Error counting replies", map[string]interface{}{
+				"error":     err.Error(),
+				"commentID": *options.ParentID,
+			})
+			return result, err
+		}
+
+		// Calculate pagination info
+		result.TotalCount = count
+		result.TotalPages = int(math.Ceil(float64(count) / float64(options.Limit)))
+		result.HasNextPage = options.Page < result.TotalPages
+		result.HasPrevPage = options.Page > 1
+		return result, nil
 	}
 
 	// Step 2: Fetch full comment data for each reply ID

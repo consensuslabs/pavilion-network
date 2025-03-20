@@ -60,8 +60,10 @@ func (h *Handler) RegisterRoutes(router *gin.Engine, authService *auth.Service) 
 // @Param page query int false "Page number (default: 1)"
 // @Param limit query int false "Number of comments per page (default: 20, max: 100)"
 // @Param sort query string false "Sort order (options: newest, oldest, most_liked; default: newest)"
+// @Security BearerAuth
 // @Success 200 {object} http.Response{data=PaginatedComments} "Comments retrieved successfully"
 // @Failure 400 {object} http.Response{error=http.Error} "Invalid video ID format"
+// @Failure 401 {object} http.Response{error=http.Error} "Unauthorized - user not authenticated"
 // @Failure 500 {object} http.Response{error=http.Error} "Internal server error"
 // @Router /video/{id}/comments [get]
 func (h *Handler) GetCommentsByVideoID(c *gin.Context) {

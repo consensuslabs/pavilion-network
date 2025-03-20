@@ -702,7 +702,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/http.Response"
+                                    "$ref": "#/definitions/net_http.Response"
                                 },
                                 {
                                     "type": "object",
@@ -720,7 +720,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/http.Response"
+                                    "$ref": "#/definitions/net_http.Response"
                                 },
                                 {
                                     "type": "object",
@@ -738,7 +738,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/http.Response"
+                                    "$ref": "#/definitions/net_http.Response"
                                 },
                                 {
                                     "type": "object",
@@ -756,7 +756,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/http.Response"
+                                    "$ref": "#/definitions/net_http.Response"
                                 },
                                 {
                                     "type": "object",
@@ -774,7 +774,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/http.Response"
+                                    "$ref": "#/definitions/net_http.Response"
                                 },
                                 {
                                     "type": "object",
@@ -821,7 +821,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/http.Response"
+                                    "$ref": "#/definitions/net_http.Response"
                                 },
                                 {
                                     "type": "object",
@@ -839,7 +839,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/http.Response"
+                                    "$ref": "#/definitions/net_http.Response"
                                 },
                                 {
                                     "type": "object",
@@ -857,7 +857,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/http.Response"
+                                    "$ref": "#/definitions/net_http.Response"
                                 },
                                 {
                                     "type": "object",
@@ -875,7 +875,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/http.Response"
+                                    "$ref": "#/definitions/net_http.Response"
                                 },
                                 {
                                     "type": "object",
@@ -893,7 +893,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/http.Response"
+                                    "$ref": "#/definitions/net_http.Response"
                                 },
                                 {
                                     "type": "object",
@@ -951,7 +951,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/http.Response"
+                                    "$ref": "#/definitions/net_http.Response"
                                 },
                                 {
                                     "type": "object",
@@ -969,7 +969,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/http.Response"
+                                    "$ref": "#/definitions/net_http.Response"
                                 },
                                 {
                                     "type": "object",
@@ -987,7 +987,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/http.Response"
+                                    "$ref": "#/definitions/net_http.Response"
                                 },
                                 {
                                     "type": "object",
@@ -1005,7 +1005,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/http.Response"
+                                    "$ref": "#/definitions/net_http.Response"
                                 },
                                 {
                                     "type": "object",
@@ -1023,7 +1023,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/http.Response"
+                                    "$ref": "#/definitions/net_http.Response"
                                 },
                                 {
                                     "type": "object",
@@ -1070,7 +1070,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/http.Response"
+                                    "$ref": "#/definitions/net_http.Response"
                                 },
                                 {
                                     "type": "object",
@@ -1088,7 +1088,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/http.Response"
+                                    "$ref": "#/definitions/net_http.Response"
                                 },
                                 {
                                     "type": "object",
@@ -1106,7 +1106,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/http.Response"
+                                    "$ref": "#/definitions/net_http.Response"
                                 },
                                 {
                                     "type": "object",
@@ -1124,7 +1124,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/http.Response"
+                                    "$ref": "#/definitions/net_http.Response"
                                 },
                                 {
                                     "type": "object",
@@ -1142,7 +1142,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/http.Response"
+                                    "$ref": "#/definitions/net_http.Response"
                                 },
                                 {
                                     "type": "object",
@@ -1198,7 +1198,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/http.Response"
+                                    "$ref": "#/definitions/net_http.Response"
                                 },
                                 {
                                     "type": "object",
@@ -1216,7 +1216,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/http.Response"
+                                    "$ref": "#/definitions/net_http.Response"
                                 },
                                 {
                                     "type": "object",
@@ -1234,7 +1234,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/http.Response"
+                                    "$ref": "#/definitions/net_http.Response"
                                 },
                                 {
                                     "type": "object",
@@ -1665,6 +1665,11 @@ const docTemplate = `{
         },
         "/video/{id}/comments": {
             "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
                 "description": "Retrieves a paginated list of comments for a specific video",
                 "consumes": [
                     "application/json"
@@ -1709,7 +1714,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/http.Response"
+                                    "$ref": "#/definitions/net_http.Response"
                                 },
                                 {
                                     "type": "object",
@@ -1727,7 +1732,25 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/http.Response"
+                                    "$ref": "#/definitions/net_http.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "error": {
+                                            "$ref": "#/definitions/http.Error"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized - user not authenticated",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/net_http.Response"
                                 },
                                 {
                                     "type": "object",
@@ -1745,7 +1768,7 @@ const docTemplate = `{
                         "schema": {
                             "allOf": [
                                 {
-                                    "$ref": "#/definitions/http.Response"
+                                    "$ref": "#/definitions/net_http.Response"
                                 },
                                 {
                                     "type": "object",
@@ -2048,6 +2071,9 @@ const docTemplate = `{
                 }
             }
         },
+        "big.Int": {
+            "type": "object"
+        },
         "comment.Comment": {
             "description": "A comment on a video with metadata and reaction counts",
             "type": "object",
@@ -2122,8 +2148,7 @@ const docTemplate = `{
                     "example": "This is a comment"
                 },
                 "parent_id": {
-                    "type": "string",
-                    "example": ""
+                    "type": "string"
                 }
             }
         },
@@ -2259,48 +2284,272 @@ const docTemplate = `{
                 }
             }
         },
-        "http.Response": {
+        "http.Header": {
             "type": "object",
-            "properties": {
-                "data": {},
-                "error": {
-                    "$ref": "#/definitions/http.Error"
-                },
-                "message": {
+            "additionalProperties": {
+                "type": "array",
+                "items": {
                     "type": "string"
-                },
-                "success": {
-                    "type": "boolean"
                 }
             }
         },
-        "notification.EventType": {
-            "description": "Type of notification event (e.g. VIDEO_UPLOADED, COMMENT_CREATED)",
-            "type": "string",
-            "enum": [
-                "VIDEO_UPLOADED",
-                "VIDEO_PROCESSED",
-                "VIDEO_UPDATED",
-                "VIDEO_DELETED",
-                "COMMENT_CREATED",
-                "COMMENT_REPLIED",
-                "COMMENT_REACTION",
-                "USER_FOLLOWED",
-                "USER_MENTIONED",
-                "AUTH_EVENT"
-            ],
-            "x-enum-varnames": [
-                "VideoUploaded",
-                "VideoProcessed",
-                "VideoUpdated",
-                "VideoDeleted",
-                "CommentCreated",
-                "CommentReplied",
-                "CommentReaction",
-                "UserFollowed",
-                "UserMentioned",
-                "AuthEvent"
-            ]
+        "multipart.FileHeader": {
+            "type": "object",
+            "properties": {
+                "filename": {
+                    "type": "string"
+                },
+                "header": {
+                    "$ref": "#/definitions/textproto.MIMEHeader"
+                },
+                "size": {
+                    "type": "integer"
+                }
+            }
+        },
+        "multipart.Form": {
+            "type": "object",
+            "properties": {
+                "file": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/definitions/multipart.FileHeader"
+                        }
+                    }
+                },
+                "value": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    }
+                }
+            }
+        },
+        "net.IPNet": {
+            "type": "object",
+            "properties": {
+                "ip": {
+                    "description": "network number",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "mask": {
+                    "description": "network mask",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "net_http.Request": {
+            "type": "object",
+            "properties": {
+                "body": {
+                    "description": "Body is the request's body.\n\nFor client requests, a nil body means the request has no\nbody, such as a GET request. The HTTP Client's Transport\nis responsible for calling the Close method.\n\nFor server requests, the Request Body is always non-nil\nbut will return EOF immediately when no body is present.\nThe Server will close the request body. The ServeHTTP\nHandler does not need to.\n\nBody must allow Read to be called concurrently with Close.\nIn particular, calling Close should unblock a Read waiting\nfor input."
+                },
+                "cancel": {
+                    "description": "Cancel is an optional channel whose closure indicates that the client\nrequest should be regarded as canceled. Not all implementations of\nRoundTripper may support Cancel.\n\nFor server requests, this field is not applicable.\n\nDeprecated: Set the Request's context with NewRequestWithContext\ninstead. If a Request's Cancel field and context are both\nset, it is undefined whether Cancel is respected.",
+                    "type": "object"
+                },
+                "close": {
+                    "description": "Close indicates whether to close the connection after\nreplying to this request (for servers) or after sending this\nrequest and reading its response (for clients).\n\nFor server requests, the HTTP server handles this automatically\nand this field is not needed by Handlers.\n\nFor client requests, setting this field prevents re-use of\nTCP connections between requests to the same hosts, as if\nTransport.DisableKeepAlives were set.",
+                    "type": "boolean"
+                },
+                "contentLength": {
+                    "description": "ContentLength records the length of the associated content.\nThe value -1 indicates that the length is unknown.\nValues \u003e= 0 indicate that the given number of bytes may\nbe read from Body.\n\nFor client requests, a value of 0 with a non-nil Body is\nalso treated as unknown.",
+                    "type": "integer"
+                },
+                "form": {
+                    "description": "Form contains the parsed form data, including both the URL\nfield's query parameters and the PATCH, POST, or PUT form data.\nThis field is only available after ParseForm is called.\nThe HTTP client ignores Form and uses Body instead.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/url.Values"
+                        }
+                    ]
+                },
+                "header": {
+                    "description": "Header contains the request header fields either received\nby the server or to be sent by the client.\n\nIf a server received a request with header lines,\n\n\tHost: example.com\n\taccept-encoding: gzip, deflate\n\tAccept-Language: en-us\n\tfOO: Bar\n\tfoo: two\n\nthen\n\n\tHeader = map[string][]string{\n\t\t\"Accept-Encoding\": {\"gzip, deflate\"},\n\t\t\"Accept-Language\": {\"en-us\"},\n\t\t\"Foo\": {\"Bar\", \"two\"},\n\t}\n\nFor incoming requests, the Host header is promoted to the\nRequest.Host field and removed from the Header map.\n\nHTTP defines that header names are case-insensitive. The\nrequest parser implements this by using CanonicalHeaderKey,\nmaking the first character and any characters following a\nhyphen uppercase and the rest lowercase.\n\nFor client requests, certain headers such as Content-Length\nand Connection are automatically written when needed and\nvalues in Header may be ignored. See the documentation\nfor the Request.Write method.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/http.Header"
+                        }
+                    ]
+                },
+                "host": {
+                    "description": "For server requests, Host specifies the host on which the\nURL is sought. For HTTP/1 (per RFC 7230, section 5.4), this\nis either the value of the \"Host\" header or the host name\ngiven in the URL itself. For HTTP/2, it is the value of the\n\":authority\" pseudo-header field.\nIt may be of the form \"host:port\". For international domain\nnames, Host may be in Punycode or Unicode form. Use\ngolang.org/x/net/idna to convert it to either format if\nneeded.\nTo prevent DNS rebinding attacks, server Handlers should\nvalidate that the Host header has a value for which the\nHandler considers itself authoritative. The included\nServeMux supports patterns registered to particular host\nnames and thus protects its registered Handlers.\n\nFor client requests, Host optionally overrides the Host\nheader to send. If empty, the Request.Write method uses\nthe value of URL.Host. Host may contain an international\ndomain name.",
+                    "type": "string"
+                },
+                "method": {
+                    "description": "Method specifies the HTTP method (GET, POST, PUT, etc.).\nFor client requests, an empty string means GET.",
+                    "type": "string"
+                },
+                "multipartForm": {
+                    "description": "MultipartForm is the parsed multipart form, including file uploads.\nThis field is only available after ParseMultipartForm is called.\nThe HTTP client ignores MultipartForm and uses Body instead.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/multipart.Form"
+                        }
+                    ]
+                },
+                "pattern": {
+                    "description": "Pattern is the [ServeMux] pattern that matched the request.\nIt is empty if the request was not matched against a pattern.",
+                    "type": "string"
+                },
+                "postForm": {
+                    "description": "PostForm contains the parsed form data from PATCH, POST\nor PUT body parameters.\n\nThis field is only available after ParseForm is called.\nThe HTTP client ignores PostForm and uses Body instead.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/url.Values"
+                        }
+                    ]
+                },
+                "proto": {
+                    "description": "The protocol version for incoming server requests.\n\nFor client requests, these fields are ignored. The HTTP\nclient code always uses either HTTP/1.1 or HTTP/2.\nSee the docs on Transport for details.",
+                    "type": "string"
+                },
+                "protoMajor": {
+                    "description": "1",
+                    "type": "integer"
+                },
+                "protoMinor": {
+                    "description": "0",
+                    "type": "integer"
+                },
+                "remoteAddr": {
+                    "description": "RemoteAddr allows HTTP servers and other software to record\nthe network address that sent the request, usually for\nlogging. This field is not filled in by ReadRequest and\nhas no defined format. The HTTP server in this package\nsets RemoteAddr to an \"IP:port\" address before invoking a\nhandler.\nThis field is ignored by the HTTP client.",
+                    "type": "string"
+                },
+                "requestURI": {
+                    "description": "RequestURI is the unmodified request-target of the\nRequest-Line (RFC 7230, Section 3.1.1) as sent by the client\nto a server. Usually the URL field should be used instead.\nIt is an error to set this field in an HTTP client request.",
+                    "type": "string"
+                },
+                "response": {
+                    "description": "Response is the redirect response which caused this request\nto be created. This field is only populated during client\nredirects.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/net_http.Response"
+                        }
+                    ]
+                },
+                "tls": {
+                    "description": "TLS allows HTTP servers and other software to record\ninformation about the TLS connection on which the request\nwas received. This field is not filled in by ReadRequest.\nThe HTTP server in this package sets the field for\nTLS-enabled connections before invoking a handler;\notherwise it leaves the field nil.\nThis field is ignored by the HTTP client.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/tls.ConnectionState"
+                        }
+                    ]
+                },
+                "trailer": {
+                    "description": "Trailer specifies additional headers that are sent after the request\nbody.\n\nFor server requests, the Trailer map initially contains only the\ntrailer keys, with nil values. (The client declares which trailers it\nwill later send.)  While the handler is reading from Body, it must\nnot reference Trailer. After reading from Body returns EOF, Trailer\ncan be read again and will contain non-nil values, if they were sent\nby the client.\n\nFor client requests, Trailer must be initialized to a map containing\nthe trailer keys to later send. The values may be nil or their final\nvalues. The ContentLength must be 0 or -1, to send a chunked request.\nAfter the HTTP request is sent the map values can be updated while\nthe request body is read. Once the body returns EOF, the caller must\nnot mutate Trailer.\n\nFew HTTP clients, servers, or proxies support HTTP trailers.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/http.Header"
+                        }
+                    ]
+                },
+                "transferEncoding": {
+                    "description": "TransferEncoding lists the transfer encodings from outermost to\ninnermost. An empty list denotes the \"identity\" encoding.\nTransferEncoding can usually be ignored; chunked encoding is\nautomatically added and removed as necessary when sending and\nreceiving requests.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "url": {
+                    "description": "URL specifies either the URI being requested (for server\nrequests) or the URL to access (for client requests).\n\nFor server requests, the URL is parsed from the URI\nsupplied on the Request-Line as stored in RequestURI.  For\nmost requests, fields other than Path and RawQuery will be\nempty. (See RFC 7230, Section 5.3)\n\nFor client requests, the URL's Host specifies the server to\nconnect to, while the Request's Host field optionally\nspecifies the Host header value to send in the HTTP\nrequest.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/url.URL"
+                        }
+                    ]
+                }
+            }
+        },
+        "net_http.Response": {
+            "type": "object",
+            "properties": {
+                "body": {
+                    "description": "Body represents the response body.\n\nThe response body is streamed on demand as the Body field\nis read. If the network connection fails or the server\nterminates the response, Body.Read calls return an error.\n\nThe http Client and Transport guarantee that Body is always\nnon-nil, even on responses without a body or responses with\na zero-length body. It is the caller's responsibility to\nclose Body. The default HTTP client's Transport may not\nreuse HTTP/1.x \"keep-alive\" TCP connections if the Body is\nnot read to completion and closed.\n\nThe Body is automatically dechunked if the server replied\nwith a \"chunked\" Transfer-Encoding.\n\nAs of Go 1.12, the Body will also implement io.Writer\non a successful \"101 Switching Protocols\" response,\nas used by WebSockets and HTTP/2's \"h2c\" mode."
+                },
+                "close": {
+                    "description": "Close records whether the header directed that the connection be\nclosed after reading Body. The value is advice for clients: neither\nReadResponse nor Response.Write ever closes a connection.",
+                    "type": "boolean"
+                },
+                "contentLength": {
+                    "description": "ContentLength records the length of the associated content. The\nvalue -1 indicates that the length is unknown. Unless Request.Method\nis \"HEAD\", values \u003e= 0 indicate that the given number of bytes may\nbe read from Body.",
+                    "type": "integer"
+                },
+                "header": {
+                    "description": "Header maps header keys to values. If the response had multiple\nheaders with the same key, they may be concatenated, with comma\ndelimiters.  (RFC 7230, section 3.2.2 requires that multiple headers\nbe semantically equivalent to a comma-delimited sequence.) When\nHeader values are duplicated by other fields in this struct (e.g.,\nContentLength, TransferEncoding, Trailer), the field values are\nauthoritative.\n\nKeys in the map are canonicalized (see CanonicalHeaderKey).",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/http.Header"
+                        }
+                    ]
+                },
+                "proto": {
+                    "description": "e.g. \"HTTP/1.0\"",
+                    "type": "string"
+                },
+                "protoMajor": {
+                    "description": "e.g. 1",
+                    "type": "integer"
+                },
+                "protoMinor": {
+                    "description": "e.g. 0",
+                    "type": "integer"
+                },
+                "request": {
+                    "description": "Request is the request that was sent to obtain this Response.\nRequest's Body is nil (having already been consumed).\nThis is only populated for Client requests.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/net_http.Request"
+                        }
+                    ]
+                },
+                "status": {
+                    "description": "e.g. \"200 OK\"",
+                    "type": "string"
+                },
+                "statusCode": {
+                    "description": "e.g. 200",
+                    "type": "integer"
+                },
+                "tls": {
+                    "description": "TLS contains information about the TLS connection on which the\nresponse was received. It is nil for unencrypted responses.\nThe pointer is shared between responses and should not be\nmodified.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/tls.ConnectionState"
+                        }
+                    ]
+                },
+                "trailer": {
+                    "description": "Trailer maps trailer keys to values in the same\nformat as Header.\n\nThe Trailer initially contains only nil values, one for\neach key specified in the server's \"Trailer\" header\nvalue. Those values are not added to Header.\n\nTrailer must not be accessed concurrently with Read calls\non the Body.\n\nAfter Body.Read has returned io.EOF, Trailer will contain\nany trailer values sent by the server.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/http.Header"
+                        }
+                    ]
+                },
+                "transferEncoding": {
+                    "description": "Contains transfer encodings from outer-most to inner-most. Value is\nnil, means that \"identity\" encoding is used.",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "uncompressed": {
+                    "description": "Uncompressed reports whether the response was sent compressed but\nwas decompressed by the http package. When true, reading from\nBody yields the uncompressed content instead of the compressed\ncontent actually set from the server, ContentLength is set to -1,\nand the \"Content-Length\" and \"Content-Encoding\" fields are deleted\nfrom the responseHeader. To get the original response from\nthe server, set Transport.DisableCompression to true.",
+                    "type": "boolean"
+                }
+            }
         },
         "notification.Notification": {
             "description": "A notification entity with metadata and status information",
@@ -2332,17 +2581,263 @@ const docTemplate = `{
                 },
                 "type": {
                     "description": "Type of notification (VIDEO_UPLOADED, COMMENT_CREATED, etc.)",
-                    "allOf": [
-                        {
-                            "$ref": "#/definitions/notification.EventType"
-                        }
-                    ],
+                    "type": "string",
                     "example": "VIDEO_UPLOADED"
                 },
                 "userId": {
                     "description": "User ID who should receive this notification",
                     "type": "string",
                     "example": "550e8400-e29b-41d4-a716-446655440001"
+                }
+            }
+        },
+        "pkix.AttributeTypeAndValue": {
+            "type": "object",
+            "properties": {
+                "type": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "value": {}
+            }
+        },
+        "pkix.Extension": {
+            "type": "object",
+            "properties": {
+                "critical": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "value": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                }
+            }
+        },
+        "pkix.Name": {
+            "type": "object",
+            "properties": {
+                "commonName": {
+                    "type": "string"
+                },
+                "country": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "extraNames": {
+                    "description": "ExtraNames contains attributes to be copied, raw, into any marshaled\ndistinguished names. Values override any attributes with the same OID.\nThe ExtraNames field is not populated when parsing, see Names.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/pkix.AttributeTypeAndValue"
+                    }
+                },
+                "locality": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "names": {
+                    "description": "Names contains all parsed attributes. When parsing distinguished names,\nthis can be used to extract non-standard attributes that are not parsed\nby this package. When marshaling to RDNSequences, the Names field is\nignored, see ExtraNames.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/pkix.AttributeTypeAndValue"
+                    }
+                },
+                "organization": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "organizationalUnit": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "postalCode": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "province": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "serialNumber": {
+                    "type": "string"
+                },
+                "streetAddress": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "textproto.MIMEHeader": {
+            "type": "object",
+            "additionalProperties": {
+                "type": "array",
+                "items": {
+                    "type": "string"
+                }
+            }
+        },
+        "tls.ConnectionState": {
+            "type": "object",
+            "properties": {
+                "cipherSuite": {
+                    "description": "CipherSuite is the cipher suite negotiated for the connection (e.g.\nTLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256, TLS_AES_128_GCM_SHA256).",
+                    "type": "integer"
+                },
+                "didResume": {
+                    "description": "DidResume is true if this connection was successfully resumed from a\nprevious session with a session ticket or similar mechanism.",
+                    "type": "boolean"
+                },
+                "echaccepted": {
+                    "description": "ECHAccepted indicates if Encrypted Client Hello was offered by the client\nand accepted by the server. Currently, ECH is supported only on the\nclient side.",
+                    "type": "boolean"
+                },
+                "handshakeComplete": {
+                    "description": "HandshakeComplete is true if the handshake has concluded.",
+                    "type": "boolean"
+                },
+                "negotiatedProtocol": {
+                    "description": "NegotiatedProtocol is the application protocol negotiated with ALPN.",
+                    "type": "string"
+                },
+                "negotiatedProtocolIsMutual": {
+                    "description": "NegotiatedProtocolIsMutual used to indicate a mutual NPN negotiation.\n\nDeprecated: this value is always true.",
+                    "type": "boolean"
+                },
+                "ocspresponse": {
+                    "description": "OCSPResponse is a stapled Online Certificate Status Protocol (OCSP)\nresponse provided by the peer for the leaf certificate, if any.",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "peerCertificates": {
+                    "description": "PeerCertificates are the parsed certificates sent by the peer, in the\norder in which they were sent. The first element is the leaf certificate\nthat the connection is verified against.\n\nOn the client side, it can't be empty. On the server side, it can be\nempty if Config.ClientAuth is not RequireAnyClientCert or\nRequireAndVerifyClientCert.\n\nPeerCertificates and its contents should not be modified.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/x509.Certificate"
+                    }
+                },
+                "serverName": {
+                    "description": "ServerName is the value of the Server Name Indication extension sent by\nthe client. It's available both on the server and on the client side.",
+                    "type": "string"
+                },
+                "signedCertificateTimestamps": {
+                    "description": "SignedCertificateTimestamps is a list of SCTs provided by the peer\nthrough the TLS handshake for the leaf certificate, if any.",
+                    "type": "array",
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "tlsunique": {
+                    "description": "TLSUnique contains the \"tls-unique\" channel binding value (see RFC 5929,\nSection 3). This value will be nil for TLS 1.3 connections and for\nresumed connections that don't support Extended Master Secret (RFC 7627).",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "verifiedChains": {
+                    "description": "VerifiedChains is a list of one or more chains where the first element is\nPeerCertificates[0] and the last element is from Config.RootCAs (on the\nclient side) or Config.ClientCAs (on the server side).\n\nOn the client side, it's set if Config.InsecureSkipVerify is false. On\nthe server side, it's set if Config.ClientAuth is VerifyClientCertIfGiven\n(and the peer provided a certificate) or RequireAndVerifyClientCert.\n\nVerifiedChains and its contents should not be modified.",
+                    "type": "array",
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/definitions/x509.Certificate"
+                        }
+                    }
+                },
+                "version": {
+                    "description": "Version is the TLS version used by the connection (e.g. VersionTLS12).",
+                    "type": "integer"
+                }
+            }
+        },
+        "url.URL": {
+            "type": "object",
+            "properties": {
+                "forceQuery": {
+                    "description": "append a query ('?') even if RawQuery is empty",
+                    "type": "boolean"
+                },
+                "fragment": {
+                    "description": "fragment for references, without '#'",
+                    "type": "string"
+                },
+                "host": {
+                    "description": "host or host:port (see Hostname and Port methods)",
+                    "type": "string"
+                },
+                "omitHost": {
+                    "description": "do not emit empty host (authority)",
+                    "type": "boolean"
+                },
+                "opaque": {
+                    "description": "encoded opaque data",
+                    "type": "string"
+                },
+                "path": {
+                    "description": "path (relative paths may omit leading slash)",
+                    "type": "string"
+                },
+                "rawFragment": {
+                    "description": "encoded fragment hint (see EscapedFragment method)",
+                    "type": "string"
+                },
+                "rawPath": {
+                    "description": "encoded path hint (see EscapedPath method)",
+                    "type": "string"
+                },
+                "rawQuery": {
+                    "description": "encoded query values, without '?'",
+                    "type": "string"
+                },
+                "scheme": {
+                    "type": "string"
+                },
+                "user": {
+                    "description": "username and password information",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/url.Userinfo"
+                        }
+                    ]
+                }
+            }
+        },
+        "url.Userinfo": {
+            "type": "object"
+        },
+        "url.Values": {
+            "type": "object",
+            "additionalProperties": {
+                "type": "array",
+                "items": {
+                    "type": "string"
                 }
             }
         },
@@ -2495,6 +2990,451 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
+        },
+        "x509.Certificate": {
+            "type": "object",
+            "properties": {
+                "authorityKeyId": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "basicConstraintsValid": {
+                    "description": "BasicConstraintsValid indicates whether IsCA, MaxPathLen,\nand MaxPathLenZero are valid.",
+                    "type": "boolean"
+                },
+                "crldistributionPoints": {
+                    "description": "CRL Distribution Points",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "dnsnames": {
+                    "description": "Subject Alternate Name values. (Note that these values may not be valid\nif invalid values were contained within a parsed certificate. For\nexample, an element of DNSNames may not be a valid DNS domain name.)",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "emailAddresses": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "excludedDNSDomains": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "excludedEmailAddresses": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "excludedIPRanges": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/net.IPNet"
+                    }
+                },
+                "excludedURIDomains": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "extKeyUsage": {
+                    "description": "Sequence of extended key usages.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/x509.ExtKeyUsage"
+                    }
+                },
+                "extensions": {
+                    "description": "Extensions contains raw X.509 extensions. When parsing certificates,\nthis can be used to extract non-critical extensions that are not\nparsed by this package. When marshaling certificates, the Extensions\nfield is ignored, see ExtraExtensions.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/pkix.Extension"
+                    }
+                },
+                "extraExtensions": {
+                    "description": "ExtraExtensions contains extensions to be copied, raw, into any\nmarshaled certificates. Values override any extensions that would\notherwise be produced based on the other fields. The ExtraExtensions\nfield is not populated when parsing certificates, see Extensions.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/pkix.Extension"
+                    }
+                },
+                "inhibitAnyPolicy": {
+                    "description": "InhibitAnyPolicy and InhibitAnyPolicyZero indicate the presence and value\nof the inhibitAnyPolicy extension.\n\nThe value of InhibitAnyPolicy indicates the number of additional\ncertificates in the path after this certificate that may use the\nanyPolicy policy OID to indicate a match with any other policy.\n\nWhen parsing a certificate, a positive non-zero InhibitAnyPolicy means\nthat the field was specified, -1 means it was unset, and\nInhibitAnyPolicyZero being true mean that the field was explicitly set to\nzero. The case of InhibitAnyPolicy==0 with InhibitAnyPolicyZero==false\nshould be treated equivalent to -1 (unset).",
+                    "type": "integer"
+                },
+                "inhibitAnyPolicyZero": {
+                    "description": "InhibitAnyPolicyZero indicates that InhibitAnyPolicy==0 should be\ninterpreted as an actual maximum path length of zero. Otherwise, that\ncombination is interpreted as InhibitAnyPolicy not being set.",
+                    "type": "boolean"
+                },
+                "inhibitPolicyMapping": {
+                    "description": "InhibitPolicyMapping and InhibitPolicyMappingZero indicate the presence\nand value of the inhibitPolicyMapping field of the policyConstraints\nextension.\n\nThe value of InhibitPolicyMapping indicates the number of additional\ncertificates in the path after this certificate that may use policy\nmapping.\n\nWhen parsing a certificate, a positive non-zero InhibitPolicyMapping\nmeans that the field was specified, -1 means it was unset, and\nInhibitPolicyMappingZero being true mean that the field was explicitly\nset to zero. The case of InhibitPolicyMapping==0 with\nInhibitPolicyMappingZero==false should be treated equivalent to -1\n(unset).",
+                    "type": "integer"
+                },
+                "inhibitPolicyMappingZero": {
+                    "description": "InhibitPolicyMappingZero indicates that InhibitPolicyMapping==0 should be\ninterpreted as an actual maximum path length of zero. Otherwise, that\ncombination is interpreted as InhibitAnyPolicy not being set.",
+                    "type": "boolean"
+                },
+                "ipaddresses": {
+                    "type": "array",
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "isCA": {
+                    "type": "boolean"
+                },
+                "issuer": {
+                    "$ref": "#/definitions/pkix.Name"
+                },
+                "issuingCertificateURL": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "keyUsage": {
+                    "$ref": "#/definitions/x509.KeyUsage"
+                },
+                "maxPathLen": {
+                    "description": "MaxPathLen and MaxPathLenZero indicate the presence and\nvalue of the BasicConstraints' \"pathLenConstraint\".\n\nWhen parsing a certificate, a positive non-zero MaxPathLen\nmeans that the field was specified, -1 means it was unset,\nand MaxPathLenZero being true mean that the field was\nexplicitly set to zero. The case of MaxPathLen==0 with MaxPathLenZero==false\nshould be treated equivalent to -1 (unset).\n\nWhen generating a certificate, an unset pathLenConstraint\ncan be requested with either MaxPathLen == -1 or using the\nzero value for both MaxPathLen and MaxPathLenZero.",
+                    "type": "integer"
+                },
+                "maxPathLenZero": {
+                    "description": "MaxPathLenZero indicates that BasicConstraintsValid==true\nand MaxPathLen==0 should be interpreted as an actual\nmaximum path length of zero. Otherwise, that combination is\ninterpreted as MaxPathLen not being set.",
+                    "type": "boolean"
+                },
+                "notAfter": {
+                    "description": "Validity bounds.",
+                    "type": "string"
+                },
+                "notBefore": {
+                    "description": "Validity bounds.",
+                    "type": "string"
+                },
+                "ocspserver": {
+                    "description": "RFC 5280, 4.2.2.1 (Authority Information Access)",
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "permittedDNSDomains": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "permittedDNSDomainsCritical": {
+                    "description": "Name constraints",
+                    "type": "boolean"
+                },
+                "permittedEmailAddresses": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "permittedIPRanges": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/net.IPNet"
+                    }
+                },
+                "permittedURIDomains": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "policies": {
+                    "description": "Policies contains all policy identifiers included in the certificate.\nSee CreateCertificate for context about how this field and the PolicyIdentifiers field\ninteract.\nIn Go 1.22, encoding/gob cannot handle and ignores this field.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/x509.OID"
+                    }
+                },
+                "policyIdentifiers": {
+                    "description": "PolicyIdentifiers contains asn1.ObjectIdentifiers, the components\nof which are limited to int32. If a certificate contains a policy which\ncannot be represented by asn1.ObjectIdentifier, it will not be included in\nPolicyIdentifiers, but will be present in Policies, which contains all parsed\npolicy OIDs.\nSee CreateCertificate for context about how this field and the Policies field\ninteract.",
+                    "type": "array",
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "policyMappings": {
+                    "description": "PolicyMappings contains a list of policy mappings included in the certificate.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/x509.PolicyMapping"
+                    }
+                },
+                "publicKey": {},
+                "publicKeyAlgorithm": {
+                    "$ref": "#/definitions/x509.PublicKeyAlgorithm"
+                },
+                "raw": {
+                    "description": "Complete ASN.1 DER content (certificate, signature algorithm and signature).",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "rawIssuer": {
+                    "description": "DER encoded Issuer",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "rawSubject": {
+                    "description": "DER encoded Subject",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "rawSubjectPublicKeyInfo": {
+                    "description": "DER encoded SubjectPublicKeyInfo.",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "rawTBSCertificate": {
+                    "description": "Certificate part of raw ASN.1 DER content.",
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "requireExplicitPolicy": {
+                    "description": "RequireExplicitPolicy and RequireExplicitPolicyZero indicate the presence\nand value of the requireExplicitPolicy field of the policyConstraints\nextension.\n\nThe value of RequireExplicitPolicy indicates the number of additional\ncertificates in the path after this certificate before an explicit policy\nis required for the rest of the path. When an explicit policy is required,\neach subsequent certificate in the path must contain a required policy OID,\nor a policy OID which has been declared as equivalent through the policy\nmapping extension.\n\nWhen parsing a certificate, a positive non-zero RequireExplicitPolicy\nmeans that the field was specified, -1 means it was unset, and\nRequireExplicitPolicyZero being true mean that the field was explicitly\nset to zero. The case of RequireExplicitPolicy==0 with\nRequireExplicitPolicyZero==false should be treated equivalent to -1\n(unset).",
+                    "type": "integer"
+                },
+                "requireExplicitPolicyZero": {
+                    "description": "RequireExplicitPolicyZero indicates that RequireExplicitPolicy==0 should be\ninterpreted as an actual maximum path length of zero. Otherwise, that\ncombination is interpreted as InhibitAnyPolicy not being set.",
+                    "type": "boolean"
+                },
+                "serialNumber": {
+                    "$ref": "#/definitions/big.Int"
+                },
+                "signature": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "signatureAlgorithm": {
+                    "$ref": "#/definitions/x509.SignatureAlgorithm"
+                },
+                "subject": {
+                    "$ref": "#/definitions/pkix.Name"
+                },
+                "subjectKeyId": {
+                    "type": "array",
+                    "items": {
+                        "type": "integer"
+                    }
+                },
+                "unhandledCriticalExtensions": {
+                    "description": "UnhandledCriticalExtensions contains a list of extension IDs that\nwere not (fully) processed when parsing. Verify will fail if this\nslice is non-empty, unless verification is delegated to an OS\nlibrary which understands all the critical extensions.\n\nUsers can access these extensions using Extensions and can remove\nelements from this slice if they believe that they have been\nhandled.",
+                    "type": "array",
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "unknownExtKeyUsage": {
+                    "description": "Encountered extended key usages unknown to this package.",
+                    "type": "array",
+                    "items": {
+                        "type": "array",
+                        "items": {
+                            "type": "integer"
+                        }
+                    }
+                },
+                "uris": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/url.URL"
+                    }
+                },
+                "version": {
+                    "type": "integer"
+                }
+            }
+        },
+        "x509.ExtKeyUsage": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13
+            ],
+            "x-enum-varnames": [
+                "ExtKeyUsageAny",
+                "ExtKeyUsageServerAuth",
+                "ExtKeyUsageClientAuth",
+                "ExtKeyUsageCodeSigning",
+                "ExtKeyUsageEmailProtection",
+                "ExtKeyUsageIPSECEndSystem",
+                "ExtKeyUsageIPSECTunnel",
+                "ExtKeyUsageIPSECUser",
+                "ExtKeyUsageTimeStamping",
+                "ExtKeyUsageOCSPSigning",
+                "ExtKeyUsageMicrosoftServerGatedCrypto",
+                "ExtKeyUsageNetscapeServerGatedCrypto",
+                "ExtKeyUsageMicrosoftCommercialCodeSigning",
+                "ExtKeyUsageMicrosoftKernelCodeSigning"
+            ]
+        },
+        "x509.KeyUsage": {
+            "type": "integer",
+            "enum": [
+                1,
+                2,
+                4,
+                8,
+                16,
+                32,
+                64,
+                128,
+                256
+            ],
+            "x-enum-varnames": [
+                "KeyUsageDigitalSignature",
+                "KeyUsageContentCommitment",
+                "KeyUsageKeyEncipherment",
+                "KeyUsageDataEncipherment",
+                "KeyUsageKeyAgreement",
+                "KeyUsageCertSign",
+                "KeyUsageCRLSign",
+                "KeyUsageEncipherOnly",
+                "KeyUsageDecipherOnly"
+            ]
+        },
+        "x509.OID": {
+            "type": "object"
+        },
+        "x509.PolicyMapping": {
+            "type": "object",
+            "properties": {
+                "issuerDomainPolicy": {
+                    "description": "IssuerDomainPolicy contains a policy OID the issuing certificate considers\nequivalent to SubjectDomainPolicy in the subject certificate.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/x509.OID"
+                        }
+                    ]
+                },
+                "subjectDomainPolicy": {
+                    "description": "SubjectDomainPolicy contains a OID the issuing certificate considers\nequivalent to IssuerDomainPolicy in the subject certificate.",
+                    "allOf": [
+                        {
+                            "$ref": "#/definitions/x509.OID"
+                        }
+                    ]
+                }
+            }
+        },
+        "x509.PublicKeyAlgorithm": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2,
+                3,
+                4
+            ],
+            "x-enum-comments": {
+                "DSA": "Only supported for parsing."
+            },
+            "x-enum-varnames": [
+                "UnknownPublicKeyAlgorithm",
+                "RSA",
+                "DSA",
+                "ECDSA",
+                "Ed25519"
+            ]
+        },
+        "x509.SignatureAlgorithm": {
+            "type": "integer",
+            "enum": [
+                0,
+                1,
+                2,
+                3,
+                4,
+                5,
+                6,
+                7,
+                8,
+                9,
+                10,
+                11,
+                12,
+                13,
+                14,
+                15,
+                16
+            ],
+            "x-enum-comments": {
+                "DSAWithSHA1": "Unsupported.",
+                "DSAWithSHA256": "Unsupported.",
+                "ECDSAWithSHA1": "Only supported for signing, and verification of CRLs, CSRs, and OCSP responses.",
+                "MD2WithRSA": "Unsupported.",
+                "MD5WithRSA": "Only supported for signing, not verification.",
+                "SHA1WithRSA": "Only supported for signing, and verification of CRLs, CSRs, and OCSP responses."
+            },
+            "x-enum-varnames": [
+                "UnknownSignatureAlgorithm",
+                "MD2WithRSA",
+                "MD5WithRSA",
+                "SHA1WithRSA",
+                "SHA256WithRSA",
+                "SHA384WithRSA",
+                "SHA512WithRSA",
+                "DSAWithSHA1",
+                "DSAWithSHA256",
+                "ECDSAWithSHA1",
+                "ECDSAWithSHA256",
+                "ECDSAWithSHA384",
+                "ECDSAWithSHA512",
+                "SHA256WithRSAPSS",
+                "SHA384WithRSAPSS",
+                "SHA512WithRSAPSS",
+                "PureEd25519"
+            ]
         }
     },
     "securityDefinitions": {

@@ -91,11 +91,11 @@ type PaginatedComments struct {
 }
 
 // CreateCommentRequest represents the request body for creating a new comment
-// For top-level comments, omit parent_id or set it to null (not "null")
+// For top-level comments, omit parent_id or set it to null (not "null" and not an empty string)
 // For replies, set parent_id to the UUID of the parent comment
 type CreateCommentRequest struct {
 	Content  string     `json:"content" binding:"required" example:"This is a comment"`
-	ParentID *uuid.UUID `json:"parent_id" example:""`
+	ParentID *uuid.UUID `json:"parent_id" example:null`
 }
 
 // UpdateCommentRequest represents the request body for updating a comment

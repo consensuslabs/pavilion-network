@@ -3,8 +3,10 @@ package notification
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/consensuslabs/pavilion-network/backend/internal/video"
+	"github.com/google/uuid"
 )
 
 // VideoNotificationAdapter wraps a NotificationService to be used from the video package
@@ -47,4 +49,51 @@ func (a *VideoNotificationAdapter) PublishVideoEvent(ctx interface{}, event inte
 
 	// Publish the notification event
 	return a.service.PublishVideoEvent(ctxVal, notifEvent)
+}
+
+// CommentNotificationAdapter wraps a NotificationService to be used from the comment package
+type CommentNotificationAdapter struct {
+	service NotificationService
+}
+
+// NewCommentNotificationAdapter creates a new adapter for comment notifications
+func NewCommentNotificationAdapter(service NotificationService) *CommentNotificationAdapter {
+	return &CommentNotificationAdapter{
+		service: service,
+	}
+}
+
+// PublishCommentCreatedEvent publishes a comment creation event
+func (a *CommentNotificationAdapter) PublishCommentCreatedEvent(ctx context.Context, userID, videoID, commentID uuid.UUID, content string) error {
+	event := &CommentEvent{
+		BaseEvent: BaseEvent{
+			ID:        uuid.New(),
+			Type:      CommentCreated,
+			CreatedAt: time.Now(),
+		},
+		CommentID: commentID,
+		UserID:    userID,
+		VideoID:   videoID,
+		Content:   content,
+	}
+
+	return a.service.PublishCommentEvent(ctx, event)
+}
+
+// PublishCommentReplyEvent publishes a comment reply event
+func (a *CommentNotificationAdapter) PublishCommentReplyEvent(ctx context.Context, userID, videoID, commentID, parentID uuid.UUID, content string) error {
+	event := &CommentEvent{
+		BaseEvent: BaseEvent{
+			ID:        uuid.New(),
+			Type:      CommentReplied,
+			CreatedAt: time.Now(),
+		},
+		CommentID: commentID,
+		UserID:    userID,
+		VideoID:   videoID,
+		ParentID:  parentID,
+		Content:   content,
+	}
+
+	return a.service.PublishCommentEvent(ctx, event)
 }
