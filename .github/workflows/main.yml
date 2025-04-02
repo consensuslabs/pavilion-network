@@ -6,8 +6,10 @@ on:
       - main
 
 jobs:
-  deploy-frontend:
-    runs-on: self-hosted
+  build-frontend:
+    runs-on: [self-hosted, linode, pavilion]
+    outputs:
+      build-dir: ${{ steps.export-build-path.outputs.build-dir }}
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -15,31 +17,41 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v2
         with:
-          node-version: '16' # Change this if you're using a different version of Node.js
+          node-version: '16'
 
       - name: Copy frontend .env file
         run: |
           cp ~/consensus-runner/_work/env-files/frontend.env ./frontend/.env
 
-      - name: Install dependencies (Frontend)
+      - name: Install dependencies
         working-directory: ./frontend
-        run: |
-          yarn install
+        run: yarn install
 
       - name: Build frontend
         working-directory: ./frontend
-        run: |
-          yarn build
+        run: yarn build
+
+      - name: Export build path
+        id: export-build-path
+        working-directory: ./frontend
+        run: echo "build-dir=$(pwd)/build" >> $GITHUB_OUTPUT
+
+  deploy-frontend:
+    runs-on: [self-hosted, linode, pavilion]
+    needs: build-frontend
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
 
       - name: Replace build folder
         working-directory: ./frontend
         run: |
-          sudo rm -rf /var/www/purpie/build
-          sudo cp -r ./build /var/www/purpie/
+          sudo rm -rf /var/www/pavilion/build
+          sudo cp -r ./build /var/www/pavilion/
 
   deploy-backend:
-    runs-on: self-hosted
-    needs: deploy-frontend # Ensures frontend job runs before the backend
+    runs-on: [self-hosted, linode, pavilion]
+    needs: deploy-frontend
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
@@ -47,16 +59,15 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v2
         with:
-          node-version: '18' # Change this if you're using a different version of Node.js
+          node-version: '18'
 
       - name: Copy backend .env file
         run: |
           cp ~/consensus-runner/_work/env-files/backend.env ./backend/.env
 
-      - name: Install dependencies (Backend)
+      - name: Install dependencies
         working-directory: ./backend
-        run: |
-          yarn install
+        run: yarn install
 
       - name: Stop and delete existing backend PM2 process (if any)
         run: |
@@ -76,4 +87,4 @@ jobs:
 
       - name: Reload Nginx
         run: |
-          sudo systemctl reload nginx
+          sudo nginx -t && sudo systemctl reload nginx
